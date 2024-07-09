@@ -1,4 +1,4 @@
-name: Run PsychoPy Installer
+name: Run PsychoPy Installer on Multiple OS
 
 on:
   push:
@@ -10,8 +10,12 @@ on:
 
 jobs:
   run-installer:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, centos-9, fedora-latest, popos-22.04]
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -21,3 +25,4 @@ jobs:
 
     - name: Run PsychoPy Linux Installer
       run: ./psychopy_linux_installer.sh
+      shell: bash

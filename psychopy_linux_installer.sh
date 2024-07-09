@@ -244,15 +244,51 @@ sudo usermod -a -G psychopy $USER
 
 echo -e "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" | sudo tee -a /etc/security/limits.d/99-psychopylimits.conf
 
-mkdir -p ${PSYCHOPY_DIR}/.bin
-ln -sf "${PSYCHOPY_DIR}/psychopy_venv/bin/psychopy" ${PSYCHOPY_DIR}/.bin/psychopy_v${PSYCHOPY_VERSION_CLEAN}_py_v${PYTHON_VERSION_CLEAN}
-echo 'export PATH="${PSYCHOPY_DIR}/.bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
+
+# Detect the shell
+SHELL_NAME=$(basename $SHELL)
+
+# Create the bin directory
+mkdir -p "${PSYCHOPY_DIR}/.bin"
+
+# Create the symbolic link
+ln -sf "${PSYCHOPY_DIR}/psychopy_venv/bin/psychopy" "${PSYCHOPY_DIR}/.bin/psychopy_v${PSYCHOPY_VERSION_CLEAN}_py_v${PYTHON_VERSION_CLEAN}"
+
+# Append the export command to the appropriate shell configuration file
+case $SHELL_NAME in
+    bash)
+        CONFIG_FILE="$HOME/.bashrc"
+        echo 'export PATH="${PSYCHOPY_DIR}/.bin:$PATH"' >> $CONFIG_FILE
+        ;;
+    zsh)
+        CONFIG_FILE="$HOME/.zshrc"
+        echo 'export PATH="${PSYCHOPY_DIR}/.bin:$PATH"' >> $CONFIG_FILE
+        ;;
+    fish)
+        CONFIG_FILE="$HOME/.config/fish/config.fish"
+        echo 'set -gx PATH "${PSYCHOPY_DIR}/.bin" $PATH' >> $CONFIG_FILE
+        ;;
+    csh|tcsh)
+        CONFIG_FILE="$HOME/.${SHELL_NAME}rc"
+        echo 'setenv PATH ${PSYCHOPY_DIR}/.bin:$PATH' >> $CONFIG_FILE
+        ;;
+    *)
+        echo "Unsupported shell: $SHELL_NAME"
+        echo
+        echo "PsychoPy installation complete!"
+        echo "To start PsychoPy, use:"
+        echo "${PSYCHOPY_DIR}/psychopy_venv/bin/psychopy"
+        exit 0
+        ;;
+esac
+
+# Source the configuration file to apply changes
+source $CONFIG_FILE
 
 echo
 echo "PsychoPy installation complete!"
 echo "To apply the changes, run:"
-echo "source ~/.bashrc"
+echo "source $CONFIG_FILE"
 echo
 echo "To start PsychoPy, use:"
 echo "psychopy_v${PSYCHOPY_VERSION_CLEAN}_py_v${PYTHON_VERSION_CLEAN}"
