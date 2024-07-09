@@ -8,7 +8,7 @@ This script installs PsychoPy on various Linux distributions, including:
 - CentOS 9
 
 Additional distributions may be tested and supported in the future.
-All tests are done in Virtual Machines only.
+All tests are done on Virtual Machines only.
 
 ## Info
 
