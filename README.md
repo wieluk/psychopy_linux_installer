@@ -18,10 +18,10 @@ All tests are done in Virtual Machines only.
 
 ## Usage
 
-`git clone https://github.com/wieluk/psychopy_linux_installer.git`
-`cd psychopy_linux_installer`
-`chmod +x install_psychopy.sh`
-`./install_psychopy.sh [options]`
+- `git clone https://github.com/wieluk/psychopy_linux_installer.git`
+- `cd psychopy_linux_installer`
+- ``chmod +x install_psychopy.sh``
+- `./install_psychopy.sh [options] `
 
 ## Options
 
@@ -56,7 +56,10 @@ The script performs the following steps:
 ## Post-Installation
 
 To apply the changes, run:
+
 `source ~/.bashrc`
+
+
 To start PsychoPy, use:
 `psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}` (also shown at end of the script)
 
