@@ -13,8 +13,9 @@ All tests are done on Virtual Machines only.
 ## Info
 
 - Installs the specified or default Python version as `altinstall`.
-- Creates a directory in given directory (default ~):
-  `{install_dir}/psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}`
+- Creates a directory in given directory (default: ~):
+  `{install_dir}/psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}`.
+- Building python and the wxpython wheel might take a while.
 
 ## Usage
 
@@ -66,7 +67,6 @@ To start PsychoPy, use:
 
 ## Notes
 
-- Building python and the wxpython wheel might take a while.
 - There might be still packages missing for extended features.
 - Maybe some installed dependencies are not neccesary; I still have to figure out what we don't need.
 - Only very basic tests of actual PsychoPy components were performed.
