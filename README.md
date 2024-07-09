@@ -27,7 +27,7 @@ All tests are done on Virtual Machines only.
 
 - --python_version=VERSION : Specify the Python version to install (default: 3.8.16).
 - --psychopy_version=VERSION : Specify the PsychoPy version to install (default: latest); use git for the latest GitHub version.
-- --install_dir=DIR : Specify the installation directory (default: ~)
+- --install_dir=DIR : Specify the installation directory (default: ~); use absolute paths without / at the end. Do not use ~ use /home/user instead
 - -f, --force : Force overwrite of the existing installation directory.
 - -h, --help : Show this help message.
 
