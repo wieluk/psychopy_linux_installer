@@ -1,89 +1,68 @@
-This repository contains a script to install PsychoPy on various Linux distributions, including Ubuntu (20.04, 22.04, 24.04), Pop!_OS 22.04, and Debian 12. The installation has been tested in VirtualBox environments.
+# PsychoPy Installation Script for Linux
 
-## Features
+This script installs PsychoPy on various Linux distributions, including:
 
-- Supports Ubuntu 20.04, 22.04, 24.04, Pop!_OS 22.04, and Debian 12.
-- Installs specified versions of Python and PsychoPy.
-- Creates a virtual environment for PsychoPy.
-- Option to install the latest or specific versions of PsychoPy.
-- Ensures necessary dependencies are installed.
-- Sets up system configurations for optimal PsychoPy performance.
+- Ubuntu 24.04, 22.04, 20.04
+- PopOS 22.04
+- Debian 12
+- CentOS 9
+
+Additional distributions may be tested and supported in the future.
+All tests are done in Virtual Machines only.
+
+## Info
+
+- Installs the specified or default Python version as `altinstall`.
+- Creates a directory in given directory (default ~):
+  `{install_dir}/psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}`
 
 ## Usage
 
-### Prerequisites
+`git clone https://github.com/wieluk/psychopy_linux_installer.git`
+`cd psychopy_linux_installer`
+`chmod +x install_psychopy.sh`
+`./install_psychopy.sh [options]`
 
-- A supported Linux distribution (Ubuntu 20.04, 22.04, 24.04, Pop!_OS 22.04, Debian 12).
-- Administrative (sudo) privileges.
+## Options
 
-### Installation
+- --python_version=VERSION : Specify the Python version to install (default: 3.8.16).
+- --psychopy_version=VERSION : Specify the PsychoPy version to install (default: latest); use git for the latest GitHub version.
+- --install_dir=DIR : Specify the installation directory (default: ~)
+- -f, --force : Force overwrite of the existing installation directory.
+- -h, --help : Show this help message.
 
-1. Clone this repository:
+## Example
 
-   \```bash
-   git clone https://github.com/yourusername/psychopy-install-script.git
-   cd psychopy-install-script
-   \```
+`./install_psychopy.sh --python_version=3.8.16 --psychopy_version=2024.1.5`
 
-2. Make the script executable:
+## Script Details
 
-   \```bash
-   chmod +x install_psychopy_ubuntu.sh
-   \```
+The script performs the following steps:
 
-3. Run the script with desired options:
+- Detects the package manager (supports apt, yum, dnf, and pacman).
+- Installs necessary dependencies.
+- Checks if the specified Python version exists and downloads it if necessary.
+- Determines the PsychoPy version to install:
+- If latest, it fetches the latest version from PyPI.
+- If git, it installs PsychoPy from the latest GitHub repository.
+- Creates a directory in the home directory for PsychoPy.
+- Downloads and installs the specified Python version as altinstall.
+- Creates and activates a virtual environment for PsychoPy.
+- Upgrades pip and setuptools, and installs wxPython.
+- Installs PsychoPy.
+- Adds the current user to a psychopy group and sets security limits.
+- Creates a symbolic link to the PsychoPy executable in .bin
 
-   \```bash
-   ./install_psychopy_ubuntu.sh [options]
-   \```
+## Post-Installation
 
-   #### Options:
+To apply the changes, run:
+`source ~/.bashrc`
+To start PsychoPy, use:
+`psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}` (also shown at end of the script)
 
-   - `--python_version=VERSION` - Specify the Python version to install (default: 3.8.16).
-   - `--psychopy_version=VERSION` - Specify the PsychoPy version to install (default: latest). Use `git` for the latest GitHub version.
-   - `-f, --force` - Force overwrite of the existing installation directory.
-   - `-h, --help` - Show the help message.
+## Notes
 
-   Example:
-
-   \```bash
-   ./install_psychopy_ubuntu.sh --python_version=3.9.1 --psychopy_version=2021.2.3
-   \```
-
-### Post-Installation
-
-To apply the changes to your shell environment, run:
-
-\```bash
-source ~/.bashrc
-\```
-
-To start PsychoPy, use the command created during installation:
-
-\```bash
-psychopy_v<psychopy_version>_py_v<python_version>
-\```
-
-### Uninstallation
-
-To remove the installed PsychoPy environment, simply delete the created directory:
-
-\```bash
-rm -rf ~/psychopy_v<psychopy_version>_py_v<python_version>
-\```
-
-## Contributing
-
-Contributions are welcome! Please submit pull requests or issues as needed.
-
-## License
-
-This project is licensed under the MIT License.
-
-## Acknowledgments
-
-- [PsychoPy](https://www.psychopy.org/)
-- [Ubuntu](https://ubuntu.com/)
-- [Pop!_OS](https://pop.system76.com/)
-- [Debian](https://www.debian.org/)
-""")
+- There might be still packages missing for extended features.
+- Maybe some installed dependencies are not neccesary; I still have to figure out what we don't need.
+- Only very basic tests of actual PsychoPy components were performed.
+- I did not test any distro with pacman package manger yet.
