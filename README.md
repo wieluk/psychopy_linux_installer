@@ -20,7 +20,7 @@ All tests are done in Virtual Machines only.
 
 - `git clone https://github.com/wieluk/psychopy_linux_installer.git`
 - `cd psychopy_linux_installer`
-- ``chmod +x install_psychopy.sh``
+- ``chmod +x install_psychopy_linux.sh``
 - `./install_psychopy.sh [options] `
 
 ## Options
