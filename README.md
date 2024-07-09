@@ -33,7 +33,8 @@ All tests are done in Virtual Machines only.
 
 ## Example
 
-`./install_psychopy.sh --python_version=3.8.16 --psychopy_version=2024.1.5`
+- `./install_psychopy.sh` (all default)
+- `./install_psychopy.sh --python_version=3.8.16 --psychopy_version=2024.1.5 --install_dir==/home/user1`
 
 ## Script Details
 
