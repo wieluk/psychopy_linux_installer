@@ -61,6 +61,8 @@ To apply the changes, run:
 
 
 To start PsychoPy, use:
+
+
 `psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}` (also shown at end of the script)
 
 ## Notes
