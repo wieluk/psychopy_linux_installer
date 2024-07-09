@@ -3,10 +3,10 @@ name: Run PsychoPy Installer on Multiple OS
 on:
   push:
     branches:
-      - main  # You can specify the branch you want to trigger the workflow on
+      - main
   pull_request:
     branches:
-      - main  # This triggers the workflow on pull requests to the main branch
+      - main
 
 jobs:
   run-installer:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -24,5 +24,37 @@ jobs:
       run: chmod +x ./psychopy_linux_installer.sh
 
     - name: Run PsychoPy Linux Installer
-      run: sudo ./psychopy_linux_installer.sh
+      id: install_psychopy
+      run: |
+        output=$(sudo ./psychopy_linux_installer.sh)
+        echo "$output"
+        install_path=$(echo "$output" | grep -oP '(?<=PsychoPy installed at: ).*')
+        echo "install_path=$install_path" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Verify Installation
+      run: |
+        if [ ! -d "$install_path" ]; then
+          echo "PsychoPy installation directory not found!"
+          exit 1
+        fi
+
+    - name: Check PsychoPy Version
+      run: |
+        $install_path/bin/psychopy --version
+
+    - name: Run PsychoPy Command Line Tests
+      run: |
+        $install_path --help
+        $install_path --test
+      shell: bash
+
+    - name: Run PsychoPy Headless Test
+      run: |
+        xvfb-run $install_path --test
+      shell: bash
+
+    - name: Run PsychoPy
+      run: |
+        $install_path
       shell: bash
