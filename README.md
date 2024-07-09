@@ -60,14 +60,13 @@ To apply the changes, run:
 
 `source ~/.bashrc`
 
-
 To start PsychoPy, use:
 
-
-`psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}` (also shown at end of the script)
+`psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}` (also shown with actual versions at end of the script)
 
 ## Notes
 
+- Building python and the wxpython wheel might take a while.
 - There might be still packages missing for extended features.
 - Maybe some installed dependencies are not neccesary; I still have to figure out what we don't need.
 - Only very basic tests of actual PsychoPy components were performed.

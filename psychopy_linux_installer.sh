@@ -17,7 +17,7 @@ show_help() {
 # Default versions and directory
 PYTHON_VERSION="3.8.16"
 PSYCHOPY_VERSION="latest"
-INSTALL_DIR=~
+INSTALL_DIR=${HOME}
 FORCE_OVERWRITE=false
 
 # Parse input arguments
