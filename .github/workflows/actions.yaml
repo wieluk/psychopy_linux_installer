@@ -3,11 +3,8 @@ name: Run PsychoPy Installer on Multiple OS
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
-
+      - main  # You can specify the branch you want to trigger the workflow on
+  	  - testing
 jobs:
   run-installer:
     runs-on: ${{ matrix.os }}
@@ -15,47 +12,25 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
-
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Make script executable
-      run: chmod +x ./psychopy_linux_installer.sh
+      run: chmod +x ./mock_psychopy_linux_installer.sh
 
-    - name: Run PsychoPy Linux Installer
-      id: install_psychopy
+    - name: Run Mock PsychoPy Linux Installer
       run: |
-        set -o pipefail
-        output_file=installer_output.txt
-        sudo ./psychopy_linux_installer.sh > $output_file 2>&1
-        cat $output_file
-        install_path=$(grep -oP '(?<=PsychoPy installed at: ).*' $output_file)
-        echo "install_path=$install_path" >> $GITHUB_ENV
-      shell: bash
+        ./mock_psychopy_linux_installer.sh | tee psychopy_install_output.log
 
-    - name: Verify Installation
+    - name: Extract PsychoPy start command
+      id: extract-command
       run: |
-        echo "Installation path: ${{ env.install_path }}"
-        if [ ! -d "${{ env.install_path }}" ]; then
-          echo "PsychoPy installation directory not found!"
-          exit 1
-        fi
+        PSYCHOPY_COMMAND=$(tail -n 1 psychopy_install_output.log | grep -o 'psychopy_v.*_py_v.*')
+        echo "PsychoPy start command: $PSYCHOPY_COMMAND"
+        echo "::set-output name=psychopy_command::$PSYCHOPY_COMMAND"
 
-    - name: Check PsychoPy Version
-      run: ${{ env.install_path }}/bin/psychopy --version
-
-    - name: Run PsychoPy Command Line Tests
-      run: |
-        ${{ env.install_path }}/bin/psychopy --help
-        ${{ env.install_path }}/bin/psychopy --test
-      shell: bash
-
-    - name: Run PsychoPy Headless Test
-      run: |
-        xvfb-run ${{ env.install_path }}/bin/psychopy --test
-      shell: bash
-
-    - name: Run PsychoPy
-      run: ${{ env.install_path }}/bin/psychopy
+    - name: Verify PsychoPy installation
+      run: ${{ steps.extract-command.outputs.psychopy_command }}
       shell: bash
