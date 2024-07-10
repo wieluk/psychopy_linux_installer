@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main  # You can specify the branch you want to trigger the workflow on
-  	  - testing
+      - testing
 jobs:
   run-installer:
     runs-on: ${{ matrix.os }}
