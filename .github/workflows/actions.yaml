@@ -26,7 +26,8 @@ jobs:
     - name: Run PsychoPy Linux Installer
       id: install_psychopy
       run: |
-        output=$(sudo ./psychopy_linux_installer.sh)
+        set -o pipefail
+        output=$(sudo ./psychopy_linux_installer.sh 2>&1 | tee /dev/tty)
         echo "$output"
         install_path=$(echo "$output" | grep -oP '(?<=PsychoPy installed at: ).*')
         echo "install_path=$install_path" >> $GITHUB_ENV
@@ -34,27 +35,26 @@ jobs:
 
     - name: Verify Installation
       run: |
-        if [ ! -d "$install_path" ]; then
+        echo "Installation path: ${{ env.install_path }}"
+        if [ ! -d "${{ env.install_path }}" ]; then
           echo "PsychoPy installation directory not found!"
           exit 1
         fi
 
     - name: Check PsychoPy Version
-      run: |
-        $install_path/bin/psychopy --version
+      run: ${{ env.install_path }}/bin/psychopy --version
 
     - name: Run PsychoPy Command Line Tests
       run: |
-        $install_path --help
-        $install_path --test
+        ${{ env.install_path }}/bin/psychopy --help
+        ${{ env.install_path }}/bin/psychopy --test
       shell: bash
 
     - name: Run PsychoPy Headless Test
       run: |
-        xvfb-run $install_path --test
+        xvfb-run ${{ env.install_path }}/bin/psychopy --test
       shell: bash
 
     - name: Run PsychoPy
-      run: |
-        $install_path
+      run: ${{ env.install_path }}/bin/psychopy
       shell: bash
