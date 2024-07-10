@@ -29,8 +29,9 @@ jobs:
       run: |
         PSYCHOPY_COMMAND=$(tail -n 1 psychopy_install_output.log | grep -o 'psychopy_v.*_py_v.*')
         echo "PsychoPy start command: $PSYCHOPY_COMMAND"
-        echo "::set-output name=psychopy_command::$PSYCHOPY_COMMAND"
+        echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
+        echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
 
     - name: Verify PsychoPy installation
-      run: ${{ steps.extract-command.outputs.psychopy_command }}
+      run: echo ${{ env.PSYCHOPY_COMMAND }}
       shell: bash
