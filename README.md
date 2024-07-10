@@ -1,6 +1,6 @@
 # PsychoPy Installation Script for Linux
 
-This script installs PsychoPy on various Linux distributions, including:
+This script installs [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
 
 - Ubuntu 24.04, 22.04, 20.04
 - PopOS 22.04
@@ -12,8 +12,9 @@ All tests are done on Virtual Machines only.
 
 ## Info
 
-- Installs the specified or default Python version as `altinstall`.
-- Creates a directory in given directory (default: ~):
+- PsychoPy recommends using Python 3.8 or 3.10. I had the most success with 3.8.
+- The specified or default Python version is installed as `altinstall`.
+- A directory is created in given directory (default: ~):
   `{install_dir}/psychopy_v${PSYCHOPY_VERSION}_py_v${PYTHON_VERSION}`.
 - Building python and the wxpython wheel might take a while.
 
@@ -71,3 +72,4 @@ To start PsychoPy, use:
 - Maybe some installed dependencies are not neccesary; I still have to figure out what we don't need.
 - Only very basic tests of actual PsychoPy components were performed.
 - I did not test any distro with pacman package manger yet.
+- [PsychoPy](https://www.psychopy.org/)
