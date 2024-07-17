@@ -1,0 +1,192 @@
+name: Run PsychoPy Installer on Multiple OS
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install ShellCheck
+      run: sudo apt-get install -y shellcheck
+   
+    - name: Check Bash Syntax
+      run: bash -n ./psychopy_linux_installer.sh
+    
+    - name: Run ShellCheck
+      run: shellcheck -e SC1090 -e SC1091 psychopy_linux_installer.sh
+  
+  run-installer:
+    needs: syntax-check
+    runs-on: ${{ matrix.os }} 
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04]
+        python_version: ['3.8.16', '3.9.19', '3.10.14',]
+        psychopy_version: ['latest','git', '2023.2.3', '2024.1.3']
+        bids_version: ['','git', '2023.2.0']
+      fail-fast: false
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Make script executable
+      run: chmod +x ./psychopy_linux_installer.sh
+
+    - name: Run PsychoPy Linux Installer
+      id: run-installer
+      run: |
+        ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }}"
+        sudo ./psychopy_linux_installer.sh $ARGS | tee psychopy_install_output.log
+      shell: bash
+
+    - name: Extract PsychoPy start command
+      id: extract-command
+      continue-on-error: true
+      run: |
+        PSYCHOPY_COMMAND=$(tail -n 1 psychopy_install_output.log)
+        if [[ ! "$PSYCHOPY_COMMAND" =~ ^/root/psychopy_.*_py_.*/bin/psychopy$ ]]; then
+          echo "Invalid PsychoPy command format: $PSYCHOPY_COMMAND"
+          exit 1
+        fi
+        
+        ACTIVATE_VENV="source $(dirname "$PSYCHOPY_COMMAND")/activate"
+        sudo chmod +x $ACTIVATE_VENV 
+        echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
+        echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_ENV
+        echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_OUTPUT
+        echo "PsychoPy start command: $PSYCHOPY_COMMAND"
+        echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
+        echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
+   
+    - name: Verify PsychoPy installation with --help
+      id: verify-help
+      continue-on-error: true
+      run: sudo ${{ env.PSYCHOPY_COMMAND }} -h
+      shell: bash
+
+    - name: Verify PsychoPy installation with --version
+      id: verify-version
+      continue-on-error: true
+      run: |
+        output=$(sudo ${{ env.PSYCHOPY_COMMAND }} -v 2>&1)
+        echo "$output"
+        version_line=$(echo "$output" | grep -E "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+")
+        if [ "$output" != "$version_line" ]; then
+          echo "::error::PsychoPy version check failed"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Import PsychoPy test
+      id: import-test
+      continue-on-error: true
+      run: |
+        ${{ env.ACTIVATE_VENV }}
+        sudo python /.github/workflows/psychopy_test.py
+
+
+    - name: Run a simple PsychoPy script in headless mode
+      id: run-script
+      continue-on-error: true
+      run: |
+        echo "import psychopy" > test_script.py
+        echo "print('Hello from PsychoPy script')" >> test_script.py
+        ${{ env.ACTIVATE_VENV }}
+        output=$(sudo python test_script.py 2>&1)
+        echo "$output"
+      shell: bash
+
+    - name: Verify BIDS installation
+      if: matrix.bids_version != ''
+      id: verify-bids
+      continue-on-error: true
+      run: |
+        ${{ env.ACTIVATE_VENV }} 
+        sudo python /.github/workflows/bids_test_simple.py 2>&1 | tee output_simple.log
+        echo "Output of bids_test_simple.py:"
+        cat output_simple.log
+        
+        ${{ env.ACTIVATE_VENV }} 
+        sudo python /.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
+        echo "Output of bids_test_exp_handler.py:"
+        cat output_exp_handler.log
+    
+    - name: Record result
+      run: |
+        STATUS="❌"
+        if [[ "${{ steps.run-installer.outcome }}" == "success" && "${{ steps.extract-command.outcome }}" == "success" && "${{ steps.verify-help.outcome }}" == "success" && "${{ steps.verify-version.outcome }}" == "success" && "${{ steps.run-script.outcome }}" == "success" && "${{ steps.import-test.outcome }}" == "success" && ( -z "${{ matrix.bids_version }}" || "${{ steps.verify-bids.outcome }}" == "success" ) ]]; then
+          STATUS="✅"
+        fi
+        RESULT_FILE="result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}.md"
+        echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | ${{ matrix.psychopy_version }} | ${{ matrix.bids_version }} | $STATUS |" >> $RESULT_FILE
+        cat $RESULT_FILE
+    - name: Upload result artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}
+        path: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}.md
+
+  update-readme:
+    needs: run-installer
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+    - name: Pull changes from remote
+      run: git pull origin main
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
+        merge-multiple: true
+    
+    - name: Create result table
+      run: |
+        current_date=$(date '+%Y-%m-%d')     
+        echo "# Report generated on $current_date" > results.md
+        echo "" >> results.md
+        echo "| OS | Python Version | PsychoPy Version | BIDS Version | Status |" >> results.md
+        echo "|---|---|---|---|---|" >> results.md
+        for file in ./artifacts/*.md; do
+          cat "$file" >> results.md
+        done
+
+        # Sort the results by OS, Python Version, PsychoPy Version, BIDS Version, and Status
+        { 
+          head -n 4 results.md
+          tail -n +5 results.md | sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 -k6,6
+        } > sorted_results.md
+        
+        mv sorted_results.md results.md
+
+
+    - name: Update README.md with results
+      run: |
+        sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/,/<!-- END INSTALLATION_RESULTS -->/{//!d}' README.md
+        sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/r results.md' README.md
+    
+    - name: Commit and push changes
+      run: |
+        git add README.md
+        git commit -m "Update README.md with PsychoPy installation results"
+        git push
+
+    - name: Check for any successful statuses
+      run: |
+        if ! grep -q "✅" results.md; then
+          echo "No successful entries found. Failing the job."
+          exit 1
+        fi
