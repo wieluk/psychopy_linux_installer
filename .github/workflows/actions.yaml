@@ -58,7 +58,8 @@ jobs:
         
         VENV_DIR=$(dirname "$(dirname "$PSYCHOPY_COMMAND")")
         sudo chmod -R 777 "$VENV_DIR"
-
+        ACTIVATE_VENV="source $(dirname "$PSYCHOPY_COMMAND")/activate"
+        
         echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
         echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_ENV
         echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_OUTPUT
@@ -89,8 +90,7 @@ jobs:
       id: import-test
       continue-on-error: true
       run: |
-        ${{ env.ACTIVATE_VENV }}
-        sudo python ./.github/workflows/psychopy_test.py
+        ${{ env.ACTIVATE_VENV }} && sudo python ./.github/workflows/psychopy_test.py
 
 
     - name: Run a simple PsychoPy script in headless mode
