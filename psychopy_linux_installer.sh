@@ -162,6 +162,7 @@ case $pkg_manager in
             libxcb-cursor0 libxcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-render0 libxcb-shape0 libxcb-shm0 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1 libxkbcommon-x11-0
             python3-pip python3-venv python3-dev gstreamer1.0-plugins-base gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-gtk3 gstreamer1.0-pulseaudio gstreamer1.0-alsa gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly
             freeglut3-dev libwebkit2gtk-4.0-dev libjpeg-dev libpng-dev libtiff-dev libsdl2-dev libnotify-dev libsm-dev
+            qml-module-qtquick-controls
         )
         ;;
     yum|dnf)
@@ -171,6 +172,7 @@ case $pkg_manager in
             libxcb-xfixes-devel libxcb-xinerama-devel libxcb-xinput-devel libxcb-xkb-devel xkbcommon-x11-devel freeglut-devel
             python3 python3-devel gstreamer1 gstreamer1-plugins-base gstreamer1-libav gstreamer1-tools gstreamer1-plugins-good gstreamer1-plugins-ugly gstreamer1-gtk3 gstreamer1-pulseaudio gstreamer1-alsa
             webkit2gtk3-devel libjpeg-turbo-devel libpng-devel libtiff-devel SDL2-devel libnotify-devel libSM-devel
+            qt5-qtquickcontrols
         )
         ;;
     pacman)
@@ -178,6 +180,7 @@ case $pkg_manager in
             git base-devel zlib ncurses gdbm nss openssl readline libffi curl bzip2 sqlite libusb portaudio alsa-lib gtk3 jq
             xcb-util-cursor libxcb libxcb-icccm libxcb-image libxcb-keysyms libxcb-render libxcb-render-util libxcb-shape libxcb-shm libxcb-util libxcb-xfixes libxcb-xinerama libxcb-xinput libxcb-xkb xkbcommon-x11
             python gstreamer gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gstreamer0.10-plugins freeglut webkit2gtk libjpeg-turbo libpng libtiff sdl2 libnotify libsm
+            qt5-quickcontrols
         )
         ;;
 esac
