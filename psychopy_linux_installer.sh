@@ -160,6 +160,8 @@ case $pkg_manager in
         dependencies=(
             git build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev curl libbz2-dev libsqlite3-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libgtk-3-dev jq
             libxcb-cursor0 libxcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-render0 libxcb-shape0 libxcb-shm0 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1 libxkbcommon-x11-0
+            python3-pip python3-venv python3-dev gstreamer1.0-plugins-base gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-gtk3 gstreamer1.0-pulseaudio gstreamer1.0-alsa gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly
+            freeglut3-dev libwebkit2gtk-4.0-dev libjpeg-dev libpng-dev libtiff-dev libsdl2-dev libnotify-dev libsm-dev
         )
         ;;
     yum|dnf)
@@ -167,12 +169,15 @@ case $pkg_manager in
             git gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel curl bzip2-devel sqlite-devel libusb-devel portaudio-devel alsa-lib-devel gtk3-devel jq
             xcb-util-cursor-devel libxcb libxcb-devel libxcb-icccm4-devel libxcb-image-devel libxcb-keysyms-devel libxcb-render-util-devel libxcb-render-devel libxcb-shape-devel libxcb-shm-devel libxcb-util-devel 
             libxcb-xfixes-devel libxcb-xinerama-devel libxcb-xinput-devel libxcb-xkb-devel xkbcommon-x11-devel freeglut-devel
+            python3 python3-devel gstreamer1 gstreamer1-plugins-base gstreamer1-libav gstreamer1-tools gstreamer1-plugins-good gstreamer1-plugins-ugly gstreamer1-gtk3 gstreamer1-pulseaudio gstreamer1-alsa
+            webkit2gtk3-devel libjpeg-turbo-devel libpng-devel libtiff-devel SDL2-devel libnotify-devel libSM-devel
         )
         ;;
     pacman)
         dependencies=(
             git base-devel zlib ncurses gdbm nss openssl readline libffi curl bzip2 sqlite libusb portaudio alsa-lib gtk3 jq
             xcb-util-cursor libxcb libxcb-icccm libxcb-image libxcb-keysyms libxcb-render libxcb-render-util libxcb-shape libxcb-shm libxcb-util libxcb-xfixes libxcb-xinerama libxcb-xinput libxcb-xkb xkbcommon-x11
+            python gstreamer gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gstreamer0.10-plugins freeglut webkit2gtk libjpeg-turbo libpng libtiff sdl2 libnotify libsm
         )
         ;;
 esac
@@ -216,27 +221,6 @@ cd "${PSYCHOPY_DIR}"
 if python"${PYTHON_VERSION%.*}" --version 2>&1 | grep -q "${PYTHON_VERSION}"; then
     echo
     echo "Python version ${PYTHON_VERSION} is already installed."
-    # Make sure full python is installed.
-    dependencies2=()
-    case $pkg_manager in
-        apt)
-            dependencies2=(
-                python3-full
-            )
-            ;;
-        yum|dnf)
-            dependencies2=(
-                python3
-            )
-            ;;
-        pacman)
-            dependencies2=(
-                python
-            )
-            ;;
-    esac
-    # Install dependencies
-    install_packages "$pkg_manager" "${dependencies2[@]}"
 else
     echo
     echo "Downloading and installing Python ${PYTHON_VERSION}..."
@@ -260,8 +244,10 @@ source "${PSYCHOPY_DIR}/bin/activate"
 
 # Upgrade pip and setuptools, and install wxPython
 echo
-echo "Upgrading pip and setuptools..."
-pip install --upgrade pip setuptools distro
+echo "Upgrading pip ..."
+pip install -U pip 
+echo "Upgrading some packages ..."
+pip install -U setuptools distro six wheel
 echo
 echo "Installing wxPython..."
 pip install wxPython
