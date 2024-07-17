@@ -227,7 +227,7 @@ else
     curl -O https://www.python.org/ftp/python/"${PYTHON_VERSION}"/Python-"${PYTHON_VERSION}".tgz
     tar -xf Python-"${PYTHON_VERSION}".tgz
     cd Python-"${PYTHON_VERSION}"
-    ./configure --enable-optimizations
+    ./configure --enable-optimizations --enable-shared
     make -j "$(nproc)"
     sudo make altinstall
     cd ..
