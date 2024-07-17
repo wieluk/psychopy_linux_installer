@@ -56,7 +56,7 @@ jobs:
           exit 1
         fi
         
-        sudo chmod +x "$(dirname "$PSYCHOPY_COMMAND")/activate"
+        sudo chmod 777 "$(dirname "$(dirname "$PSYCHOPY_COMMAND")")"
         ACTIVATE_VENV="source $(dirname "$PSYCHOPY_COMMAND")/activate"
         echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
         echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_ENV
