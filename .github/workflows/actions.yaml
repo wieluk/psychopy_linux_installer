@@ -90,7 +90,7 @@ jobs:
       continue-on-error: true
       run: |
         ${{ env.ACTIVATE_VENV }}
-        sudo python /.github/workflows/psychopy_test.py
+        sudo python ./.github/workflows/psychopy_test.py
 
 
     - name: Run a simple PsychoPy script in headless mode
@@ -110,12 +110,12 @@ jobs:
       continue-on-error: true
       run: |
         ${{ env.ACTIVATE_VENV }} 
-        sudo python /.github/workflows/bids_test_simple.py 2>&1 | tee output_simple.log
+        sudo python ./.github/workflows/bids_test_simple.py 2>&1 | tee output_simple.log
         echo "Output of bids_test_simple.py:"
         cat output_simple.log
         
         ${{ env.ACTIVATE_VENV }} 
-        sudo python /.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
+        sudo python ./.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
         echo "Output of bids_test_exp_handler.py:"
         cat output_exp_handler.log
     
