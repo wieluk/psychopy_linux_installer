@@ -78,22 +78,23 @@ The script performs the following steps:
 - Creates a directory in the specified location for PsychoPy.
 - Downloads and installs the specified Python version as `altinstall`.
 - Creates and activates a virtual environment for PsychoPy.
-- Upgrades pip and setuptools, and installs wxPython.
+- Upgrades pip and some pip packages, and
+- Installs/builds wxPython.
 - Installs PsychoPy.
 - Adds the current user to a `psychopy` group and sets security limits.
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
 
 ## Post-Installation
+Refresh path:
+`"source $CONFIG_FILE"`
 
-To start PsychoPy, use the absolute path:
-
-`"${PSYCHOPY_DIR}/bin/psychopy"`
-
-Alternatively, if adding to path worked, use:
-
+To start PsychoPy, use:
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
-(Both commands will be shown with actual versions at the end of the script).
+Alternatively, if adding to path did not worked, use the absolute path:
+`"${PSYCHOPY_DIR}/bin/psychopy"`
+
+(All commands will be shown with actual versions/paths at the end of the script).
 
 
 ## To-Do
