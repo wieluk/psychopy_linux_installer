@@ -86,13 +86,17 @@ The script performs the following steps:
 
 ## Post-Installation
 Refresh path:
+
 `"source $CONFIG_FILE"`
 
 To start PsychoPy, use:
+
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
 Alternatively, if adding to path did not worked, use the absolute path:
+
 `"${PSYCHOPY_DIR}/bin/psychopy"`
+
 
 (All commands will be shown with actual versions/paths at the end of the script).
 
