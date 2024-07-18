@@ -56,7 +56,7 @@ jobs:
           exit 1
         fi
         
-        ACTIVATE_VENV="source $(dirname "$PSYCHOPY_COMMAND")/activate"
+        ACTIVATE_VENV="$(dirname "$PSYCHOPY_COMMAND")/activate"
 
         echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
         echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_ENV
@@ -95,7 +95,7 @@ jobs:
       id: import-test
       continue-on-error: true
       run: |
-        ${{ env.ACTIVATE_VENV }} && sudo python ./.github/workflows/psychopy_test.py
+        source ${{ env.ACTIVATE_VENV }} && sudo python ./.github/workflows/psychopy_test.py
 
 
     - name: Run a simple PsychoPy script in headless mode
@@ -104,7 +104,7 @@ jobs:
       run: |
         echo "import psychopy" > test_script.py
         echo "print('Hello from PsychoPy script')" >> test_script.py
-        ${{ env.ACTIVATE_VENV }}
+        source ${{ env.ACTIVATE_VENV }}
         output=$(sudo python test_script.py 2>&1)
         echo "$output"
       shell: bash
@@ -114,12 +114,12 @@ jobs:
       id: verify-bids
       continue-on-error: true
       run: |
-        ${{ env.ACTIVATE_VENV }} 
+        source ${{ env.ACTIVATE_VENV }} 
         sudo python ./.github/workflows/bids_test_simple.py 2>&1 | tee output_simple.log
         echo "Output of bids_test_simple.py:"
         cat output_simple.log
         
-        ${{ env.ACTIVATE_VENV }} 
+        source ${{ env.ACTIVATE_VENV }} 
         sudo python ./.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
         echo "Output of bids_test_exp_handler.py:"
         cat output_exp_handler.log
