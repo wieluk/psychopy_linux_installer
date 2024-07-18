@@ -56,10 +56,8 @@ jobs:
           exit 1
         fi
         
-        VENV_DIR=$(dirname "$(dirname "$PSYCHOPY_COMMAND")")
-        sudo chmod -R 777 "$VENV_DIR"
         ACTIVATE_VENV="source $(dirname "$PSYCHOPY_COMMAND")/activate"
-        
+
         echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
         echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_ENV
         echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_OUTPUT
@@ -67,6 +65,13 @@ jobs:
         echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
         echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
    
+
+    - name: Set permissions and verify
+      run: |
+          sudo chmod -R 777 $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
+          ls -ld $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
+          ls -l $(dirname "${{ env.PSYCHOPY_COMMAND }}")
+
     - name: Verify PsychoPy installation with --help
       id: verify-help
       continue-on-error: true
