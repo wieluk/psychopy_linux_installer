@@ -1,5 +1,4 @@
-from psychopy import core, data, sound
-
+from psychopy import core, data
 # Create core.Clock instance
 clock = core.Clock()
 
@@ -7,7 +6,7 @@ clock = core.Clock()
 trial_conditions = [{'trialNum': 1, 'waitTime': 1.0}, {'trialNum': 2, 'waitTime': 2.0}, {'trialNum': 3, 'waitTime': 3.0}]
 
 # Create a TrialHandler to manage these conditions
-trial_data = data.TrialHandler(trialList=trial_conditions, nReps=1, method='random')
+trial_data = data.TrialHandler(trialList=trial_conditions, nReps=1, method='sequential')
 
 # Run through each trial
 for trial in trial_data:
