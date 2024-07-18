@@ -268,6 +268,7 @@ if [ -n "$BIDS_VERSION" ]; then
         check_pypi_for_version psychopy_bids "$BIDS_VERSION"
         echo "Installing PsychoPy-BIDS version ${BIDS_VERSION}..."
         pip install psychopy_bids=="${BIDS_VERSION}"
+        pip install seedir
     fi
 else
     echo "Skipping PsychoPy-BIDS installation."
