@@ -85,7 +85,7 @@ The script performs the following steps:
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
 
 ## Post-Installation
-To refresh the path for different shells(.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
+To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
 `"source $CONFIG_FILE"`
 
