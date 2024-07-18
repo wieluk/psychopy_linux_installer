@@ -55,7 +55,7 @@ jobs:
           echo "Invalid PsychoPy command format: $PSYCHOPY_COMMAND"
           exit 1
         fi
-        
+        sudo chmod 755 /root
         ACTIVATE_VENV="$(dirname "$PSYCHOPY_COMMAND")/activate"
 
         echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
@@ -68,6 +68,7 @@ jobs:
 
     - name: Set permissions and verify
       run: |
+          sudo chown -R $USER:$USER $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
           sudo chmod -R 777 $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
           ls -ld $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
           ls -l $(dirname "${{ env.PSYCHOPY_COMMAND }}")
@@ -119,6 +120,7 @@ jobs:
         echo "Output of bids_test_simple.py:"
         cat output_simple.log
         
+        sudo -i
         source ${{ env.ACTIVATE_VENV }} 
         sudo python ./.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
         echo "Output of bids_test_exp_handler.py:"
