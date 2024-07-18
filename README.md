@@ -105,7 +105,7 @@ Alternatively, if adding to path worked, use:
 ### Speed Up
 - Look for an existing wxPython wheel for download.
 - Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version.
-- If a existing wheel and/or python version is found the dependency list is massively reduced.
+- If an existing wheel and/or Python version is found, the dependency list can be significantly reduced.
 ### Tests
 - Evaluate BIDS compatibility.
 - Assess extended PsychoPy features.
