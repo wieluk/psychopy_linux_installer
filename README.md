@@ -111,6 +111,9 @@ Alternatively, if adding to path worked, use:
 - Assess extended PsychoPy features.
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
+### Additional Tasks
+- Implement advanced logging to reduce the verbosity of the build process.
+- Add self-hosted action runners for Debian, Fedora, and CentOS.
 
 
 ## Links
