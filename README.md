@@ -105,7 +105,7 @@ Alternatively, if adding to path worked, use:
 
 ### Speed Up
 - Look for an existing wxPython wheel for download.
-- Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version if compatible.
+- Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version.
 
 ### Tests
 - Evaluate BIDS compatibility.
