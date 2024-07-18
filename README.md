@@ -107,6 +107,18 @@ Alternatively, if adding to path worked, use:
 - [PsychoPy_bids Versions](https://pypi.org/project/psychopy_bids/0.1.1/#history)
 - [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
 
+## To-Do
+
+### Dependencies
+- Test which packages are unnecessary for specific platforms.
+- Consider splitting package installations for each distribution.
+- Test on Pacman-based distributions.
+
+### Speed Up
+- Search for an existing wxPython wheel for download.
+- Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version if compatible.
+
+
 ## Automatic Github Action Test Results
 
 <!-- BEGIN INSTALLATION_RESULTS -->
