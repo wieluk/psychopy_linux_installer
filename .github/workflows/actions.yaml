@@ -56,11 +56,11 @@ jobs:
           exit 1
         fi
         sudo chmod 755 /root
-        ACTIVATE_VENV="$(dirname "$PSYCHOPY_COMMAND")/activate"
+        PYTHON_VENV="$(dirname "$PSYCHOPY_COMMAND")/python"
 
-        echo "ACTIVATE_VENV command: $ACTIVATE_VENV"
-        echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_ENV
-        echo "ACTIVATE_VENV=$ACTIVATE_VENV" >> $GITHUB_OUTPUT
+        echo "PYTHON_VENV command: $PYTHON_VENV"
+        echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_ENV
+        echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_OUTPUT
         echo "PsychoPy start command: $PSYCHOPY_COMMAND"
         echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
         echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
@@ -96,7 +96,7 @@ jobs:
       id: import-test
       continue-on-error: true
       run: |
-        source ${{ env.ACTIVATE_VENV }} && sudo python ./.github/workflows/psychopy_test.py
+        ${{ env.PYTHON_VENV }} ./.github/workflows/psychopy_test.py
 
 
     - name: Run a simple PsychoPy script in headless mode
@@ -105,9 +105,7 @@ jobs:
       run: |
         echo "import psychopy" > test_script.py
         echo "print('Hello from PsychoPy script')" >> test_script.py
-        source ${{ env.ACTIVATE_VENV }}
-        output=$(sudo python test_script.py 2>&1)
-        echo "$output"
+        ${{ env.PYTHON_VENV }} test_script.py
       shell: bash
 
     - name: Verify BIDS installation
@@ -115,14 +113,11 @@ jobs:
       id: verify-bids
       continue-on-error: true
       run: |
-        source ${{ env.ACTIVATE_VENV }} 
-        sudo python ./.github/workflows/bids_test_simple.py 2>&1 | tee output_simple.log
+        ${{ env.PYTHON_VENV }} ./.github/workflows/bids_test_simple.py 2>&1 | tee output_simple.log
         echo "Output of bids_test_simple.py:"
         cat output_simple.log
         
-        sudo -i
-        source ${{ env.ACTIVATE_VENV }} 
-        sudo python ./.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
+        ${{ env.PYTHON_VENV }} ./.github/workflows/bids_test_exp_handler.py 2>&1 | tee output_exp_handler.log
         echo "Output of bids_test_exp_handler.py:"
         cat output_exp_handler.log
     
