@@ -56,6 +56,7 @@ jobs:
           exit 1
         fi
         sudo chmod 755 /root
+        sudo chown -R $USER:$USER /root
         PYTHON_VENV="$(dirname "$PSYCHOPY_COMMAND")/python"
 
         echo "PYTHON_VENV command: $PYTHON_VENV"
@@ -65,13 +66,6 @@ jobs:
         echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
         echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
    
-
-    - name: Set permissions and verify
-      run: |
-          sudo chown -R $USER:$USER $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
-          sudo chmod -R 777 $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
-          ls -ld $(dirname "$(dirname ${{ env.PSYCHOPY_COMMAND }})")
-          ls -l $(dirname "${{ env.PSYCHOPY_COMMAND }}")
 
     - name: Verify PsychoPy installation with --help
       id: verify-help
@@ -93,20 +87,10 @@ jobs:
       shell: bash
 
     - name: Import PsychoPy test
-      id: import-test
+      id: psychopy-test
       continue-on-error: true
       run: |
         ${{ env.PYTHON_VENV }} ./.github/workflows/psychopy_test.py
-
-
-    - name: Run a simple PsychoPy script in headless mode
-      id: run-script
-      continue-on-error: true
-      run: |
-        echo "import psychopy" > test_script.py
-        echo "print('Hello from PsychoPy script')" >> test_script.py
-        ${{ env.PYTHON_VENV }} test_script.py
-      shell: bash
 
     - name: Verify BIDS installation
       if: matrix.bids_version != ''
@@ -124,7 +108,7 @@ jobs:
     - name: Record result
       run: |
         STATUS="❌"
-        if [[ "${{ steps.run-installer.outcome }}" == "success" && "${{ steps.extract-command.outcome }}" == "success" && "${{ steps.verify-help.outcome }}" == "success" && "${{ steps.verify-version.outcome }}" == "success" && "${{ steps.run-script.outcome }}" == "success" && "${{ steps.import-test.outcome }}" == "success" && ( -z "${{ matrix.bids_version }}" || "${{ steps.verify-bids.outcome }}" == "success" ) ]]; then
+        if [[ "${{ steps.run-installer.outcome }}" == "success" && "${{ steps.extract-command.outcome }}" == "success" && "${{ steps.verify-help.outcome }}" == "success" && "${{ steps.verify-version.outcome }}" == "success" && "${{ steps.psychopy-test.outcome }}" == "success" && ( -z "${{ matrix.bids_version }}" || "${{ steps.verify-bids.outcome }}" == "success" ) ]]; then
           STATUS="✅"
         fi
         RESULT_FILE="result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}.md"
