@@ -85,20 +85,24 @@ The script performs the following steps:
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
 
 ## Post-Installation
-Refresh path:
+To refresh the path for different shells(.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
 `"source $CONFIG_FILE"`
+
+For default Ubuntu, the command should be:
+
+`"source ~/.bashrc`
 
 To start PsychoPy, use:
 
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
-Alternatively, if adding to path did not worked, use the absolute path:
+If adding to the path did not work, use the absolute path:
 
 `"${PSYCHOPY_DIR}/bin/psychopy"`
 
 
-(All commands will be shown with actual versions/paths at the end of the script).
+Note: All commands will be displayed with the actual versions and paths at the end of the script.
 
 
 ## To-Do
