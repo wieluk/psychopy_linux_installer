@@ -102,7 +102,7 @@ detect_os_version() {
     if [ -f /etc/os-release ]; then
         # Freedesktop.org and systemd
         . /etc/os-release
-        echo "$NAME-$VERSION_ID"
+        echo "$ID-$VERSION_ID"
     elif type lsb_release >/dev/null 2>&1; then
         # Linux Standard Base (LSB) support
         echo "$(lsb_release -si)-$(lsb_release -sr)"
