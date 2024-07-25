@@ -310,7 +310,7 @@ version_greater_than() {
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting the installation of PsychoPy with Python $PYTHON_VERSION"
 
 OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
-echo "$(date "+%Y-%m-%d %H:%M:%S") Detected ${OS_VERSION} as OS"
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Detected ${OS_VERSION} as OS"
 # Detect the package manager
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
@@ -455,6 +455,10 @@ else
     # Check if wxPython is installed
     if python -c "import wx" &> /dev/null; then
         echo "$(date "+%Y-%m-%d %H:%M:%S") - wxPython is already installed."
+    elif pip cache list | grep -q "wxPython"; then
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - "wxPython" wheel is already in the pip cache."
+        install_basic_dependencies "$pkg_manager" wxpython_deps
+        log pip install wxpython
     elif WHEEL_URL=$(get_latest_wheel_url); then
         echo "$(date "+%Y-%m-%d %H:%M:%S") - Found matching wxPython wheel; downloading it from extras.wxpython.org"
         WHEEL_FILE=$(basename "$WHEEL_URL")
