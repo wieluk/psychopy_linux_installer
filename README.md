@@ -11,8 +11,7 @@ Additional distributions may be tested and supported in the future. All tests ar
 
 **Note:**
 
-- Ubuntu 18.04 does not work with the default (latest) PsychoPy version. It fails to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
-- Debian 11 requires an extra manual command after installation: `export QT_QPA_PLATFORM=xcb`.
+- Ubuntu 18.04 and Debian 11 do not work with the default (latest) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
 
 ## Important Information
 
@@ -91,6 +90,7 @@ The script performs the following steps:
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
 
 ## Post-Installation
+
 To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
 `"source $CONFIG_FILE"`
@@ -107,149 +107,156 @@ If adding to the path did not work, use the absolute path:
 
 `"${PSYCHOPY_DIR}/bin/psychopy"`
 
-
 Note: All commands will be displayed with the actual versions and paths at the end of the script.
-
 
 ## To-Do
 
 ### Dependencies
+
 - Identify and remove unnecessary packages for specific platforms.
 - Consider splitting package installations for each distribution.
 - Test on Pacman-based distributions.
+
 ### Speed Up
+
 - Look for an existing wxPython wheel for download.
 - Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version.
 - If an existing wheel and/or Python version is found, the dependency list can be significantly reduced.
+
 ### Tests
+
 - Evaluate BIDS compatibility.
 - Assess extended PsychoPy features.
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
+
 ### Additional Tasks
+
 - Add self-hosted action runners for Debian, Fedora, and CentOS.
 
-
 ## Links
+
 - [PsychoPy Versions](https://pypi.org/project/psychopy/#history)
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
 - [Python Versions](https://www.python.org/ftp/python)
 - [PsychoPy_bids Versions](https://pypi.org/project/psychopy_bids/0.1.1/#history)
 - [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
 
-
 ## Automatic Github Action Test Results
+
 <!-- BEGIN INSTALLATION_RESULTS -->
+
 # Report generated on 2024-07-23
 
-| OS | Python Version | PsychoPy Version | BIDS Version | Status |
-|---|---|---|---|---|
-| ubuntu-20.04 | 3.10.14 | 2023.2.3 |  | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2023.2.3 | git | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.3 |  | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.3 | git | ❌ |
-| ubuntu-20.04 | 3.10.14 | git |  | ✅ |
-| ubuntu-20.04 | 3.10.14 | git | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-20.04 | 3.10.14 | latest |  | ✅ |
-| ubuntu-20.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.10.14 | latest | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2023.2.3 |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2023.2.3 | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2024.1.3 |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2024.1.3 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2024.1.3 | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | git |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | git | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | git | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | latest |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | latest | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | latest | git | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 |  | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 | git | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.3 |  | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.3 | git | ❌ |
-| ubuntu-20.04 | 3.9.19 | git |  | ✅ |
-| ubuntu-20.04 | 3.9.19 | git | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.9.19 | git | git | ✅ |
-| ubuntu-20.04 | 3.9.19 | latest |  | ✅ |
-| ubuntu-20.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.9.19 | latest | git | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2023.2.3 |  | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2023.2.3 | git | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.3 |  | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.3 | git | ❌ |
-| ubuntu-22.04 | 3.10.14 | git |  | ✅ |
-| ubuntu-22.04 | 3.10.14 | git | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-22.04 | 3.10.14 | latest |  | ✅ |
-| ubuntu-22.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.10.14 | latest | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2023.2.3 |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2023.2.3 | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2024.1.3 |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2024.1.3 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2024.1.3 | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | git |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | git | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | git | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | latest |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | latest | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | latest | git | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 |  | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 | git | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.3 |  | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.3 | git | ❌ |
-| ubuntu-22.04 | 3.9.19 | git |  | ✅ |
-| ubuntu-22.04 | 3.9.19 | git | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.9.19 | git | git | ✅ |
-| ubuntu-22.04 | 3.9.19 | latest |  | ✅ |
-| ubuntu-22.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.9.19 | latest | git | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2023.2.3 |  | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2023.2.3 | git | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.3 |  | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.3 | git | ❌ |
-| ubuntu-24.04 | 3.10.14 | git |  | ✅ |
-| ubuntu-24.04 | 3.10.14 | git | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-24.04 | 3.10.14 | latest |  | ✅ |
-| ubuntu-24.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.10.14 | latest | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2023.2.3 |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2023.2.3 | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2024.1.3 |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2024.1.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2024.1.3 | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | git |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | git | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | git | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | latest |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | latest | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | latest | git | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 |  | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | git | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.3 |  | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.3 | git | ❌ |
-| ubuntu-24.04 | 3.9.19 | git |  | ✅ |
-| ubuntu-24.04 | 3.9.19 | git | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | git | git | ✅ |
-| ubuntu-24.04 | 3.9.19 | latest |  | ✅ |
-| ubuntu-24.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | latest | git | ✅ |
+| OS           | Python Version | PsychoPy Version | BIDS Version | Status |
+| ------------ | -------------- | ---------------- | ------------ | ------ |
+| ubuntu-20.04 | 3.10.14        | 2023.2.3         |              | ❌     |
+| ubuntu-20.04 | 3.10.14        | 2023.2.3         | 2023.2.0     | ❌     |
+| ubuntu-20.04 | 3.10.14        | 2023.2.3         | git          | ❌     |
+| ubuntu-20.04 | 3.10.14        | 2024.1.3         |              | ❌     |
+| ubuntu-20.04 | 3.10.14        | 2024.1.3         | 2023.2.0     | ❌     |
+| ubuntu-20.04 | 3.10.14        | 2024.1.3         | git          | ❌     |
+| ubuntu-20.04 | 3.10.14        | git              |              | ✅     |
+| ubuntu-20.04 | 3.10.14        | git              | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.10.14        | git              | git          | ✅     |
+| ubuntu-20.04 | 3.10.14        | latest           |              | ✅     |
+| ubuntu-20.04 | 3.10.14        | latest           | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.10.14        | latest           | git          | ✅     |
+| ubuntu-20.04 | 3.8.16         | 2023.2.3         |              | ✅     |
+| ubuntu-20.04 | 3.8.16         | 2023.2.3         | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.8.16         | 2023.2.3         | git          | ✅     |
+| ubuntu-20.04 | 3.8.16         | 2024.1.3         |              | ✅     |
+| ubuntu-20.04 | 3.8.16         | 2024.1.3         | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.8.16         | 2024.1.3         | git          | ✅     |
+| ubuntu-20.04 | 3.8.16         | git              |              | ✅     |
+| ubuntu-20.04 | 3.8.16         | git              | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.8.16         | git              | git          | ✅     |
+| ubuntu-20.04 | 3.8.16         | latest           |              | ✅     |
+| ubuntu-20.04 | 3.8.16         | latest           | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.8.16         | latest           | git          | ✅     |
+| ubuntu-20.04 | 3.9.19         | 2023.2.3         |              | ❌     |
+| ubuntu-20.04 | 3.9.19         | 2023.2.3         | 2023.2.0     | ❌     |
+| ubuntu-20.04 | 3.9.19         | 2023.2.3         | git          | ❌     |
+| ubuntu-20.04 | 3.9.19         | 2024.1.3         |              | ❌     |
+| ubuntu-20.04 | 3.9.19         | 2024.1.3         | 2023.2.0     | ❌     |
+| ubuntu-20.04 | 3.9.19         | 2024.1.3         | git          | ❌     |
+| ubuntu-20.04 | 3.9.19         | git              |              | ✅     |
+| ubuntu-20.04 | 3.9.19         | git              | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.9.19         | git              | git          | ✅     |
+| ubuntu-20.04 | 3.9.19         | latest           |              | ✅     |
+| ubuntu-20.04 | 3.9.19         | latest           | 2023.2.0     | ✅     |
+| ubuntu-20.04 | 3.9.19         | latest           | git          | ✅     |
+| ubuntu-22.04 | 3.10.14        | 2023.2.3         |              | ❌     |
+| ubuntu-22.04 | 3.10.14        | 2023.2.3         | 2023.2.0     | ❌     |
+| ubuntu-22.04 | 3.10.14        | 2023.2.3         | git          | ❌     |
+| ubuntu-22.04 | 3.10.14        | 2024.1.3         |              | ❌     |
+| ubuntu-22.04 | 3.10.14        | 2024.1.3         | 2023.2.0     | ❌     |
+| ubuntu-22.04 | 3.10.14        | 2024.1.3         | git          | ❌     |
+| ubuntu-22.04 | 3.10.14        | git              |              | ✅     |
+| ubuntu-22.04 | 3.10.14        | git              | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.10.14        | git              | git          | ✅     |
+| ubuntu-22.04 | 3.10.14        | latest           |              | ✅     |
+| ubuntu-22.04 | 3.10.14        | latest           | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.10.14        | latest           | git          | ✅     |
+| ubuntu-22.04 | 3.8.16         | 2023.2.3         |              | ✅     |
+| ubuntu-22.04 | 3.8.16         | 2023.2.3         | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.8.16         | 2023.2.3         | git          | ✅     |
+| ubuntu-22.04 | 3.8.16         | 2024.1.3         |              | ✅     |
+| ubuntu-22.04 | 3.8.16         | 2024.1.3         | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.8.16         | 2024.1.3         | git          | ✅     |
+| ubuntu-22.04 | 3.8.16         | git              |              | ✅     |
+| ubuntu-22.04 | 3.8.16         | git              | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.8.16         | git              | git          | ✅     |
+| ubuntu-22.04 | 3.8.16         | latest           |              | ✅     |
+| ubuntu-22.04 | 3.8.16         | latest           | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.8.16         | latest           | git          | ✅     |
+| ubuntu-22.04 | 3.9.19         | 2023.2.3         |              | ❌     |
+| ubuntu-22.04 | 3.9.19         | 2023.2.3         | 2023.2.0     | ❌     |
+| ubuntu-22.04 | 3.9.19         | 2023.2.3         | git          | ❌     |
+| ubuntu-22.04 | 3.9.19         | 2024.1.3         |              | ❌     |
+| ubuntu-22.04 | 3.9.19         | 2024.1.3         | 2023.2.0     | ❌     |
+| ubuntu-22.04 | 3.9.19         | 2024.1.3         | git          | ❌     |
+| ubuntu-22.04 | 3.9.19         | git              |              | ✅     |
+| ubuntu-22.04 | 3.9.19         | git              | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.9.19         | git              | git          | ✅     |
+| ubuntu-22.04 | 3.9.19         | latest           |              | ✅     |
+| ubuntu-22.04 | 3.9.19         | latest           | 2023.2.0     | ✅     |
+| ubuntu-22.04 | 3.9.19         | latest           | git          | ✅     |
+| ubuntu-24.04 | 3.10.14        | 2023.2.3         |              | ❌     |
+| ubuntu-24.04 | 3.10.14        | 2023.2.3         | 2023.2.0     | ❌     |
+| ubuntu-24.04 | 3.10.14        | 2023.2.3         | git          | ❌     |
+| ubuntu-24.04 | 3.10.14        | 2024.1.3         |              | ❌     |
+| ubuntu-24.04 | 3.10.14        | 2024.1.3         | 2023.2.0     | ❌     |
+| ubuntu-24.04 | 3.10.14        | 2024.1.3         | git          | ❌     |
+| ubuntu-24.04 | 3.10.14        | git              |              | ✅     |
+| ubuntu-24.04 | 3.10.14        | git              | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.10.14        | git              | git          | ✅     |
+| ubuntu-24.04 | 3.10.14        | latest           |              | ✅     |
+| ubuntu-24.04 | 3.10.14        | latest           | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.10.14        | latest           | git          | ✅     |
+| ubuntu-24.04 | 3.8.16         | 2023.2.3         |              | ✅     |
+| ubuntu-24.04 | 3.8.16         | 2023.2.3         | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.8.16         | 2023.2.3         | git          | ✅     |
+| ubuntu-24.04 | 3.8.16         | 2024.1.3         |              | ✅     |
+| ubuntu-24.04 | 3.8.16         | 2024.1.3         | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.8.16         | 2024.1.3         | git          | ✅     |
+| ubuntu-24.04 | 3.8.16         | git              |              | ✅     |
+| ubuntu-24.04 | 3.8.16         | git              | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.8.16         | git              | git          | ✅     |
+| ubuntu-24.04 | 3.8.16         | latest           |              | ✅     |
+| ubuntu-24.04 | 3.8.16         | latest           | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.8.16         | latest           | git          | ✅     |
+| ubuntu-24.04 | 3.9.19         | 2023.2.3         |              | ❌     |
+| ubuntu-24.04 | 3.9.19         | 2023.2.3         | 2023.2.0     | ❌     |
+| ubuntu-24.04 | 3.9.19         | 2023.2.3         | git          | ❌     |
+| ubuntu-24.04 | 3.9.19         | 2024.1.3         |              | ❌     |
+| ubuntu-24.04 | 3.9.19         | 2024.1.3         | 2023.2.0     | ❌     |
+| ubuntu-24.04 | 3.9.19         | 2024.1.3         | git          | ❌     |
+| ubuntu-24.04 | 3.9.19         | git              |              | ✅     |
+| ubuntu-24.04 | 3.9.19         | git              | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.9.19         | git              | git          | ✅     |
+| ubuntu-24.04 | 3.9.19         | latest           |              | ✅     |
+| ubuntu-24.04 | 3.9.19         | latest           | 2023.2.0     | ✅     |
+| ubuntu-24.04 | 3.9.19         | latest           | git          | ✅     |
+
 <!-- END INSTALLATION_RESULTS -->

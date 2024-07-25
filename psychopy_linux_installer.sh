@@ -281,23 +281,7 @@ check_pypi_for_version() {
 # Function to get the latest wxPython wheel URL
 get_latest_wheel_url() {
     BASE_URL="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-
-    # Detect the Linux distribution and version
-    if [ -z "$DISTRO" ] || [ -z "$VERSION" ]; then
-        if [ -f /etc/os-release ]; then
-            . /etc/os-release
-            DISTRO=$ID
-            VERSION=$VERSION_ID
-        else
-            echo "Cannot detect distribution and version."
-            return 1
-        fi
-    fi
-
-    # Construct the distro version with a hyphen
-    DISTRO_VERSION="${DISTRO}-${VERSION}"
-
-    WHEEL_DIR="${BASE_URL}${DISTRO_VERSION}/"
+    WHEEL_DIR="${BASE_URL}${OS_VERSION}/"
 
     # Detect the Python version in the current virtual environment
     PYTHON_VERSION=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
@@ -317,11 +301,16 @@ get_latest_wheel_url() {
     echo "$WHEEL_URL"
     return 0
 }
+# Function to compare versions
+version_greater_than() {
+    [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
+}
+
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting the installation of PsychoPy with Python $PYTHON_VERSION"
 
 OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
-
+echo "Detected ${OS_VERSION} as OS"
 # Detect the package manager
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
@@ -344,6 +333,18 @@ fi
 
 PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
 PYTHON_VERSION_CLEAN=$(echo "${PYTHON_VERSION}" | tr -d ',;')
+
+# Check PSYCHOPY_VERSION
+if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
+    read -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 and might require manual fixes. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
+    if [ "$change_version" = "y" ] || [ "$change_version" = "Y" ]; then
+        PSYCHOPY_VERSION="2023.2.3"
+        echo "PsychoPy version changed to 2023.2.3."
+    else
+        echo "Keeping PsychoPy version $PSYCHOPY_VERSION."
+    fi
+fi
+
 
 # Create PsychoPy directory
 PSYCHOPY_DIR="${INSTALL_DIR}/psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
@@ -413,7 +414,7 @@ else
             log sudo rm -rf "${TEMP_DIR}" "${TEMP_FILE}"
         else
             echo
-            echo "$(date "+%Y-%m-%d %H:%M:%S") - Failed to download from Nextcloud. Building from official Python source..."
+            echo "$(date "+%Y-%m-%d %H:%M:%S") - Failed to download from Nextcloud. Building from official Python source. This might take a while ..."
             OFFICIAL_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
             TEMP_FILE="Python-${PYTHON_VERSION}.tgz"
             TEMP_DIR="Python-${PYTHON_VERSION}_temp"
@@ -456,9 +457,10 @@ else
     if python -c "import wx" &> /dev/null; then
         echo "$(date "+%Y-%m-%d %H:%M:%S") - wxPython is already installed."
     elif WHEEL_URL=$(get_latest_wheel_url); then
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Proceeding with the normal action using the obtained wheel URL..."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Found matching wxPython wheel; downloading it from extras.wxpython.org"
         WHEEL_FILE=$(basename "$WHEEL_URL")
         log curl -O "$WHEEL_URL"
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Download successful. Installing wxPython from $WHEEL_FILE..."
         log pip install "$WHEEL_FILE"
         log rm "$WHEEL_FILE"
         echo "$(date "+%Y-%m-%d %H:%M:%S") - Installed wxPython from $WHEEL_FILE"
@@ -472,13 +474,13 @@ else
         WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
         WX_PYTHON_FILE="${WHEEL_NAME%-linux_x86_64*}-linux_x86_64.whl"
 
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download wxPython wheel from Nextcloud..."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - There is no macthing wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud..."
         if curl -f -X GET "$WX_PYTHON_NEXTCLOUD_URL" --output "$WX_PYTHON_FILE"; then
             echo "$(date "+%Y-%m-%d %H:%M:%S") - Download successful. Installing wxPython from $WX_PYTHON_FILE..."
             log pip install "$WX_PYTHON_FILE"
             log rm "$WX_PYTHON_FILE"
         else
-            echo "$(date "+%Y-%m-%d %H:%M:%S") - Failed to download wxPython wheel from Nextcloud. Building wxPython from source..."
+            echo "$(date "+%Y-%m-%d %H:%M:%S") - Failed to download wxPython wheel. Building wxPython from source. This might take a while ..."
             install_basic_dependencies "$pkg_manager" wxpython_deps
             log pip install wxpython
         fi
@@ -564,14 +566,6 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - PsychoPy installation complete!"
 echo
 echo "To update your path, run:"
 echo "source $CONFIG_FILE"
-
-# Check if the system is Debian 11 and set QT_QPA_PLATFORM if true
-if [ -f /etc/os-release ] && . /etc/os-release && [ "$ID" = "debian" ] && [ "$VERSION_ID" = "11" ]; then
-        echo
-        echo "You are on debian11. Use this command:"
-        echo "export QT_QPA_PLATFORM=xcb"
-fi
-
 echo
 echo "To start PsychoPy, use:"
 echo "psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
