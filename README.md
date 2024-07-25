@@ -11,7 +11,7 @@ Additional distributions may be tested and supported in the future. All tests ar
 
 **Note:**
 
-- Ubuntu 18.04 and Debian 11 do not work with the default (latest) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
+- Ubuntu 18.04 and Debian 11 do not work with the default (2024.1.4) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
 
 ## Important Information
 
@@ -56,13 +56,13 @@ Execute script; see options below for more information.
 ## Options
 
 - `--python_version=VERSION` : Specify the Python version to install (default: `3.8.16`).
-- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: `latest`); use `--psychopy_version=git` for the latest GitHub version.
+- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use --psychopy_version=git for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the PsychoPy-BIDS version to install; skip if not set
 - `-f`, `--force` : Force overwrite of the existing installation directory.
-- `-v`, `--verbose` : Enable verbose output.
-- `-h`, `--help` : Show help message.
-- `--build` : Build Python and wxPython from source instead of downloading Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
+- `-v`, `--verbose` : En
+- `-h`, `--help` : Show able verbose output.help message.
+- `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 
 **Note:**
 The default version for `--psychopy_version` is no longer set to the latest version because new releases often introduce bugs for Linux that require manual fixes. For example, while writing this, the latest version is 2024.2.0, which does not start successfully in my tests.
@@ -70,7 +70,7 @@ The default version for `--psychopy_version` is no longer set to the latest vers
 ## Examples
 
 - `./psychopy_linux_installer.sh` (all default)
-- `./psychopy_linux_installer.sh --python_version=3.8.16 --psychopy_version=2024.1.4 --install_dir=/home/user1 --bids_version=git`
+- `./psychopy_linux_installer.sh --python_version=3.8.16 --psychopy_version=2024.1.3 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
 
 ## Script Details
 
@@ -118,12 +118,6 @@ Note: All commands will be displayed with the actual versions and paths at the e
 - Identify and remove unnecessary packages for specific platforms.
 - Consider splitting package installations for each distribution.
 - Test on Pacman-based distributions.
-
-### Speed Up
-
-- Look for an existing wxPython wheel for download.
-- Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version.
-- If an existing wheel and/or Python version is found, the dependency list can be significantly reduced.
 
 ### Tests
 

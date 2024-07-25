@@ -335,8 +335,8 @@ PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
 PYTHON_VERSION_CLEAN=$(echo "${PYTHON_VERSION}" | tr -d ',;')
 
 # Check PSYCHOPY_VERSION
-if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
-    read -r -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 and might require manual fixes on $OS_VERSION. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
+if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && ( version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" || [ "$PSYCHOPY_VERSION_CLEAN" = "git" ] ) && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
+    read -r -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $OS_VERSION. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
     if [ "$change_version" = "y" ] || [ "$change_version" = "Y" ]; then
         PSYCHOPY_VERSION_CLEAN="2023.2.3"
         echo "PsychoPy version changed to 2023.2.3."
@@ -364,6 +364,7 @@ else
     mkdir -p "${PSYCHOPY_DIR}"
 fi
 cd "${PSYCHOPY_DIR}" || exit
+
 
 if [ "$BUILD_PYTHON" = true ]; then
     echo
@@ -446,6 +447,7 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - Upgrading pip, distro, six, and psychtoolbo
 log pip install -U pip
 log pip install -U distro six psychtoolbox
 echo
+
 
 if [ "$BUILD_WX" = true ]; then
     echo "$(date "+%Y-%m-%d %H:%M:%S") - Building wxPython from source..."
