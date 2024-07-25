@@ -11,8 +11,7 @@ Additional distributions may be tested and supported in the future. All tests ar
 
 **Note:**
 
-- Ubuntu 18.04 does not work with the default (latest) PsychoPy version. It fails to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
-- Debian 11 requires an extra manual command after installation: `export QT_QPA_PLATFORM=xcb`.
+- Ubuntu 18.04 and Debian 11 do not work with the default (latest) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
 
 ## Important Information
 
