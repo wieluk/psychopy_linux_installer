@@ -55,10 +55,10 @@ Execute script; see options below for more information.
 
 ## Options
 
-- `--python_version=VERSION` : Specify the Python version to install (default: `3.8.16`).
-- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use --psychopy_version=git for the latest GitHub version.
+- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.16`).
+- `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.4`); use `latest` for latest pypi version; use `git` for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
-- `--bids_version=VERSION` : Specify the PsychoPy-BIDS version to install; skip if not set
+- `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install; skip if not set
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : En
 - `-h`, `--help` : Show able verbose output.help message.
@@ -78,13 +78,13 @@ The script performs the following steps:
 
 - Detects the package manager (supports apt, yum, dnf, and pacman).
 - Installs necessary dependencies.
+- Creates a directory in the specified location for PsychoPy.
 - Checks if the specified Python version exists and downloads it if necessary.
+- Downloads and installs the specified Python version as `altinstall`.
+- Creates and activates a virtual environment for PsychoPy.
 - Determines the PsychoPy version to install:
 - If latest, it fetches the latest version from PyPI.
 - If git, it installs PsychoPy from the latest GitHub repository.
-- Creates a directory in the specified location for PsychoPy.
-- Downloads and installs the specified Python version as `altinstall`.
-- Creates and activates a virtual environment for PsychoPy.
 - Upgrades pip and some pip packages, and
 - Installs/builds wxPython.
 - Installs PsychoPy.
@@ -132,10 +132,7 @@ Note: All commands will be displayed with the actual versions and paths at the e
 
 ## Links
 
-- [PsychoPy Versions](https://pypi.org/project/psychopy/#history)
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
-- [Python Versions](https://www.python.org/ftp/python)
-- [PsychoPy_bids Versions](https://pypi.org/project/psychopy_bids/0.1.1/#history)
 - [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
 
 ## Automatic Github Action Test Results
