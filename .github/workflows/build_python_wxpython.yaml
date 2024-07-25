@@ -1,0 +1,90 @@
+name: Build Python and wxPython
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build_python_wxpython.yaml'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12]
+        python_version: ['3.8.16']
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: create tmp
+        run: |
+          sudo mkdir /tmp_dir
+          sudo chmod -R 777 /tmp_dir
+          sudo chown -R $USER:$USER /tmp_dir
+
+      - name: Set up dependencies
+        run: |
+          sudo apt-get update || true
+          packages=(
+            git build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev
+            curl libbz2-dev libsqlite3-dev libgtk-3-dev jq
+            libxcb-cursor0 libxcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-render0
+            libxcb-shape0 libxcb-shm0 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1 libxkbcommon-x11-0
+            python3-pip python3-venv python3-dev
+            freeglut3-dev libwebkit2gtk-4.0-dev libjpeg-dev libpng-dev libtiff-dev libsdl2-dev libnotify-dev libsm-dev
+            libgtk-3-dev libgtk-3-0 libgtk-3-common libtiff5-dev libexpat1-dev libcurl4-gnutls-dev
+          )
+          for pkg in "${packages[@]}"; do
+            sudo apt-get install -y "$pkg" || true
+          done
+
+      - name: Download and install Python
+        run: |
+          cd /tmp_dir
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          curl -O "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
+          tar -xf "Python-${PYTHON_VERSION}.tgz"
+          cd "Python-${PYTHON_VERSION}"
+          ./configure --enable-optimizations
+          make -j "$(nproc)"
+          sudo make altinstall
+
+      - name: Create tarball of Python build
+        run: |
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          tar -czvf "/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
+
+      - name: Copy tarball to nextcloud
+        run: |
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          FILE_PATH="/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz"
+          curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 
+
+      - name: Set up virtual environment and build wxPython
+        run: |
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
+          PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
+          $PYTHON_BIN -m venv /tmp_dir/venv
+          source /tmp_dir/venv/bin/activate
+          pip install --upgrade pip
+          pip install wheel
+          mkdir /tmp_dir/wxpython
+          cd /tmp_dir/wxpython
+          pip download wxPython
+          tar -xzf wxPython-*.tar.gz
+          wxPython_dir=$(find . -type d -name "wxPython-*")
+          cd "$wxPython_dir"
+          pip wheel .
+          python_major=$(python -c "import sys; print(sys.version_info.major)")
+          python_minor=$(python -c "import sys; print(sys.version_info.minor)")
+          wheel_file=$(ls wxPython-*.whl)
+          identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}-${PYTHON_VERSION}.whl"
+          cp "$wheel_file" "$identified_wheel_file"
+          deactivate
+          curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 
+
+      - name: clean up
+        run: |
+          sudo rm -r /tmp_dir

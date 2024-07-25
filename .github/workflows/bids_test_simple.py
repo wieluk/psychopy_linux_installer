@@ -1,8 +1,10 @@
 import seedir as sd
 import pandas as pd
 
-from psychopy_bids.bids import BIDSTaskEvent
-from psychopy_bids.bids import BIDSHandler
+from psychopy_bids.bids import BIDSTaskEvent, BIDSHandler
+
+# Define the base path for saving files
+base_path = '/tmp_dir'
 
 subject = {"participant_id": "01", "sex": "male", "age": 20}
 
@@ -13,12 +15,15 @@ stop = BIDSTaskEvent(onset=10, duration=0, trial_type="stop")
 events = [start, presentation, stop]
 
 handler = BIDSHandler(
-    dataset="simple_dataset",
+    dataset=f"{base_path}/simple_dataset",  # Use the base path variable
     subject=subject['participant_id'],
-    task="task1")
+    task="task1"
+)
 handler.createDataset()
 tsv_file = handler.addTaskEvents(events, subject)
 
-sd.seedir('simple_dataset')
+# List the directory contents for debugging
+sd.seedir(f"{base_path}/simple_dataset")
+
 df = pd.read_csv(tsv_file, sep='\t')
-df.head()
+print(df.head())

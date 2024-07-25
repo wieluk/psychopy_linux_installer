@@ -11,7 +11,7 @@ Additional distributions may be tested and supported in the future. All tests ar
 
 **Note:**
 
-- Ubuntu 18.04 and Debian 11 do not work with the default (latest) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
+- Ubuntu 18.04 and Debian 11 do not work with the default (2024.1.4) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
 
 ## Important Information
 
@@ -19,7 +19,10 @@ Additional distributions may be tested and supported in the future. All tests ar
 - The specified/default Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
-- Building Python and wxPython might take some time.
+- The script attempts to download a pre-made Python .tar.gz file from my [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If it fails to find a matching version, it will download from python.org and build from source.
+- The script also tries to find a wxPython version from their [website](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to my [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs). If this also fails, wxPython is built from source.
+- Building Python and wxPython might take some time (1-2 hours).
+- The script output is minimal by default. Use the --verbose option to view detailed output.
 
 ## Usage
 
@@ -53,11 +56,13 @@ Execute script; see options below for more information.
 ## Options
 
 - `--python_version=VERSION` : Specify the Python version to install (default: `3.8.16`).
-- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: 2024.1.4); use `latest` for latest pypi version; use `--psychopy_version=git` for the latest GitHub version.
+- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use --psychopy_version=git for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the PsychoPy-BIDS version to install; skip if not set
 - `-f`, `--force` : Force overwrite of the existing installation directory.
-- `-h`, `--help` : Show help message.
+- `-v`, `--verbose` : En
+- `-h`, `--help` : Show able verbose output.help message.
+- `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 
 **Note:**
 The default version for `--psychopy_version` is no longer set to the latest version because new releases often introduce bugs for Linux that require manual fixes. For example, while writing this, the latest version is 2024.2.0, which does not start successfully in my tests.
@@ -65,7 +70,7 @@ The default version for `--psychopy_version` is no longer set to the latest vers
 ## Examples
 
 - `./psychopy_linux_installer.sh` (all default)
-- `./psychopy_linux_installer.sh --python_version=3.8.16 --psychopy_version=2024.1.4 --install_dir=/home/user1 --bids_version=git`
+- `./psychopy_linux_installer.sh --python_version=3.8.16 --psychopy_version=2024.1.3 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
 
 ## Script Details
 
@@ -87,13 +92,14 @@ The script performs the following steps:
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
 
 ## Post-Installation
+
 To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
-`"source $CONFIG_FILE"`
+`source $CONFIG_FILE`
 
 For default Ubuntu, the command should be:
 
-`"source ~/.bashrc`
+`source ~/.bashrc`
 
 To start PsychoPy, use:
 
@@ -101,43 +107,41 @@ To start PsychoPy, use:
 
 If adding to the path did not work, use the absolute path:
 
-`"${PSYCHOPY_DIR}/bin/psychopy"`
-
+`${PSYCHOPY_DIR}/bin/psychopy`
 
 Note: All commands will be displayed with the actual versions and paths at the end of the script.
-
 
 ## To-Do
 
 ### Dependencies
+
 - Identify and remove unnecessary packages for specific platforms.
 - Consider splitting package installations for each distribution.
 - Test on Pacman-based distributions.
-### Speed Up
-- Look for an existing wxPython wheel for download.
-- Check for an existing Python version. If it matches the compatibility list, prompt the user to use this version.
-- If an existing wheel and/or Python version is found, the dependency list can be significantly reduced.
+
 ### Tests
+
 - Evaluate BIDS compatibility.
 - Assess extended PsychoPy features.
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
+
 ### Additional Tasks
-- Implement advanced logging to reduce the verbosity of the build process.
+
 - Add self-hosted action runners for Debian, Fedora, and CentOS.
 
-
 ## Links
+
 - [PsychoPy Versions](https://pypi.org/project/psychopy/#history)
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
 - [Python Versions](https://www.python.org/ftp/python)
 - [PsychoPy_bids Versions](https://pypi.org/project/psychopy_bids/0.1.1/#history)
 - [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
 
-
 ## Automatic Github Action Test Results
+
 <!-- BEGIN INSTALLATION_RESULTS -->
-Report generated on 2024-07-16
+# Report generated on 2024-07-25
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
@@ -150,9 +154,9 @@ Report generated on 2024-07-16
 | ubuntu-20.04 | 3.10.14 | git |  | ✅ |
 | ubuntu-20.04 | 3.10.14 | git | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-20.04 | 3.10.14 | latest |  | ❌ |
-| ubuntu-20.04 | 3.10.14 | latest | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.10.14 | latest | git | ❌ |
+| ubuntu-20.04 | 3.10.14 | latest |  | ✅ |
+| ubuntu-20.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
+| ubuntu-20.04 | 3.10.14 | latest | git | ✅ |
 | ubuntu-20.04 | 3.8.16 | 2023.2.3 |  | ✅ |
 | ubuntu-20.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.8.16 | 2023.2.3 | git | ✅ |
@@ -174,9 +178,9 @@ Report generated on 2024-07-16
 | ubuntu-20.04 | 3.9.19 | git |  | ✅ |
 | ubuntu-20.04 | 3.9.19 | git | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.9.19 | git | git | ✅ |
-| ubuntu-20.04 | 3.9.19 | latest |  | ❌ |
-| ubuntu-20.04 | 3.9.19 | latest | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.9.19 | latest | git | ❌ |
+| ubuntu-20.04 | 3.9.19 | latest |  | ✅ |
+| ubuntu-20.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
+| ubuntu-20.04 | 3.9.19 | latest | git | ✅ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 |  | ❌ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 | git | ❌ |
@@ -186,9 +190,9 @@ Report generated on 2024-07-16
 | ubuntu-22.04 | 3.10.14 | git |  | ✅ |
 | ubuntu-22.04 | 3.10.14 | git | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-22.04 | 3.10.14 | latest |  | ❌ |
-| ubuntu-22.04 | 3.10.14 | latest | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.10.14 | latest | git | ❌ |
+| ubuntu-22.04 | 3.10.14 | latest |  | ✅ |
+| ubuntu-22.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
+| ubuntu-22.04 | 3.10.14 | latest | git | ✅ |
 | ubuntu-22.04 | 3.8.16 | 2023.2.3 |  | ✅ |
 | ubuntu-22.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.8.16 | 2023.2.3 | git | ✅ |
@@ -210,9 +214,9 @@ Report generated on 2024-07-16
 | ubuntu-22.04 | 3.9.19 | git |  | ✅ |
 | ubuntu-22.04 | 3.9.19 | git | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.9.19 | git | git | ✅ |
-| ubuntu-22.04 | 3.9.19 | latest |  | ❌ |
-| ubuntu-22.04 | 3.9.19 | latest | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.9.19 | latest | git | ❌ |
+| ubuntu-22.04 | 3.9.19 | latest |  | ✅ |
+| ubuntu-22.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
+| ubuntu-22.04 | 3.9.19 | latest | git | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 |  | ❌ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | git | ❌ |
@@ -222,9 +226,9 @@ Report generated on 2024-07-16
 | ubuntu-24.04 | 3.10.14 | git |  | ✅ |
 | ubuntu-24.04 | 3.10.14 | git | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-24.04 | 3.10.14 | latest |  | ❌ |
-| ubuntu-24.04 | 3.10.14 | latest | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.10.14 | latest | git | ❌ |
+| ubuntu-24.04 | 3.10.14 | latest |  | ✅ |
+| ubuntu-24.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
+| ubuntu-24.04 | 3.10.14 | latest | git | ✅ |
 | ubuntu-24.04 | 3.8.16 | 2023.2.3 |  | ✅ |
 | ubuntu-24.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.8.16 | 2023.2.3 | git | ✅ |
@@ -246,7 +250,7 @@ Report generated on 2024-07-16
 | ubuntu-24.04 | 3.9.19 | git |  | ✅ |
 | ubuntu-24.04 | 3.9.19 | git | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | git | git | ✅ |
-| ubuntu-24.04 | 3.9.19 | latest |  | ❌ |
-| ubuntu-24.04 | 3.9.19 | latest | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.9.19 | latest | git | ❌ |
+| ubuntu-24.04 | 3.9.19 | latest |  | ✅ |
+| ubuntu-24.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
+| ubuntu-24.04 | 3.9.19 | latest | git | ✅ |
 <!-- END INSTALLATION_RESULTS -->
