@@ -19,7 +19,7 @@ Additional distributions may be tested and supported in the future. All tests ar
 - The specified/default Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
-- The script attempts to download a pre-made Python binary from my [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If it fails to find a matching version, it will download from python.org and build from source.
+- The script attempts to download a pre-made Python .tar.gz file from my [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If it fails to find a matching version, it will download from python.org and build from source.
 - The script also tries to find a wxPython version from their [website](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to my [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs). If this also fails, wxPython is built from source.
 - Building Python and wxPython might take some time (1-2 hours).
 - The script output is minimal by default. Use the --verbose option to view detailed output.
@@ -95,11 +95,11 @@ The script performs the following steps:
 
 To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
-`"source $CONFIG_FILE"`
+`source $CONFIG_FILE`
 
 For default Ubuntu, the command should be:
 
-`"source ~/.bashrc`
+`source ~/.bashrc`
 
 To start PsychoPy, use:
 
@@ -107,7 +107,7 @@ To start PsychoPy, use:
 
 If adding to the path did not work, use the absolute path:
 
-`"${PSYCHOPY_DIR}/bin/psychopy"`
+`${PSYCHOPY_DIR}/bin/psychopy`
 
 Note: All commands will be displayed with the actual versions and paths at the end of the script.
 
