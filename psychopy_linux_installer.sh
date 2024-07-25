@@ -310,7 +310,7 @@ version_greater_than() {
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting the installation of PsychoPy with Python $PYTHON_VERSION"
 
 OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
-echo "Detected ${OS_VERSION} as OS"
+echo "$(date "+%Y-%m-%d %H:%M:%S") Detected ${OS_VERSION} as OS"
 # Detect the package manager
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
@@ -488,11 +488,11 @@ fi
 
 # Install PsychoPy
 echo
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Installing PsychoPy version ${PSYCHOPY_VERSION}"
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Installing PsychoPy version ${PSYCHOPY_VERSION_CLEAN}"
 if [ "$PSYCHOPY_VERSION" == "git" ]; then
     log pip install git+https://github.com/psychopy/psychopy
 else
-    log pip install psychopy=="${PSYCHOPY_VERSION}"
+    log pip install psychopy=="${PSYCHOPY_VERSION_CLEAN}"
 fi
 
 # Install BIDS
