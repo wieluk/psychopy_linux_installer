@@ -456,7 +456,7 @@ else
     if python -c "import wx" &> /dev/null; then
         echo "$(date "+%Y-%m-%d %H:%M:%S") - wxPython is already installed."
     elif pip cache list | grep -q "wxPython"; then
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - "wxPython" wheel is already in the pip cache. Installing from cache."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - A wxPython wheel is already in the pip cache. Installing from cache."
         install_basic_dependencies "$pkg_manager" wxpython_deps
         log pip install wxpython
     elif WHEEL_URL=$(get_latest_wheel_url); then
