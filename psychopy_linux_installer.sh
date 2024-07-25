@@ -400,9 +400,10 @@ else
         TEMP_DIR="python_${PYTHON_VERSION}_${OS_VERSION}_temp"
 
         echo
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download Python ${PYTHON_VERSION} for ${OS_VERSION} from Nextcloud..."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download prebuild Python ${PYTHON_VERSION} for ${OS_VERSION} from Nextcloud..."
         if curl -f -X GET "${NEXTCLOUD_URL}" --output "${TEMP_FILE}"; then
             echo
+            echo "$(date "+%Y-%m-%d %H:%M:%S") - Successfully downloaded Python ${PYTHON_VERSION} ... making a altinstall ..."
             mkdir -p "${TEMP_DIR}"
             tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
             (
@@ -412,7 +413,7 @@ else
             log sudo rm -rf "${TEMP_DIR}" "${TEMP_FILE}"
         else
             echo
-            echo "$(date "+%Y-%m-%d %H:%M:%S") - Failed to download from Nextcloud. Falling back to official Python source..."
+            echo "$(date "+%Y-%m-%d %H:%M:%S") - Failed to download from Nextcloud. Building from official Python source..."
             OFFICIAL_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
             TEMP_FILE="Python-${PYTHON_VERSION}.tgz"
             TEMP_DIR="Python-${PYTHON_VERSION}_temp"
