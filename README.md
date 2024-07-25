@@ -54,11 +54,14 @@ Execute script; see options below for more information.
 ## Options
 
 - `--python_version=VERSION` : Specify the Python version to install (default: `3.8.16`).
-- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: `latest`); use `--psychopy_version=git` for the latest GitHub version.
+- `--psychopy_version=VERSION` : Specify the PsychoPy version to install (default: 2024.1.4); use `latest` for latest pypi version; use `--psychopy_version=git` for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the PsychoPy-BIDS version to install; skip if not set
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-h`, `--help` : Show help message.
+
+**Note:**
+The default version for `--psychopy_version` is no longer set to the latest version because new releases often introduce bugs for Linux that require manual fixes. For example, while writing this, the latest version is 2024.2.0, which does not start successfully in my tests.
 
 ## Examples
 

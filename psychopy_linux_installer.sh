@@ -8,7 +8,7 @@ show_help() {
     echo "Usage: ./install_psychopy.sh [options]"
     echo "Options:"
     echo "  --python_version=VERSION    Specify the Python version to install (default: 3.8.16)"
-    echo "  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: latest); use git for latest github version"
+    echo "  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use git for latest github version"
     echo "  --install_dir=DIR           Specify the installation directory (default: \"$HOME\")"
     echo "  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install; skip if not set"
     echo "  -f, --force                 Force overwrite of existing installation directory"
@@ -17,7 +17,7 @@ show_help() {
 
 # Default versions and directory
 PYTHON_VERSION="3.8.16"
-PSYCHOPY_VERSION="latest"
+PSYCHOPY_VERSION="2024.1.4"
 INSTALL_DIR="$HOME"
 BIDS_VERSION=""
 FORCE_OVERWRITE=false
