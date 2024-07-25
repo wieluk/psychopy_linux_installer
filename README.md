@@ -19,8 +19,8 @@ Additional distributions may be tested and supported in the future. All tests ar
 - The specified/default Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
-- The script tries to download a premade python binary from my uni [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If it fails to find a matching version it will download from python.org and build from source.
-- It also tries to find a wxpython version from their [website](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/) if this fails it fallbacks to my [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs). If this also fails wxpython is build from source.
+- The script attempts to download a pre-made Python binary from my [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If it fails to find a matching version, it will download from python.org and build from source.
+- The script also tries to find a wxPython version from their [website](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to my [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs). If this also fails, wxPython is built from source.
 - Building Python and wxPython might take some time (1-2 hours).
 - The script output is minimal by default. Use the --verbose option to view detailed output.
 
