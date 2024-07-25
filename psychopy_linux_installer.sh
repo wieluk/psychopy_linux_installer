@@ -516,10 +516,26 @@ fi
 deactivate
 
 echo
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Adding ${USER} to a psychopy group and setting security limits."
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Adding ${USER} to a psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
 log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
-echo -e "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" | sudo tee -a /etc/security/limits.d/99-psychopylimits.conf
+
+# Define the limits to check and set
+limits=(
+    "@psychopy - nice -20"
+    "@psychopy - rtprio 50"
+    "@psychopy - memlock unlimited"
+)
+
+# File to modify
+limits_file="/etc/security/limits.d/99-psychopylimits.conf"
+
+# Check if each limit is already set, and if not, append it
+for limit in "${limits[@]}"; then
+    if ! grep -qF "$limit" "$limits_file"; then
+        echo "$limit" | sudo tee -a "$limits_file"
+    fi
+done
 
 # Detect the shell
 SHELL_NAME=$(basename "$SHELL")
