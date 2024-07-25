@@ -62,6 +62,10 @@ Execute script; see options below for more information.
 - `-v`, `--verbose` : Enable verbose output.
 - `-h`, `--help` : Show help message.
 - `--build` : Build Python and wxPython from source instead of downloading. This is most reliable installation method but it takes 1-2 hours"
+
+**Note:**
+The default version for `--psychopy_version` is no longer set to the latest version because new releases often introduce bugs for Linux that require manual fixes. For example, while writing this, the latest version is 2024.2.0, which does not start successfully in my tests.
+
 ## Examples
 
 - `./psychopy_linux_installer.sh` (all default)
