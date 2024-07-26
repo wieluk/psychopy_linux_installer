@@ -5,13 +5,13 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Ubuntu 24.04, 22.04, 20.04, (18.04)
 - Pop!_OS 22.04
 - Debian 12, (11)
-- CentOS 9
+- (CentOS 9)
 
 Additional distributions may be tested and supported in the future. All tests are conducted on Virtual Machines only.
 
 **Note:**
 
-- Ubuntu 18.04 and Debian 11 do not work with the default (2024.1.4) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower.
+- Ubuntu 18.04, Debian 11 and CentOS 9 do not work with the default (2024.1.4) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower. Or fix dependency errors manually (and please tell me how to fix them).
 
 ## Important Information
 

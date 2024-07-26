@@ -194,7 +194,7 @@ install_basic_dependencies() {
                 gstreamer1.0-alsa gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-plugins-base libnotify-dev
             )
             wxpython_deps=(
-                python3-dev libgtk-3-dev gstreamer1.0-plugins-base freeglut3-dev libwebkit2gtk-4.0-dev
+                python3-dev libgtk-3-dev freeglut3-dev libwebkit2gtk-4.0-dev
                 libjpeg-dev libpng-dev libtiff-dev libsm-dev
             )
             ;;
@@ -203,16 +203,16 @@ install_basic_dependencies() {
                 gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel bzip2-devel sqlite-devel
             )
             psychopy_basic_deps=(
-                git curl libusb-devel portaudio-devel alsa-lib-devel jq
+                epel-release git curl libusb-devel portaudio-devel alsa-lib-devel jq
                 xcb-util-cursor-devel libxcb libxcb-devel libxcb-icccm4-devel libxcb-image-devel libxcb-keysyms-devel libxcb-render-util-devel 
                 libxcb-render-devel libxcb-shape-devel libxcb-shm-devel libxcb-util-devel 
-                libxcb-xfixes-devel libxcb-xinerama-devel libxcb-xinput-devel libxcb-xkb-devel xkbcommon-x11-devel freeglut-devel
-                python3 python3-devel SDL2-devel
+                libxcb-xfixes-devel libxcb-xinerama-devel libxcb-xinput-devel libxcb-xkb-devel xkbcommon-x11-devel
+                python3  SDL2-devel qt5-qtbase qt5-qtbase-gui qt5-qtx11extras xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil
                 gstreamer1-libav gstreamer1-tools gstreamer1-plugins-good gstreamer1-plugins-ugly gstreamer1-gtk3
                 gstreamer1-pulseaudio gstreamer1-alsa gstreamer1-plugins-base libnotify-devel
             )
             wxpython_deps=(
-                python3-devel gtk3-devel gstreamer1-plugins-base freeglut-devel webkit2gtk3-devel
+                python3-devel gtk3-devel freeglut-devel webkit2gtk3-devel
                 libjpeg-turbo-devel libpng-devel libtiff-devel libSM-devel
             )
                         ;;
@@ -227,7 +227,7 @@ install_basic_dependencies() {
                 python sdl2 libnotify gstreamer gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gstreamer0.10-plugins
             )
             wxpython_deps=(
-                python libgtk-3 gstreamer freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
+                python libgtk-3 freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
             )
             ;;
     esac
