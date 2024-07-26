@@ -19,6 +19,7 @@ jobs:
 
       - name: create tmp
         run: |
+          sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chmod -R 777 /tmp_dir
           sudo chown -R $USER:$USER /tmp_dir
