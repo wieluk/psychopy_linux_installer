@@ -17,10 +17,10 @@ show_help() {
     echo "  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use git for latest github version"
     echo "  --install_dir=DIR           Specify the installation directory (default: \"$HOME\")"
     echo "  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install; skip if not set"
+    echo "  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading"
     echo "  -f, --force                 Force overwrite of existing installation directory"
     echo "  -v, --verbose               Enable verbose output"
     echo "  -h, --help                  Show this help message"
-    echo "  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading"
 }
 
 # Default versions and directory
