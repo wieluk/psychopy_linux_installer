@@ -183,7 +183,7 @@ install_basic_dependencies() {
         apt)
             python_build_deps=(
                 build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev
-                libffi-dev libbz2-dev libsqlite3-dev
+                libffi-dev libbz2-dev libsqlite3-dev python3-dev
             )
             psychopy_basic_deps=(
                 git curl jq python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 python3-gst-1.0 libglib2.0-dev
@@ -191,6 +191,8 @@ install_basic_dependencies() {
                 libusb-1.0-0-dev portaudio19-dev libasound2-dev freeglut3 freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev
                 libgstreamer-plugins-base1.0-dev libgtk-3-dev libjpeg-dev libnotify-dev libsdl2-dev libsm-dev
                 libtiff-dev libwebkit2gtk-4.0-dev libxtst-dev python3-testresources nodejs libsndfile1-dev libportmidi-dev liblo-dev curl
+                libxcb-cursor0 libxcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-render0 libxcb-shape0 
+                libxcb-shm0 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1 libxkbcommon-x11-0 python3-venv
             )
             wxpython_deps=(
                 python3-dev libgtk-3-dev freeglut3-dev libwebkit2gtk-4.0-dev
@@ -199,14 +201,20 @@ install_basic_dependencies() {
             ;;
         yum|dnf)
             python_build_deps=(
-                gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel bzip2-devel sqlite-devel
+                gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel bzip2-devel sqlite-devel python3-devel
             )
             psychopy_basic_deps=(
-                git curl jq python3-pip make gcc gtk3-devel gstreamer1-libav python3-gstreamer1 libglib2-devel epel-release python-is-python3 bison autoconf libtool swig pulseaudio-libs-devel libusb-devel portaudio-devel alsa-lib-devel freeglut freeglut-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel gtk3-devel libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel webkit2gtk3-devel libXtst-devel python3-testresources nodejs libsndfile-devel portmidi-devel liblo-devel curl
+                git curl jq python3-pip make gcc gtk3-devel gstreamer1-libav python3-gstreamer1 libglib2-devel epel-release python-is-python3 bison autoconf libtool swig pulseaudio-libs-devel 
+                libusb-devel portaudio-devel alsa-lib-devel freeglut freeglut-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel gtk3-devel libjpeg-turbo-devel libnotify-devel 
+                SDL2-devel libSM-devel libtiff-devel webkit2gtk3-devel libXtst-devel python3-testresources nodejs libsndfile-devel portmidi-devel liblo-devel curl
+                xcb-util-cursor xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-shape xcb-util-xfixes xcb-util-xinerama xcb-util-xinput xcb-util-xkb xkbcommon-x11 python3-venv
+                libxcb-xinerama-devel libxcb-shm-devel libxcb-devel xcb-util-cursor-devel libxcb-xfixes-devel libxcb-render-devel libxcb libxcb-render-util-devel libxcb-keysyms-devel libxcb-image-devel libxcb-shape-devel 
+                libxcb-util-devel libxcb-xinput-devel xkbcommon-x11-devel libxcb-icccm4-devel libxcb-xkb-devel
             )
             wxpython_deps=(
                 python3-devel gtk3-devel freeglut-devel webkit2gtk3-devel
                 libjpeg-turbo-devel libpng-devel libtiff-devel libSM-devel
+                expat-devel libcurl-devel gtk3
             )
             ;;
         pacman)
@@ -214,10 +222,13 @@ install_basic_dependencies() {
                 base-devel zlib ncurses gdbm nss openssl readline libffi bzip2 sqlite
             )
             psychopy_basic_deps=(
-                git curl jq python-pip make gcc libgtk-3 gstreamer lib32-gstreamer python-gst libglib2 libx264 bison autoconf libtool swig libpulse libusb portaudio alsa-lib freeglut mesa mesa-libgl mesa-libgl-git gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gtk3 libjpeg-turbo libnotify sdl2 libsm libtiff webkit2gtk libxtst python-testresources nodejs libsndfile portmidi liblo curl
+                git curl jq python-pip make gcc libgtk-3 gstreamer lib32-gstreamer python-gst libglib2 libx264 bison autoconf libtool swig libpulse libusb portaudio alsa-lib freeglut mesa mesa-libgl mesa-libgl-git 
+                gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gtk3 libjpeg-turbo libnotify sdl2 libsm libtiff webkit2gtk libxtst python-testresources nodejs libsndfile portmidi liblo curl
+                xcb-util-cursor xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-render xcb-shape xcb-shm xcb-xfixes xcb-xinerama xcb-xinput xcb-xkb xkbcommon-x11 python-virtualenv python
+                libxcb-keysyms libxcb-xkb libxcb-xinput libxcb-xfixes libxcb-render-util libxcb-image libxcb-shape libxcb libxcb-xinerama libxcb-util libxcb-shm libxcb-render libxcb-icccm
             )
             wxpython_deps=(
-                python libgtk-3 freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
+                libgtk-3 freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
             )
             ;;
     esac
