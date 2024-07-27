@@ -5,6 +5,7 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Ubuntu 24.04, 22.04, 20.04, (18.04)
 - Pop!_OS 22.04
 - Debian 12, (11)
+- Fedora 39
 - (CentOS 9)
 
 Additional distributions may be tested and supported in the future. All tests are conducted on Virtual Machines only.
@@ -23,6 +24,7 @@ Additional distributions may be tested and supported in the future. All tests ar
 - The script also tries to find a wxPython version from their [website](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to my [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs). If this also fails, wxPython is built from source.
 - Building Python and wxPython might take some time (1-2 hours).
 - The script output is minimal by default. Use the --verbose option to view detailed output.
+- For most distros starting PsychoPy the first time is sometimes buggy. Just restart it or use the --coder, --builder option when starting.
 
 ## Usage
 

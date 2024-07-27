@@ -186,7 +186,7 @@ install_basic_dependencies() {
                 libffi-dev libbz2-dev libsqlite3-dev
             )
             psychopy_basic_deps=(
-                python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 python3-gst-1.0 libglib2.0-dev
+                git curl jq python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 python3-gst-1.0 libglib2.0-dev
                 ubuntu-restricted-extras python-dev-is-python3 bison autoconf libtool-bin swig libpulse-dev
                 libusb-1.0-0-dev portaudio19-dev libasound2-dev freeglut3 freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev
                 libgstreamer-plugins-base1.0-dev libgtk-3-dev libjpeg-dev libnotify-dev libsdl2-dev libsm-dev
@@ -202,7 +202,7 @@ install_basic_dependencies() {
                 gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel bzip2-devel sqlite-devel
             )
             psychopy_basic_deps=(
-                python3-pip make gcc gtk3-devel gstreamer1-libav python3-gstreamer1 libglib2-devel epel-release python-is-python3 bison autoconf libtool swig pulseaudio-libs-devel libusb-devel portaudio-devel alsa-lib-devel freeglut freeglut-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel gtk3-devel libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel webkit2gtk3-devel libXtst-devel python3-testresources nodejs libsndfile-devel portmidi-devel liblo-devel curl
+                git curl jq python3-pip make gcc gtk3-devel gstreamer1-libav python3-gstreamer1 libglib2-devel epel-release python-is-python3 bison autoconf libtool swig pulseaudio-libs-devel libusb-devel portaudio-devel alsa-lib-devel freeglut freeglut-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel gtk3-devel libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel webkit2gtk3-devel libXtst-devel python3-testresources nodejs libsndfile-devel portmidi-devel liblo-devel curl
             )
             wxpython_deps=(
                 python3-devel gtk3-devel freeglut-devel webkit2gtk3-devel
@@ -214,7 +214,7 @@ install_basic_dependencies() {
                 base-devel zlib ncurses gdbm nss openssl readline libffi bzip2 sqlite
             )
             psychopy_basic_deps=(
-                python-pip make gcc libgtk-3 gstreamer lib32-gstreamer python-gst libglib2 libx264 bison autoconf libtool swig libpulse libusb portaudio alsa-lib freeglut mesa mesa-libgl mesa-libgl-git gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gtk3 libjpeg-turbo libnotify sdl2 libsm libtiff webkit2gtk libxtst python-testresources nodejs libsndfile portmidi liblo curl
+                git curl jq python-pip make gcc libgtk-3 gstreamer lib32-gstreamer python-gst libglib2 libx264 bison autoconf libtool swig libpulse libusb portaudio alsa-lib freeglut mesa mesa-libgl mesa-libgl-git gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gtk3 libjpeg-turbo libnotify sdl2 libsm libtiff webkit2gtk libxtst python-testresources nodejs libsndfile portmidi liblo curl
             )
             wxpython_deps=(
                 python libgtk-3 freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
@@ -310,7 +310,7 @@ if [ "$pkg_manager" == "none" ]; then
 fi
 
 # Install basic dependencies
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Installing PsychoPy dependencies ..."
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Installing PsychoPy dependencies. This might take a while ..."
 install_basic_dependencies "$pkg_manager" psychopy_basic_deps
 
 check_python_version "${PYTHON_VERSION}"
