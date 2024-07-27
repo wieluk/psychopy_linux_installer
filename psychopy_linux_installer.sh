@@ -391,7 +391,7 @@ else
         TEMP_DIR="python_${PYTHON_VERSION}_${OS_VERSION}_temp"
 
         echo
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download prebuild Python ${PYTHON_VERSION} for ${OS_VERSION} from Nextcloud..."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download prebuild Python ${PYTHON_VERSION} for ${OS_VERSION} from Nextcloud ($NEXTCLOUD_URL)..."
         if curl -f -X GET "${NEXTCLOUD_URL}" --output "${TEMP_FILE}"; then
             echo
             echo "$(date "+%Y-%m-%d %H:%M:%S") - Successfully downloaded Python ${PYTHON_VERSION} ... making a altinstall ..."
@@ -452,8 +452,9 @@ else
         install_basic_dependencies "$pkg_manager" wxpython_deps
         log pip install wxpython
     elif WHEEL_URL=$(get_latest_wheel_url); then
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Found matching wxPython wheel; downloading it from extras.wxpython.org"
         WHEEL_FILE=$(basename "$WHEEL_URL")
+        echo
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Found matching wxPython wheel; downloading it from extras.wxpython.org ($WHEEL_URL)"
         log curl -O "$WHEEL_URL"
         echo "$(date "+%Y-%m-%d %H:%M:%S") - Download successful. Installing wxPython from $WHEEL_FILE..."
         log pip install "$WHEEL_FILE"
@@ -469,8 +470,10 @@ else
         WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
         WX_PYTHON_FILE="${WHEEL_NAME%-linux_x86_64*}-linux_x86_64.whl"
 
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - There is no macthing wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud..."
+        echo
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - There is no macthing wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($WX_PYTHON_NEXTCLOUD_URL)"
         if curl -f -X GET "$WX_PYTHON_NEXTCLOUD_URL" --output "$WX_PYTHON_FILE"; then
+            echo
             echo "$(date "+%Y-%m-%d %H:%M:%S") - Download successful. Installing wxPython from $WX_PYTHON_FILE..."
             log pip install "$WX_PYTHON_FILE"
             log rm "$WX_PYTHON_FILE"
