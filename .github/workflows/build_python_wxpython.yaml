@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, debian-11, centos-9, fedora-39]
-        python_version: ['3.8.16']
+        python_version: ['3.8.19', '3.9.19', '3.10.14']
       fail-fast: false
     steps:
       - name: Checkout repository
@@ -125,7 +125,7 @@ jobs:
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
           wheel_file=$(ls wxPython-*.whl)
-          identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}-${PYTHON_VERSION}.whl"
+          identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 

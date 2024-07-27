@@ -465,7 +465,7 @@ else
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
 
-        WHEEL_NAME="wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${OS_VERSION}-${PYTHON_VERSION}.whl"
+        WHEEL_NAME="wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${OS_VERSION}.whl"
 
         WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
         WX_PYTHON_FILE="${WHEEL_NAME%-linux_x86_64*}-linux_x86_64.whl"
