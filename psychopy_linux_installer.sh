@@ -186,12 +186,11 @@ install_basic_dependencies() {
                 libffi-dev libbz2-dev libsqlite3-dev
             )
             psychopy_basic_deps=(
-                git curl libusb-1.0-0-dev portaudio19-dev libasound2-dev jq
-                libxcb-cursor0 libxcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-render0
-                libxcb-shape0 libxcb-shm0 libxcb-util1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xinput0 libxcb-xkb1
-                libxkbcommon-x11-0 python3-pip python3-venv python3-dev libsdl2-dev
-                gstreamer1.0-libav gstreamer1.0-tools gstreamer1.0-x gstreamer1.0-gtk3 gstreamer1.0-pulseaudio
-                gstreamer1.0-alsa gstreamer1.0-plugins-good gstreamer1.0-plugins-ugly gstreamer1.0-plugins-base libnotify-dev
+                python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 python3-gst-1.0 libglib2.0-dev
+                ubuntu-restricted-extras python-dev-is-python3 bison autoconf libtool-bin swig libpulse-dev
+                libusb-1.0-0-dev portaudio19-dev libasound2-dev freeglut3 freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev
+                libgstreamer-plugins-base1.0-dev libgtk-3-dev libjpeg-dev libnotify-dev libsdl2-dev libsm-dev
+                libtiff-dev libwebkit2gtk-4.0-dev libxtst-dev python3-testresources nodejs libsndfile1-dev libportmidi-dev liblo-dev curl
             )
             wxpython_deps=(
                 python3-dev libgtk-3-dev freeglut3-dev libwebkit2gtk-4.0-dev
@@ -203,28 +202,19 @@ install_basic_dependencies() {
                 gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel bzip2-devel sqlite-devel
             )
             psychopy_basic_deps=(
-                epel-release git curl libusb-devel portaudio-devel alsa-lib-devel jq
-                xcb-util-cursor-devel libxcb libxcb-devel libxcb-icccm4-devel libxcb-image-devel libxcb-keysyms-devel libxcb-render-util-devel 
-                libxcb-render-devel libxcb-shape-devel libxcb-shm-devel libxcb-util-devel 
-                libxcb-xfixes-devel libxcb-xinerama-devel libxcb-xinput-devel libxcb-xkb-devel xkbcommon-x11-devel
-                python3  SDL2-devel qt5-qtbase qt5-qtbase-gui qt5-qtx11extras xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil
-                gstreamer1-libav gstreamer1-tools gstreamer1-plugins-good gstreamer1-plugins-ugly gstreamer1-gtk3
-                gstreamer1-pulseaudio gstreamer1-alsa gstreamer1-plugins-base libnotify-devel
+                python3-pip make gcc gtk3-devel gstreamer1-libav python3-gstreamer1 libglib2-devel epel-release python-is-python3 bison autoconf libtool swig pulseaudio-libs-devel libusb-devel portaudio-devel alsa-lib-devel freeglut freeglut-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel gtk3-devel libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel webkit2gtk3-devel libXtst-devel python3-testresources nodejs libsndfile-devel portmidi-devel liblo-devel curl
             )
             wxpython_deps=(
                 python3-devel gtk3-devel freeglut-devel webkit2gtk3-devel
                 libjpeg-turbo-devel libpng-devel libtiff-devel libSM-devel
             )
-                        ;;
+            ;;
         pacman)
             python_build_deps=(
                 base-devel zlib ncurses gdbm nss openssl readline libffi bzip2 sqlite
             )
             psychopy_basic_deps=(
-                git curl libusb portaudio alsa-lib jq
-                xcb-util-cursor libxcb libxcb-icccm libxcb-image libxcb-keysyms libxcb-render libxcb-render-util libxcb-shape libxcb-shm 
-                libxcb-util libxcb-xfixes libxcb-xinerama libxcb-xinput libxcb-xkb xkbcommon-x11
-                python sdl2 libnotify gstreamer gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gstreamer0.10-plugins
+                python-pip make gcc libgtk-3 gstreamer lib32-gstreamer python-gst libglib2 libx264 bison autoconf libtool swig libpulse libusb portaudio alsa-lib freeglut mesa mesa-libgl mesa-libgl-git gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gtk3 libjpeg-turbo libnotify sdl2 libsm libtiff webkit2gtk libxtst python-testresources nodejs libsndfile portmidi liblo curl
             )
             wxpython_deps=(
                 python libgtk-3 freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
@@ -443,9 +433,9 @@ log source "${PSYCHOPY_DIR}/bin/activate"
 
 # Upgrade pip and setuptools, and install wxPython
 echo
-echo "$(date "+%Y-%m-%d %H:%M:%S") - Upgrading pip, distro, six, and psychtoolbox ..."
+echo "$(date "+%Y-%m-%d %H:%M:%S") - Upgrading pip, distro, six, psychtoolbox and attrdict ..."
 log pip install -U pip
-log pip install -U distro six psychtoolbox
+log pip install -U distro six psychtoolbox attrdict
 echo
 
 
