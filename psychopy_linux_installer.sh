@@ -434,6 +434,12 @@ else
     fi
 fi
 
+# Check if the specified Python version exists
+if ! command -v python"${PYTHON_VERSION%.*}" &> /dev/null
+then
+    echo "$(date "+%Y-%m-%d %H:%M:%S") - Error: python${PYTHON_VERSION%.*} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
+    exit 1
+fi
 # Create and activate virtual environment
 echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Creating virtual environment..."
