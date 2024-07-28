@@ -84,7 +84,22 @@ jobs:
             exit 1
           fi
 
+      - name: Check if Python file already exists
+        id: check-python-file
+        run: |
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          OS_VERSION="${{ matrix.os }}"
+          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_${PYTHON_VERSION}_${OS_VERSION}.tar.gz"
+          if curl -f -X GET "${NEXTCLOUD_URL}" --output /dev/null; then
+            echo "Python file exists."
+            echo "::set-output name=exists::true"
+          else
+            echo "Python file does not exist."
+            echo "::set-output name=exists::false"
+          fi
+
       - name: Download and install Python
+        if: steps.check-python-file.outputs.exists == 'false'
         run: |
           cd /tmp_dir
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -96,17 +111,31 @@ jobs:
           sudo make altinstall
 
       - name: Create tarball of Python build
-        run: |
-          PYTHON_VERSION="${{ matrix.python_version }}"
-          tar -czvf "/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
-
-      - name: Copy tarball to nextcloud
+        if: steps.check-python-file.outputs.exists == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           FILE_PATH="/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz"
-          curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 
+          tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
+          FILE_PATH="/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz"
+          curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+
+      - name: Check if wxPython file already exists
+        id: check-wxpython-file
+        run: |
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          OS_VERSION="${{ matrix.os }}"
+          WHEEL_NAME="wxPython-0-cp${PYTHON_VERSION%.*}${PYTHON_VERSION##*.}-cp${PYTHON_VERSION%.*}${PYTHON_VERSION##*.}-linux_x86_64-${OS_VERSION}.whl"
+          WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
+          if curl -f -X GET "$WX_PYTHON_NEXTCLOUD_URL" --output /dev/null; then
+            echo "wxPython file exists."
+            echo "::set-output name=exists::true"
+          else
+            echo "wxPython file does not exist."
+            echo "::set-output name=exists::false"
+          fi
 
       - name: Set up virtual environment and build wxPython
+        if: steps.check-wxpython-file.outputs.exists == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
@@ -128,7 +157,7 @@ jobs:
           identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
-          curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 
+          curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
       - name: clean up
         run: |
