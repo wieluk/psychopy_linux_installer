@@ -17,6 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+
       - name: Install curl
         run: |
           if command -v apt-get > /dev/null; then
@@ -34,6 +35,7 @@ jobs:
           else
             echo "Unsupported package manager"
             exit 1
+          fi
 
       - name: Check if Python and wxPython files already exist
         id: check-files
