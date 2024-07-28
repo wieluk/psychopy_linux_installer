@@ -381,7 +381,7 @@ if [ "$BUILD_PYTHON" = true ]; then
     tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
     (
         cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
-        log ./configure --enable-optimizations
+        log ./configure --enable-optimizations --with-ensurepip=install
         log make -j "$(nproc)"
         log sudo make altinstall
     )
@@ -425,7 +425,7 @@ else
             tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
             (
                 cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
-                log ./configure --enable-optimizations
+                log ./configure --enable-optimizations --with-ensurepip=install
                 log make -j "$(nproc)"
                 log sudo make altinstall
             )
