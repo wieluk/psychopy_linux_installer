@@ -42,8 +42,11 @@ jobs:
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           OS_VERSION="${{ matrix.os }}"
+          PYTHON_MAJOR="${PYTHON_VERSION%%.*}"
+          PYTHON_MINOR="${PYTHON_VERSION#*.}"
+          PYTHON_MINOR="${PYTHON_MINOR%%.*}"
           NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_${PYTHON_VERSION}_${OS_VERSION}.tar.gz"
-          WHEEL_NAME="wxPython-0-cp${PYTHON_VERSION%.*}${PYTHON_VERSION##*.}-cp${PYTHON_VERSION%.*}${PYTHON_VERSION##*.}-linux_x86_64-${OS_VERSION}.whl"
+          WHEEL_NAME="wxPython-0-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-linux_x86_64-${OS_VERSION}.whl"
           WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
 
           echo "Checking URL for Python: ${NEXTCLOUD_URL}"
