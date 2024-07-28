@@ -34,7 +34,6 @@ jobs:
           else
             echo "Unsupported package manager"
             exit 1
-          fi
 
       - name: Check if Python and wxPython files already exist
         id: check-files
@@ -44,6 +43,9 @@ jobs:
           NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_${PYTHON_VERSION}_${OS_VERSION}.tar.gz"
           WHEEL_NAME="wxPython-0-cp${PYTHON_VERSION%.*}${PYTHON_VERSION##*.}-cp${PYTHON_VERSION%.*}${PYTHON_VERSION##*.}-linux_x86_64-${OS_VERSION}.whl"
           WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
+
+          echo "Checking URL for Python: ${NEXTCLOUD_URL}"
+          echo "Checking URL for wxPython: ${WX_PYTHON_NEXTCLOUD_URL}"
           
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
@@ -58,14 +60,13 @@ jobs:
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "Both files exist. Skipping the process."
-            echo "::set-output name=skip_process::true"
+            echo "skip_process=true" >> $GITHUB_ENV
           else
             echo "One or both files do not exist. Continuing with the process."
-            echo "::set-output name=skip_process::false"
-          fi
+            echo "skip_process=false" >> $GITHUB_ENV
 
       - name: create tmp
-        if: steps.check-files.outputs.skip_process == 'false'
+        if: env.skip_process == 'false'
         run: |
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
@@ -73,7 +74,7 @@ jobs:
           sudo chown -R $USER:$USER /tmp_dir
 
       - name: Set up dependencies
-        if: steps.check-files.outputs.skip_process == 'false'
+        if: env.skip_process == 'false'
         run: |
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
@@ -110,7 +111,7 @@ jobs:
               xcb-util-cursor xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-shape xcb-util-xfixes xcb-util-xinerama xcb-util-xinput xcb-util-xkb xkbcommon-x11
               python3-pip python3-venv python3-devel
               freeglut-devel webkit2gtk3-devel libjpeg-devel libpng-devel libtiff-devel SDL2-devel libnotify-devel libSM-devel
-              gtk3-devel gtk3 libtiff-devel expat-devel libcurl-devel
+              gtk3-devel gtk3 libtiff expat-devel libcurl-devel
             )
             for pkg in "${packages[@]}"; do
               sudo dnf install -y "$pkg" || true
@@ -123,7 +124,7 @@ jobs:
               xcb-util-cursor xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-shape xcb-util-xfixes xcb-util-xinerama xcb-util-xinput xcb-util-xkb xkbcommon-x11
               python3-pip python3-venv python3-devel
               freeglut-devel webkit2gtk3-devel libjpeg-devel libpng-devel libtiff-devel SDL2-devel libnotify-devel libSM-devel
-              gtk3-devel gtk3 libtiff-devel expat-devel libcurl-devel
+              gtk3-devel gtk3 libtiff expat-devel libcurl-devel
             )
             for pkg in "${packages[@]}"; do
               sudo yum install -y "$pkg" || true
@@ -131,10 +132,9 @@ jobs:
           else
             echo "Unsupported package manager"
             exit 1
-          fi
 
       - name: Download and install Python
-        if: steps.check-files.outputs.skip_process == 'false'
+        if: env.skip_process == 'false'
         run: |
           cd /tmp_dir
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -145,8 +145,8 @@ jobs:
           make -j "$(nproc)"
           sudo make altinstall
 
-      - name: Create tarball of Python build
-        if: steps.check-files.outputs.skip_process == 'false'
+      - name: Create tarball of Python build and upload
+        if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           FILE_PATH="/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz"
@@ -154,7 +154,7 @@ jobs:
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
       - name: Set up virtual environment and build wxPython
-        if: steps.check-files.outputs.skip_process == 'false'
+        if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
@@ -179,6 +179,6 @@ jobs:
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
       - name: clean up
-        if: steps.check-files.outputs.skip_process == 'false'
+        if: env.skip_process == 'false'
         run: |
           sudo rm -r /tmp_dir
