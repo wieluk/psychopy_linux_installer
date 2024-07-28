@@ -17,7 +17,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
       - name: Install curl
         run: |
           if command -v apt-get > /dev/null; then
@@ -69,6 +68,7 @@ jobs:
           else
             echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
+          fi
 
       - name: create tmp
         if: env.skip_process == 'false'
@@ -137,6 +137,7 @@ jobs:
           else
             echo "Unsupported package manager"
             exit 1
+          fi
 
       - name: Download and install Python
         if: env.skip_process == 'false'
