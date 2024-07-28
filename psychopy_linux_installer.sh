@@ -336,15 +336,15 @@ PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
 PYTHON_VERSION_CLEAN=$(echo "${PYTHON_VERSION}" | tr -d ',;')
 
 # Check PSYCHOPY_VERSION
-if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && ( version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" || [ "$PSYCHOPY_VERSION_CLEAN" = "git" ] ) && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
-    read -r -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $OS_VERSION. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
-    if [ "$change_version" = "y" ] || [ "$change_version" = "Y" ]; then
-        PSYCHOPY_VERSION_CLEAN="2023.2.3"
-        echo "PsychoPy version changed to 2023.2.3."
-    else
-        echo "Keeping PsychoPy version $PSYCHOPY_VERSION_CLEAN."
-    fi
-fi
+# if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && ( version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" || [ "$PSYCHOPY_VERSION_CLEAN" = "git" ] ) && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
+#     read -r -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $OS_VERSION. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
+#     if [ "$change_version" = "y" ] || [ "$change_version" = "Y" ]; then
+#         PSYCHOPY_VERSION_CLEAN="2023.2.3"
+#         echo "PsychoPy version changed to 2023.2.3."
+#     else
+#         echo "Keeping PsychoPy version $PSYCHOPY_VERSION_CLEAN."
+#     fi
+# fi
 
 # Create PsychoPy directory
 PSYCHOPY_DIR="${INSTALL_DIR}/psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
