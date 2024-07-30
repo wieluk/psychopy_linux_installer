@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, centos-9, fedora-39, pop-22.04]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, fedora-39, pop-22.04]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
         psychopy_version: ['latest', 'git', '2023.2.3', '2024.1.4']
         bids_version: ['','git', '2023.2.0']
