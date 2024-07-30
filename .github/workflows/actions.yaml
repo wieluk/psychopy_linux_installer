@@ -6,7 +6,6 @@ on:
       - 'README.md'
       - 'LICENSE'
       - '.github/workflows/build_python_wxpython.yaml'
-      - 'builds/**'
 
 jobs:
   syntax-check:
