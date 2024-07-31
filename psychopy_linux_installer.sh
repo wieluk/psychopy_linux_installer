@@ -97,12 +97,15 @@ log() {
     fi
 }
 
-# Function to detect OS version
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         # Freedesktop.org and systemd
         . /etc/os-release
-        echo "$ID-$VERSION_ID"
+        if [ -n "$VERSION_ID" ]; then
+            echo "$ID-$VERSION_ID"
+        else
+            echo "$ID"
+        fi
     elif type lsb_release >/dev/null 2>&1; then
         # Linux Standard Base (LSB) support
         echo "$(lsb_release -si)-$(lsb_release -sr)"
@@ -119,6 +122,7 @@ detect_os_version() {
         echo "Unknown"
     fi
 }
+
 
 # Function to detect the package manager
 detect_package_manager() {

@@ -28,7 +28,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, fedora-39, pop-22.04]
+        os: [ubuntu-24.04 , debian-12, fedora-39, pop-22.04, rocky-9.4, manjaro]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
         psychopy_version: ['latest', 'git', '2023.2.3', '2024.1.4']
         bids_version: ['','git', '2023.2.0']
@@ -100,9 +100,9 @@ jobs:
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/psychopy_test.py 2>&1 | tee /tmp_dir/psychopy_test.log
           #set -e
           #if ! tail -n 1 /tmp_dir/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
-          #  echo "::error::PsychoPy test output verification failed"
-          #  exit 1
-          #fi
+            echo "::error::PsychoPy test output verification failed"
+            exit 1
+          fi
 
       - name: Verify BIDS installation
         if: matrix.bids_version != ''
@@ -111,17 +111,17 @@ jobs:
         run: |
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/bids_test_simple.py 2>&1 | tee /tmp_dir/output_simple.log
           set -e
-          #if ! tail -n 1 /tmp_dir/output_simple.log | grep -qE "└─participants.json"; then
-          #  echo "::error::BIDS test output verification failed"
-          #  exit 1
-          #fi
+          if ! tail -n 1 /tmp_dir/output_simple.log | grep -qE "└─participants.json"; then
+            echo "::error::BIDS test output verification failed"
+            exit 1
+          fi
 
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/bids_test_exp_handler.py 2>&1 | tee /tmp_dir/output_exp_handler.log
           set -e
-          #if ! tail -n 1 /tmp_dir/output_exp_handler.log | grep -qE "└─participants.json"; then
-          #  echo "::error::BIDS test output verification failed"
-          #  exit 1
-          #fi
+          if ! tail -n 1 /tmp_dir/output_exp_handler.log | grep -qE "└─participants.json"; then
+            echo "::error::BIDS test output verification failed"
+            exit 1
+          fi
 
       - name: Record result
         run: |
