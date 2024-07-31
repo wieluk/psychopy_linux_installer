@@ -151,7 +151,7 @@ jobs:
           make -j "$(nproc)"
           sudo make altinstall
 
-      - name: Create tarball of Python build and upload
+      - name: Create tarball of Python build and upload to nextcloud
         if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -159,7 +159,7 @@ jobs:
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
-      - name: Build wxPython in venv and upload
+      - name: Build wxPython in venv and upload to nextcloud
         if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
