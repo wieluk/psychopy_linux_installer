@@ -569,7 +569,6 @@ create_desktop_file() {
 
 
 
-
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting the installation of PsychoPy with Python $PYTHON_VERSION"
 
 OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
@@ -892,8 +891,9 @@ echo
 echo "To update your path, run:"
 echo "source $CONFIG_FILE"
 echo
-echo "To start PsychoPy, use:"
+echo "To start PsychoPy from terminal, use:"
 echo "psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
 echo
-echo "If above command is not working use:"
+echo "You can also use your desktop-icons if they are created succesfully"
+echo "If above command or desktop-icons are not working use:"
 echo "${PSYCHOPY_DIR}/bin/psychopy"

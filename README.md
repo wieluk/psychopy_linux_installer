@@ -8,7 +8,7 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Fedora 39
 - (CentOS 9)
 
-Additional distributions may be tested and supported in the future. All tests are conducted on Virtual Machines only.
+Additional distributions may be working. These are the one I tested. All tests are conducted on Virtual Machines only.
 
 **Note:**
 
@@ -64,6 +64,7 @@ Execute script; see options below for more information.
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
+- `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
 - `-h`, `--help` : Show help message.
 
 **Note:**
@@ -92,8 +93,11 @@ The script performs the following steps:
 - Installs PsychoPy.
 - Adds the current user to a `psychopy` group and sets security limits.
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
+- Creates a desktop shortcut by default. 
 
 ## Post-Installation
+
+### If you do not want to use the desktop icon or creation fails:
 
 To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
@@ -127,10 +131,6 @@ Note: All commands will be displayed with the actual versions and paths at the e
 - Assess extended PsychoPy features.
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
-
-### Additional Tasks
-
-- Add self-hosted action runners for Debian, Fedora, and CentOS.
 
 ## Links
 
