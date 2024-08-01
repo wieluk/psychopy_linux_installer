@@ -803,6 +803,8 @@ echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Adding ${USER} to a psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
 log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
+# Clear the security file before writing to it
+sudo sh -c 'echo "" > /etc/security/limits.d/99-psychopylimits.conf'
 echo -e "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" | sudo tee -a /etc/security/limits.d/99-psychopylimits.conf
 
 # Detect the shell
