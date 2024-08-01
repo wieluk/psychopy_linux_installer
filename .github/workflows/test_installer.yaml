@@ -2,6 +2,8 @@ name: Run PsychoPy Installer on Multiple OS
 
 on:
   push:
+    branches:
+      - main
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
@@ -98,8 +100,8 @@ jobs:
         continue-on-error: true
         run: |
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/psychopy_test.py 2>&1 | tee /tmp_dir/psychopy_test.log
-          #set -e
-          #if ! tail -n 1 /tmp_dir/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
+          set -e
+          if ! tail -n 1 /tmp_dir/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
             echo "::error::PsychoPy test output verification failed"
             exit 1
           fi
