@@ -565,7 +565,6 @@ create_desktop_file() {
     } > "$desktop_file"
     chmod +x "$desktop_file"
     echo "$desktop_file"
-}echo "$desktop_file"
 }
 
 
