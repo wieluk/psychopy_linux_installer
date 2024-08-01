@@ -1,5 +1,4 @@
-name: Build Python/wxPython and upload to nextcloud 
-
+name: Build Python/wxPython and upload to cloud
 on:
   push:
     branches:
