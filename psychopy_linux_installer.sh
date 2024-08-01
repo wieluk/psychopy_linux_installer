@@ -849,7 +849,6 @@ esac
 # Define paths
 DESKTOP_SHORTCUT="${HOME}/Desktop/"
 DESKTOP_DIR="${HOME}/.local/share/applications/"
-BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
 PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
 ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
 ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
