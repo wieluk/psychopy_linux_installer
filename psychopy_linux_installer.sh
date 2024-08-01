@@ -544,6 +544,27 @@ version_greater_than() {
     [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
 }
 
+# Function to create a .desktop file
+create_desktop_file() {
+    local name=$1
+    local exec_args=$2
+    local desktop_file="${DESKTOP_DIR}${name}.desktop"
+    echo "[Desktop Entry]" > $desktop_file
+    echo "Name=${name}" >> $desktop_file
+    echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN} with ${exec_args}" >> $desktop_file
+    echo "Exec=${PSYCHOPY_EXEC} ${exec_args}" >> $desktop_file
+    if [ -n "$ICON_FILE" ]; then
+    echo "Icon=${ICON_FILE}" >> $desktop_file
+    fi
+    echo "Terminal=false" >> $desktop_file
+    echo "Type=Application" >> $desktop_file
+    echo "Categories=Education;Science;" >> $desktop_file
+    chmod +x $desktop_file
+    echo $desktop_file
+}
+
+
+
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting the installation of PsychoPy with Python $PYTHON_VERSION"
 
@@ -814,11 +835,12 @@ esac
 
 # create desktop shortcut if the directory exists
 DESKTOP_DIR="${HOME}/.local/share/applications/"
+DESKTOP_SHORTCUT="${HOME}/Desktop/"
 
 if [ "$DISABLE_SHORTCUT" = false ]; then
   if [ -d "$DESKTOP_DIR" ]; then
     # Define paths
-    DESKTOP_FILE="${DESKTOP_DIR}psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}.desktop"
+    BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
     PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
     ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
     ICON_FILE="${PSYCHOPY_DIR}/psychopy.icon"
@@ -831,26 +853,24 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
 
     # Verify if the icon was downloaded
     if [ ! -f "$ICON_FILE" ]; then
-      echo "PsychoPy icon not found. Skipping icon setting."
       ICON_FILE=""
     fi
 
-    # Create the .desktop file
-    echo "[Desktop Entry]" > $DESKTOP_FILE
-    echo "Name=psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}" >> $DESKTOP_FILE
-    echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN}" >> $DESKTOP_FILE
-    echo "Exec=${PSYCHOPY_EXEC}" >> $DESKTOP_FILE
-    if [ -n "$ICON_FILE" ]; then
-      echo "Icon=${ICON_FILE}" >> $DESKTOP_FILE
+    # Create .desktop files
+    FILE_NO_ARGS=$(create_desktop_file "${BASE_NAME}" "")
+    FILE_CODER=$(create_desktop_file "${BASE_NAME}_coder" "--coder")
+    FILE_BUILDER=$(create_desktop_file "${BASE_NAME}_builder" "--builder")
+
+    # Copy the .desktop files to the desktop
+    if [ -d "$DESKTOP_SHORTCUT" ]; then
+      for file in $FILE_NO_ARGS $FILE_CODER $FILE_BUILDER; do
+        cp $file $DESKTOP_SHORTCUT
+        chmod +x "${DESKTOP_SHORTCUT}$(basename $file)"
+        echo "Desktop shortcut created at ${DESKTOP_SHORTCUT}$(basename $file)"
+      done
+    else
+      echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
     fi
-    echo "Terminal=false" >> $DESKTOP_FILE
-    echo "Type=Application" >> $DESKTOP_FILE
-    echo "Categories=Education;Science;" >> $DESKTOP_FILE
-
-    # Make the .desktop file executable
-    chmod +x $DESKTOP_FILE
-
-    echo "Desktop shortcut created at $DESKTOP_FILE"
   else
     echo "Directory $DESKTOP_DIR does not exist. Skipping desktop shortcut creation."
   fi
