@@ -259,6 +259,8 @@ install_basic_dependencies() {
                 libbz2-dev
                 libsqlite3-dev
                 python3-dev
+                libcurl4-gnutls-dev
+                libexpat1-dev
             )
 
             wxpython_deps=(
@@ -270,6 +272,10 @@ install_basic_dependencies() {
                 libpng-dev
                 libtiff-dev
                 libsm-dev
+                libcurl4-gnutls-dev
+                libgtk-3-0
+                libgtk-3-common
+                libtiff5-dev
             )
             ;;
         
@@ -370,6 +376,8 @@ install_basic_dependencies() {
                 expat-devel
                 libcurl-devel
                 gtk3
+                libjpeg-devel
+                libtiff
             )
             ;;
         
@@ -446,6 +454,7 @@ install_basic_dependencies() {
             )
             
             python_build_deps=(
+                python
                 base-devel
                 zlib
                 ncurses
@@ -456,9 +465,11 @@ install_basic_dependencies() {
                 libffi
                 bzip2
                 sqlite
+                expat
             )
 
             wxpython_deps=(
+                python
                 libgtk-3
                 freeglut
                 webkit2gtk
