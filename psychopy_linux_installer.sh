@@ -20,6 +20,7 @@ show_help() {
     echo "  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading"
     echo "  -f, --force                 Force overwrite of existing installation directory"
     echo "  -v, --verbose               Enable verbose output"
+    echo "  -d, --disable-shortcut      Disable desktop shortcut creation"
     echo "  -h, --help                  Show this help message"
 }
 
@@ -32,6 +33,7 @@ FORCE_OVERWRITE=false
 VERBOSE=false
 BUILD_PYTHON=false
 BUILD_WX=false
+DISABLE_SHORTCUT=false
 
 # Parse input arguments
 for i in "$@"; do
@@ -58,6 +60,10 @@ for i in "$@"; do
             ;;
         -v|--verbose)
             VERBOSE=true
+            shift
+            ;;
+        -d|--disable-shortcut)
+            DISABLE_SHORTCUT=true
             shift
             ;;
         -h|--help)
@@ -805,6 +811,53 @@ case $SHELL_NAME in
         exit 0
         ;;
 esac
+
+# create desktop shortcut if the directory exists
+DESKTOP_DIR="${HOME}/.local/share/applications/"
+
+if [ "$DISABLE_SHORTCUT" = false ]; then
+  if [ -d "$DESKTOP_DIR" ]; then
+    # Define paths
+    DESKTOP_FILE="${DESKTOP_DIR}psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}.desktop"
+    PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
+    ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
+    ICON_FILE="${PSYCHOPY_DIR}/psychopy.icon"
+
+    # Download the PsychoPy icon if it doesn't exist
+    if curl --output /dev/null --silent --head --fail "$ICON_URL"; then
+      echo "Downloading PsychoPy icon..."
+      curl -o $ICON_FILE $ICON_URL
+    fi
+
+    # Verify if the icon was downloaded
+    if [ ! -f "$ICON_FILE" ]; then
+      echo "PsychoPy icon not found. Skipping icon setting."
+      ICON_FILE=""
+    fi
+
+    # Create the .desktop file
+    echo "[Desktop Entry]" > $DESKTOP_FILE
+    echo "Name=psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}" >> $DESKTOP_FILE
+    echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN}" >> $DESKTOP_FILE
+    echo "Exec=${PSYCHOPY_EXEC}" >> $DESKTOP_FILE
+    if [ -n "$ICON_FILE" ]; then
+      echo "Icon=${ICON_FILE}" >> $DESKTOP_FILE
+    fi
+    echo "Terminal=false" >> $DESKTOP_FILE
+    echo "Type=Application" >> $DESKTOP_FILE
+    echo "Categories=Education;Science;" >> $DESKTOP_FILE
+
+    # Make the .desktop file executable
+    chmod +x $DESKTOP_FILE
+
+    echo "Desktop shortcut created at $DESKTOP_FILE"
+  else
+    echo "Directory $DESKTOP_DIR does not exist. Skipping desktop shortcut creation."
+  fi
+else
+  echo "Desktop shortcut creation disabled by user."
+fi
+
 
 echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - PsychoPy installation complete!"
