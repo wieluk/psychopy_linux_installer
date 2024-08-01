@@ -259,6 +259,8 @@ install_basic_dependencies() {
                 libbz2-dev
                 libsqlite3-dev
                 python3-dev
+                libcurl4-gnutls-dev
+                libexpat1-dev
             )
 
             wxpython_deps=(
@@ -270,6 +272,10 @@ install_basic_dependencies() {
                 libpng-dev
                 libtiff-dev
                 libsm-dev
+                libcurl4-gnutls-dev
+                libgtk-3-0
+                libgtk-3-common
+                libtiff5-dev
             )
             ;;
         
@@ -370,6 +376,8 @@ install_basic_dependencies() {
                 expat-devel
                 libcurl-devel
                 gtk3
+                libjpeg-devel
+                libtiff
             )
             ;;
         
@@ -446,6 +454,7 @@ install_basic_dependencies() {
             )
             
             python_build_deps=(
+                python
                 base-devel
                 zlib
                 ncurses
@@ -456,9 +465,11 @@ install_basic_dependencies() {
                 libffi
                 bzip2
                 sqlite
+                expat
             )
 
             wxpython_deps=(
+                python
                 libgtk-3
                 freeglut
                 webkit2gtk
@@ -635,32 +646,31 @@ fi
 cd "${PSYCHOPY_DIR}" || exit
 
 
-if [ "$BUILD_PYTHON" = true ]; then
+
+if python"${PYTHON_VERSION%.*}" --version 2>&1 | grep -q "${PYTHON_VERSION}"; then
     echo
-    echo "$(date "+%Y-%m-%d %H:%M:%S") - Building Python ${PYTHON_VERSION} from source ..."
-    install_basic_dependencies "$pkg_manager" python_build_deps
-
-    OFFICIAL_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
-    TEMP_FILE="Python-${PYTHON_VERSION}.tgz"
-    TEMP_DIR="Python-${PYTHON_VERSION}_temp"
-
-    log curl -O "${OFFICIAL_URL}"
-    mkdir -p "${TEMP_DIR}"
-    tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
-    (
-        cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
-        log ./configure --enable-optimizations --with-ensurepip=install
-        log make -j "$(nproc)"
-        log sudo make altinstall
-    )
-    log sudo rm -rf "${TEMP_DIR}" "${TEMP_FILE}"
+    echo "$(date "+%Y-%m-%d %H:%M:%S") - Python version ${PYTHON_VERSION} is already installed."
 else
-    # Check if the specified Python version is already installed
-    if python"${PYTHON_VERSION%.*}" --version 2>&1 | grep -q "${PYTHON_VERSION}"; then
+    if [ "$BUILD_PYTHON" = true ]; then
         echo
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Python version ${PYTHON_VERSION} is already installed."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Building Python ${PYTHON_VERSION} from source ..."
+        install_basic_dependencies "$pkg_manager" python_build_deps
+
+        OFFICIAL_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
+        TEMP_FILE="Python-${PYTHON_VERSION}.tgz"
+        TEMP_DIR="Python-${PYTHON_VERSION}_temp"
+
+        log curl -O "${OFFICIAL_URL}"
+        mkdir -p "${TEMP_DIR}"
+        tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
+        (
+            cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
+            log ./configure --enable-optimizations --with-ensurepip=install
+            log make -j "$(nproc)"
+            log sudo make altinstall
+        )
+        log sudo rm -rf "${TEMP_DIR}" "${TEMP_FILE}"
     else
-        # Try to download from Nextcloud first
         echo
         echo "$(date "+%Y-%m-%d %H:%M:%S") - Installing python build dependencies ..."
         log install_basic_dependencies "$pkg_manager" python_build_deps
@@ -849,7 +859,6 @@ esac
 # Define paths
 DESKTOP_SHORTCUT="${HOME}/Desktop/"
 DESKTOP_DIR="${HOME}/.local/share/applications/"
-BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
 PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
 ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
 ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
