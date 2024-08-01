@@ -871,8 +871,9 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
       for file in "$FILE_NO_ARGS" "$FILE_CODER" "$FILE_BUILDER"; do
         PRETTY_NAME=$(grep "^Name=" "$file" | cut -d'=' -f2)
         SHORTCUT="${DESKTOP_SHORTCUT}${PRETTY_NAME// /_}"
-        cp -f "$file" "$SHORTCUT.desktop"
+        mv -f "$file" "$SHORTCUT.desktop"
         chmod +x "$SHORTCUT.desktop"
+        gio set "$SHORTCUT.desktop" metadata::trusted true
         echo "Desktop shortcut created at $SHORTCUT.desktop"
       done
     else
