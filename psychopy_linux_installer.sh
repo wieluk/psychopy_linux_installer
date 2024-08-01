@@ -548,9 +548,10 @@ version_greater_than() {
 create_desktop_file() {
     local name=$1
     local exec_args=$2
+    local pretty_name=$3
     local desktop_file="${DESKTOP_DIR}${name}.desktop"
     echo "[Desktop Entry]" > $desktop_file
-    echo "Name=${name}" >> $desktop_file
+    echo "Name=${pretty_name}" >> $desktop_file
     echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN} with ${exec_args}" >> $desktop_file
     echo "Exec=${PSYCHOPY_EXEC} ${exec_args}" >> $desktop_file
     if [ -n "$ICON_FILE" ]; then
@@ -853,20 +854,23 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
 
     # Verify if the icon was downloaded
     if [ ! -f "$ICON_FILE" ]; then
+      echo "PsychoPy icon not found. Skipping icon setting."
       ICON_FILE=""
     fi
 
     # Create .desktop files
-    FILE_NO_ARGS=$(create_desktop_file "${BASE_NAME}" "")
-    FILE_CODER=$(create_desktop_file "${BASE_NAME}_coder" "--coder")
-    FILE_BUILDER=$(create_desktop_file "${BASE_NAME}_builder" "--builder")
+    FILE_NO_ARGS=$(create_desktop_file "${BASE_NAME}" "" "PsychoPy v. ${PSYCHOPY_VERSION_CLEAN} py v. ${PYTHON_VERSION_CLEAN}")
+    FILE_CODER=$(create_desktop_file "${BASE_NAME}_coder" "--coder" "PsychoPy Coder v. ${PSYCHOPY_VERSION_CLEAN} py v. ${PYTHON_VERSION_CLEAN}")
+    FILE_BUILDER=$(create_desktop_file "${BASE_NAME}_builder" "--builder" "PsychoPy Builder v. ${PSYCHOPY_VERSION_CLEAN} py v. ${PYTHON_VERSION_CLEAN}")
 
-    # Copy the .desktop files to the desktop
+    # Copy the .desktop files to the desktop with prettier names
     if [ -d "$DESKTOP_SHORTCUT" ]; then
       for file in $FILE_NO_ARGS $FILE_CODER $FILE_BUILDER; do
-        cp $file $DESKTOP_SHORTCUT
-        chmod +x "${DESKTOP_SHORTCUT}$(basename $file)"
-        echo "Desktop shortcut created at ${DESKTOP_SHORTCUT}$(basename $file)"
+        PRETTY_NAME=$(grep "^Name=" $file | cut -d'=' -f2)
+        SHORTCUT="${DESKTOP_SHORTCUT}${PRETTY_NAME}"
+        cp -f $file "$SHORTCUT"
+        chmod +x "$SHORTCUT"
+        echo "Desktop shortcut created at $SHORTCUT"
       done
     else
       echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
