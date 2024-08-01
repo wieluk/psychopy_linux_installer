@@ -2,15 +2,16 @@ name: Run PsychoPy Installer on Multiple OS
 
 on:
   push:
+    branches:
+      - main
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
       - '.github/workflows/build_python_wxpython.yaml'
-      - 'builds/**'
 
 jobs:
   syntax-check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-24.04]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,12 +27,12 @@ jobs:
 
   run-installer:
     needs: syntax-check
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, debian-11]
-        python_version: ['3.8.16', '3.9.19', '3.10.14']
-        psychopy_version: ['latest','git', '2023.2.3', '2024.1.4']
+        os: [ubuntu-24.04 , debian-12, fedora-39, pop-22.04, rocky-9.4, manjaro]
+        python_version: ['3.8.19', '3.9.19', '3.10.14']
+        psychopy_version: ['latest', 'git', '2023.2.3', '2024.1.4']
         bids_version: ['','git', '2023.2.0']
       fail-fast: false
     steps:
@@ -51,7 +52,7 @@ jobs:
       - name: Run PsychoPy Linux Installer
         id: run-installer
         run: |
-          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force"
+          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force --verbose"
           sudo $GITHUB_WORKSPACE/psychopy_linux_installer.sh $ARGS | tee /tmp_dir/psychopy_install_output.log
         shell: bash
 
@@ -99,11 +100,11 @@ jobs:
         continue-on-error: true
         run: |
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/psychopy_test.py 2>&1 | tee /tmp_dir/psychopy_test.log
-          #set -e
-          #if ! tail -n 1 /tmp_dir/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
-          #  echo "::error::PsychoPy test output verification failed"
-          #  exit 1
-          #fi
+          set -e
+          if ! tail -n 1 /tmp_dir/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
+            echo "::error::PsychoPy test output verification failed"
+            exit 1
+          fi
 
       - name: Verify BIDS installation
         if: matrix.bids_version != ''
@@ -112,33 +113,62 @@ jobs:
         run: |
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/bids_test_simple.py 2>&1 | tee /tmp_dir/output_simple.log
           set -e
-          #if ! tail -n 1 /tmp_dir/output_simple.log | grep -qE "└─participants.json"; then
-          #  echo "::error::BIDS test output verification failed"
-          #  exit 1
-          #fi
+          if ! tail -n 1 /tmp_dir/output_simple.log | grep -qE "└─participants.json"; then
+            echo "::error::BIDS test output verification failed"
+            exit 1
+          fi
 
           ${{ env.PYTHON_VENV }} $GITHUB_WORKSPACE/.github/workflows/bids_test_exp_handler.py 2>&1 | tee /tmp_dir/output_exp_handler.log
           set -e
-          #if ! tail -n 1 /tmp_dir/output_exp_handler.log | grep -qE "└─participants.json"; then
-          #  echo "::error::BIDS test output verification failed"
-          #  exit 1
-          #fi
+          if ! tail -n 1 /tmp_dir/output_exp_handler.log | grep -qE "└─participants.json"; then
+            echo "::error::BIDS test output verification failed"
+            exit 1
+          fi
 
+      - name: Determine versions
+        id: determine-versions
+        run: |
+          # Determine PsychoPy version
+          if [ "${{ matrix.psychopy_version }}" == "git" ]; then
+            latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+            PSYCHOPY_VERSION_CLEAN=$(echo "${latest_version}" | tr -d ',;')
+          else
+            PSYCHOPY_VERSION_CLEAN=$(echo "${{ matrix.psychopy_version }}" | tr -d ',;')
+          fi
+      
+          # Determine BIDS version from GitLab if "git"
+          if [ "${{ matrix.bids_version }}" == "git" ]; then
+            latest_bids_version=$(curl -s https://gitlab.com/api/v4/projects/psygraz%2Fpsychopy-bids/releases | jq -r '.[0].tag_name')
+            BIDS_VERSION_CLEAN=$(echo "${latest_bids_version}" | tr -d ',;')
+          else
+            BIDS_VERSION_CLEAN=$(echo "${{ matrix.bids_version }}" | tr -d ',;')
+          fi
+      
+          # Set environment variables and outputs
+          echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
+          echo "BIDS_VERSION_CLEAN=$BIDS_VERSION_CLEAN" >> $GITHUB_ENV
+          echo "::set-output name=psychopy_version_clean::$PSYCHOPY_VERSION_CLEAN"
+          echo "::set-output name=bids_version_clean::$BIDS_VERSION_CLEAN"
+        
       - name: Record result
         run: |
           STATUS="❌"
           if [[ "${{ steps.run-installer.outcome }}" == "success" && "${{ steps.extract-command.outcome }}" == "success" && "${{ steps.verify-help.outcome }}" == "success" && "${{ steps.verify-version.outcome }}" == "success" && "${{ steps.psychopy-test.outcome }}" == "success" && ( -z "${{ matrix.bids_version }}" || "${{ steps.verify-bids.outcome }}" == "success" ) ]]; then
             STATUS="✅"
           fi
-          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}.md"
-          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | ${{ matrix.psychopy_version }} | ${{ matrix.bids_version }} | $STATUS |" >> $RESULT_FILE
+      
+          PSYCHOPY_VERSION_CLEAN=${{ steps.determine-versions.outputs.psychopy_version_clean }}
+          BIDS_VERSION_CLEAN=${{ steps.determine-versions.outputs.bids_version_clean }}
+      
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${PSYCHOPY_VERSION_CLEAN}-${BIDS_VERSION_CLEAN}.md"
+          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $PSYCHOPY_VERSION_CLEAN | $BIDS_VERSION_CLEAN | $STATUS |" >> $RESULT_FILE
           cat $RESULT_FILE
-
+      
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ matrix.psychopy_version }}-${{ matrix.bids_version }}.md
+          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ steps.determine-versions.outputs.psychopy_version_clean }}-${{ steps.determine-versions.outputs.bids_version_clean }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ steps.determine-versions.outputs.psychopy_version_clean }}-${{ steps.determine-versions.outputs.bids_version_clean }}.md
 
       - name: remove tmp
         run: |
@@ -146,7 +176,7 @@ jobs:
 
   update-readme:
     needs: run-installer
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, ubuntu-24.04]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

@@ -1,23 +1,79 @@
-name: Build Python and wxPython
+name: Build Python/wxPython and upload to nextcloud 
 
 on:
   push:
+    branches:
+      - main
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, debian-11, centos-9, fedora-39]
-        python_version: ['3.8.16']
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04 , debian-12, debian-11, centos-9, fedora-39, pop-22.04, rocky-9.4, manjaro]
+        python_version: ['3.8.19', '3.9.19', '3.10.14']
       fail-fast: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install curl
+        run: |
+          if command -v apt-get > /dev/null; then
+            sudo apt-get update || true
+            sudo apt-get install -y curl
+          elif command -v pacman > /dev/null; then
+            sudo pacman -Syu --noconfirm
+            sudo pacman -S --noconfirm curl
+          elif command -v dnf > /dev/null; then
+            sudo dnf check-update || true
+            sudo dnf install -y curl
+          elif command -v yum > /dev/null; then
+            sudo yum check-update || true
+            sudo yum install -y curl
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+      - name: Check if Python and wxPython files already exist
+        id: check-files
+        run: |
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          OS_VERSION="${{ matrix.os }}"
+          PYTHON_MAJOR="${PYTHON_VERSION%%.*}"
+          PYTHON_MINOR="${PYTHON_VERSION#*.}"
+          PYTHON_MINOR="${PYTHON_MINOR%%.*}"
+          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_${PYTHON_VERSION}_${OS_VERSION}.tar.gz"
+          WHEEL_NAME="wxPython-0-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-linux_x86_64-${OS_VERSION}.whl"
+          WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
+
+          echo "Checking URL for Python: ${NEXTCLOUD_URL}"
+          echo "Checking URL for wxPython: ${WX_PYTHON_NEXTCLOUD_URL}"
+          
+          PYTHON_EXISTS=false
+          WXPYTHON_EXISTS=false
+
+          if curl -f -X GET "${NEXTCLOUD_URL}" --output /dev/null; then
+            PYTHON_EXISTS=true
+          fi
+
+          if curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
+            WXPYTHON_EXISTS=true
+          fi
+
+          if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
+            echo "Both files exist. Skipping the process."
+            echo "skip_process=true" >> $GITHUB_ENV
+          else
+            echo "One or both files do not exist. Continuing with the process."
+            echo "skip_process=false" >> $GITHUB_ENV
+          fi
+
       - name: create tmp
+        if: env.skip_process == 'false'
         run: |
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
@@ -25,6 +81,7 @@ jobs:
           sudo chown -R $USER:$USER /tmp_dir
 
       - name: Set up dependencies
+        if: env.skip_process == 'false'
         run: |
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
@@ -61,7 +118,7 @@ jobs:
               xcb-util-cursor xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-shape xcb-util-xfixes xcb-util-xinerama xcb-util-xinput xcb-util-xkb xkbcommon-x11
               python3-pip python3-venv python3-devel
               freeglut-devel webkit2gtk3-devel libjpeg-devel libpng-devel libtiff-devel SDL2-devel libnotify-devel libSM-devel
-              gtk3-devel gtk3 libtiff-devel expat-devel libcurl-devel
+              gtk3-devel gtk3 libtiff expat-devel libcurl-devel
             )
             for pkg in "${packages[@]}"; do
               sudo dnf install -y "$pkg" || true
@@ -74,7 +131,7 @@ jobs:
               xcb-util-cursor xcb-util xcb-util-wm xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-shape xcb-util-xfixes xcb-util-xinerama xcb-util-xinput xcb-util-xkb xkbcommon-x11
               python3-pip python3-venv python3-devel
               freeglut-devel webkit2gtk3-devel libjpeg-devel libpng-devel libtiff-devel SDL2-devel libnotify-devel libSM-devel
-              gtk3-devel gtk3 libtiff-devel expat-devel libcurl-devel
+              gtk3-devel gtk3 libtiff expat-devel libcurl-devel
             )
             for pkg in "${packages[@]}"; do
               sudo yum install -y "$pkg" || true
@@ -85,6 +142,7 @@ jobs:
           fi
 
       - name: Download and install Python
+        if: env.skip_process == 'false'
         run: |
           cd /tmp_dir
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -95,18 +153,16 @@ jobs:
           make -j "$(nproc)"
           sudo make altinstall
 
-      - name: Create tarball of Python build
-        run: |
-          PYTHON_VERSION="${{ matrix.python_version }}"
-          tar -czvf "/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
-
-      - name: Copy tarball to nextcloud
+      - name: Create tarball of Python build and upload to nextcloud
+        if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           FILE_PATH="/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz"
-          curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 
+          tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
+          curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
-      - name: Set up virtual environment and build wxPython
+      - name: Build wxPython in venv and upload to nextcloud
+        if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
@@ -125,11 +181,12 @@ jobs:
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
           wheel_file=$(ls wxPython-*.whl)
-          identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}-${PYTHON_VERSION}.whl"
+          identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
-          curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/" 
+          curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
       - name: clean up
+        if: env.skip_process == 'false'
         run: |
           sudo rm -r /tmp_dir

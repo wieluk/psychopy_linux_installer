@@ -20,6 +20,7 @@ show_help() {
     echo "  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading"
     echo "  -f, --force                 Force overwrite of existing installation directory"
     echo "  -v, --verbose               Enable verbose output"
+    echo "  -d, --disable-shortcut      Disable desktop shortcut creation"
     echo "  -h, --help                  Show this help message"
 }
 
@@ -32,6 +33,7 @@ FORCE_OVERWRITE=false
 VERBOSE=false
 BUILD_PYTHON=false
 BUILD_WX=false
+DISABLE_SHORTCUT=false
 
 # Parse input arguments
 for i in "$@"; do
@@ -58,6 +60,10 @@ for i in "$@"; do
             ;;
         -v|--verbose)
             VERBOSE=true
+            shift
+            ;;
+        -d|--disable-shortcut)
+            DISABLE_SHORTCUT=true
             shift
             ;;
         -h|--help)
@@ -97,12 +103,15 @@ log() {
     fi
 }
 
-# Function to detect OS version
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         # Freedesktop.org and systemd
         . /etc/os-release
-        echo "$ID-$VERSION_ID"
+        if [ -n "$VERSION_ID" ]; then
+            echo "$ID-$VERSION_ID"
+        else
+            echo "$ID"
+        fi
     elif type lsb_release >/dev/null 2>&1; then
         # Linux Standard Base (LSB) support
         echo "$(lsb_release -si)-$(lsb_release -sr)"
@@ -119,6 +128,7 @@ detect_os_version() {
         echo "Unknown"
     fi
 }
+
 
 # Function to detect the package manager
 detect_package_manager() {
@@ -181,43 +191,281 @@ install_basic_dependencies() {
     
     case $pkg_manager in
         apt)
-            python_build_deps=(
-                build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev
-                libffi-dev libbz2-dev libsqlite3-dev
-            )
             psychopy_basic_deps=(
-                git curl jq python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 python3-gst-1.0 libglib2.0-dev
-                ubuntu-restricted-extras python-dev-is-python3 bison autoconf libtool-bin swig libpulse-dev
-                libusb-1.0-0-dev portaudio19-dev libasound2-dev freeglut3 freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev
-                libgstreamer-plugins-base1.0-dev libgtk-3-dev libjpeg-dev libnotify-dev libsdl2-dev libsm-dev
-                libtiff-dev libwebkit2gtk-4.0-dev libxtst-dev python3-testresources nodejs libsndfile1-dev libportmidi-dev liblo-dev curl
+                git
+                curl
+                jq
+                python3-pip
+                make
+                gcc
+                libgtk-3-dev
+                libgstreamer-gl1.0-0
+                python3-gst-1.0
+                libglib2.0-dev
+                python-dev-is-python3
+                bison
+                autoconf
+                libtool-bin
+                swig
+                libpulse-dev
+                libusb-1.0-0-dev
+                portaudio19-dev
+                libasound2-dev
+                freeglut3
+                freeglut3-dev
+                libgl1-mesa-dev
+                libglu1-mesa-dev
+                libgstreamer-plugins-base1.0-dev
+                libjpeg-dev
+                libnotify-dev
+                libsdl2-dev
+                libsm-dev
+                libtiff-dev
+                libwebkit2gtk-4.0-dev
+                libxtst-dev
+                python3-testresources
+                nodejs
+                libsndfile1-dev
+                libportmidi-dev
+                liblo-dev
+                curl
+                libxcb-cursor0
+                libxcb1
+                libxcb-icccm4
+                libxcb-image0
+                libxcb-keysyms1
+                libxcb-render-util0
+                libxcb-render0
+                libxcb-shape0
+                libxcb-shm0
+                libxcb-util1
+                libxcb-xfixes0
+                libxcb-xinerama0
+                libxcb-xinput0
+                libxcb-xkb1
+                libxkbcommon-x11-0
+                python3-venv
             )
+            
+            python_build_deps=(
+                build-essential
+                zlib1g-dev
+                libncurses5-dev
+                libgdbm-dev
+                libnss3-dev
+                libssl-dev
+                libreadline-dev
+                libffi-dev
+                libbz2-dev
+                libsqlite3-dev
+                python3-dev
+            )
+
             wxpython_deps=(
-                python3-dev libgtk-3-dev freeglut3-dev libwebkit2gtk-4.0-dev
-                libjpeg-dev libpng-dev libtiff-dev libsm-dev
+                python3-dev
+                libgtk-3-dev
+                freeglut3-dev
+                libwebkit2gtk-4.0-dev
+                libjpeg-dev
+                libpng-dev
+                libtiff-dev
+                libsm-dev
             )
             ;;
+        
         yum|dnf)
-            python_build_deps=(
-                gcc-c++ gcc zlib-devel ncurses-devel gdbm-devel nss-devel openssl-devel readline-devel libffi-devel bzip2-devel sqlite-devel
-            )
             psychopy_basic_deps=(
-                git curl jq python3-pip make gcc gtk3-devel gstreamer1-libav python3-gstreamer1 libglib2-devel epel-release python-is-python3 bison autoconf libtool swig pulseaudio-libs-devel libusb-devel portaudio-devel alsa-lib-devel freeglut freeglut-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel gtk3-devel libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel webkit2gtk3-devel libXtst-devel python3-testresources nodejs libsndfile-devel portmidi-devel liblo-devel curl
+                git
+                curl
+                jq
+                python3-pip
+                make
+                gcc
+                gtk3-devel
+                gstreamer1-libav
+                python3-gstreamer1
+                libglib2-devel
+                epel-release
+                python-is-python3
+                bison
+                autoconf
+                libtool
+                swig
+                pulseaudio-libs-devel
+                libusb-devel
+                portaudio-devel
+                alsa-lib-devel
+                freeglut
+                freeglut-devel
+                mesa-libGL-devel
+                mesa-libGLU-devel
+                gstreamer1-plugins-base-devel
+                libjpeg-turbo-devel
+                libnotify-devel
+                SDL2-devel
+                libSM-devel
+                libtiff-devel
+                webkit2gtk3-devel
+                libXtst-devel
+                python3-testresources
+                nodejs
+                libsndfile-devel
+                portmidi-devel
+                liblo-devel
+                curl
+                xcb-util-cursor
+                xcb-util
+                xcb-util-wm
+                xcb-util-image
+                xcb-util-keysyms
+                xcb-util-renderutil
+                xcb-util-shape
+                xcb-util-xfixes
+                xcb-util-xinerama
+                xcb-util-xinput
+                xcb-util-xkb
+                xkbcommon-x11
+                python3-venv
+                libxcb-xinerama-devel
+                libxcb-shm-devel
+                libxcb-devel
+                xcb-util-cursor-devel
+                libxcb-xfixes-devel
+                libxcb-render-devel
+                libxcb
+                libxcb-render-util-devel
+                libxcb-keysyms-devel
+                libxcb-image-devel
+                libxcb-shape-devel
+                libxcb-util-devel
+                libxcb-xinput-devel
+                xkbcommon-x11-devel
+                libxcb-icccm4-devel
+                libxcb-xkb-devel
+            )
+
+            python_build_deps=(
+                gcc-c++
+                gcc
+                zlib-devel
+                ncurses-devel
+                gdbm-devel
+                nss-devel
+                openssl-devel
+                readline-devel
+                libffi-devel
+                bzip2-devel
+                sqlite-devel
+                python3-devel
             )
             wxpython_deps=(
-                python3-devel gtk3-devel freeglut-devel webkit2gtk3-devel
-                libjpeg-turbo-devel libpng-devel libtiff-devel libSM-devel
+                python3-devel
+                gtk3-devel
+                freeglut-devel
+                webkit2gtk3-devel
+                libjpeg-turbo-devel
+                libpng-devel
+                libtiff-devel
+                libSM-devel
+                expat-devel
+                libcurl-devel
+                gtk3
             )
             ;;
+        
         pacman)
-            python_build_deps=(
-                base-devel zlib ncurses gdbm nss openssl readline libffi bzip2 sqlite
-            )
             psychopy_basic_deps=(
-                git curl jq python-pip make gcc libgtk-3 gstreamer lib32-gstreamer python-gst libglib2 libx264 bison autoconf libtool swig libpulse libusb portaudio alsa-lib freeglut mesa mesa-libgl mesa-libgl-git gstreamer0.10-base gstreamer0.10-good gstreamer0.10-ugly gtk3 libjpeg-turbo libnotify sdl2 libsm libtiff webkit2gtk libxtst python-testresources nodejs libsndfile portmidi liblo curl
+                git
+                curl
+                jq
+                python-pip
+                make
+                gcc
+                libgtk-3
+                gstreamer
+                lib32-gstreamer
+                python-gst
+                libglib2
+                libx264
+                bison
+                autoconf
+                libtool
+                swig
+                libpulse
+                libusb
+                portaudio
+                alsa-lib
+                freeglut
+                mesa
+                mesa-libgl
+                mesa-libgl-git
+                gstreamer0.10-base
+                gstreamer0.10-good
+                gstreamer0.10-ugly
+                gtk3
+                libjpeg-turbo
+                libnotify
+                sdl2
+                libsm
+                libtiff
+                webkit2gtk
+                libxtst
+                python-testresources
+                nodejs
+                libsndfile
+                portmidi
+                liblo
+                curl
+                xcb-util-cursor
+                xcb-util
+                xcb-util-wm
+                xcb-util-image
+                xcb-util-keysyms
+                xcb-render
+                xcb-shape
+                xcb-shm
+                xcb-xfixes
+                xcb-xinerama
+                xcb-xinput
+                xcb-xkb
+                xkbcommon-x11
+                python-virtualenv
+                libxcb-keysyms
+                libxcb-xkb
+                libxcb-xinput
+                libxcb-xfixes
+                libxcb-render-util
+                libxcb-image
+                libxcb-shape
+                libxcb
+                libxcb-xinerama
+                libxcb-util
+                libxcb-shm
+                libxcb-render
+                libxcb-icccm
             )
+            
+            python_build_deps=(
+                base-devel
+                zlib
+                ncurses
+                gdbm
+                nss
+                openssl
+                readline
+                libffi
+                bzip2
+                sqlite
+            )
+
             wxpython_deps=(
-                python libgtk-3 freeglut webkit2gtk libjpeg-turbo libpng libtiff libsm
+                libgtk-3
+                freeglut
+                webkit2gtk
+                libjpeg-turbo
+                libpng
+                libtiff
+                libsm
             )
             ;;
     esac
@@ -296,6 +544,30 @@ version_greater_than() {
     [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
 }
 
+# Function to create a .desktop file
+create_desktop_file() {
+    local exec_args=$1
+    local pretty_name=$2
+    local desktop_file="${DESKTOP_SHORTCUT}${pretty_name}.desktop"
+    {
+    echo "[Desktop Entry]"
+    echo "Version=1.0"
+    echo "Name=${pretty_name}"
+    echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN} with ${exec_args}"
+    echo "Exec=${PSYCHOPY_EXEC} ${exec_args}"
+    if [ -n "$ICON_FILE" ]; then
+        echo "Icon=${ICON_FILE}"
+    fi
+    echo "Terminal=false"
+    echo "Type=Application"
+    echo "Categories=Education;Science;"
+    } > "$desktop_file"
+    chmod +x "$desktop_file"
+    gio set "$desktop_file" metadata::trusted true
+    echo "$desktop_file"
+}
+
+
 
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Starting the installation of PsychoPy with Python $PYTHON_VERSION"
 
@@ -321,19 +593,26 @@ elif [ "$PSYCHOPY_VERSION" != "git" ]; then
     check_pypi_for_version psychopy "${PSYCHOPY_VERSION}"
 fi
 
-PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
+if [ "$PSYCHOPY_VERSION" == "git" ]; then
+    latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    echo "The latest PsychoPy github version is: $latest_version"
+    PSYCHOPY_VERSION_CLEAN=$(echo "${latest_version}" | tr -d ',;')
+else
+    PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
+fi
+
 PYTHON_VERSION_CLEAN=$(echo "${PYTHON_VERSION}" | tr -d ',;')
 
 # Check PSYCHOPY_VERSION
-if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && ( version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" || [ "$PSYCHOPY_VERSION_CLEAN" = "git" ] ) && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
-    read -r -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $OS_VERSION. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
-    if [ "$change_version" = "y" ] || [ "$change_version" = "Y" ]; then
-        PSYCHOPY_VERSION_CLEAN="2023.2.3"
-        echo "PsychoPy version changed to 2023.2.3."
-    else
-        echo "Keeping PsychoPy version $PSYCHOPY_VERSION_CLEAN."
-    fi
-fi
+# if [ -n "$PSYCHOPY_VERSION_CLEAN" ] && ( version_greater_than "$PSYCHOPY_VERSION_CLEAN" "2023.2.3" || [ "$PSYCHOPY_VERSION_CLEAN" = "git" ] ) && { [ "$OS_VERSION" = "debian-11" ] || [ "$OS_VERSION" = "ubuntu-18.04" ]; }; then
+#     read -r -p "Your PsychoPy version ($PSYCHOPY_VERSION_CLEAN) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $OS_VERSION. Do you want to change it to the stable version 2023.2.3? (y/N): " change_version
+#     if [ "$change_version" = "y" ] || [ "$change_version" = "Y" ]; then
+#         PSYCHOPY_VERSION_CLEAN="2023.2.3"
+#         echo "PsychoPy version changed to 2023.2.3."
+#     else
+#         echo "Keeping PsychoPy version $PSYCHOPY_VERSION_CLEAN."
+#     fi
+# fi
 
 # Create PsychoPy directory
 PSYCHOPY_DIR="${INSTALL_DIR}/psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
@@ -370,7 +649,7 @@ if [ "$BUILD_PYTHON" = true ]; then
     tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
     (
         cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
-        log ./configure --enable-optimizations
+        log ./configure --enable-optimizations --with-ensurepip=install
         log make -j "$(nproc)"
         log sudo make altinstall
     )
@@ -391,7 +670,7 @@ else
         TEMP_DIR="python_${PYTHON_VERSION}_${OS_VERSION}_temp"
 
         echo
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download prebuild Python ${PYTHON_VERSION} for ${OS_VERSION} from Nextcloud..."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Trying to download prebuild Python ${PYTHON_VERSION} for ${OS_VERSION} from Nextcloud ($NEXTCLOUD_URL)..."
         if curl -f -X GET "${NEXTCLOUD_URL}" --output "${TEMP_FILE}"; then
             echo
             echo "$(date "+%Y-%m-%d %H:%M:%S") - Successfully downloaded Python ${PYTHON_VERSION} ... making a altinstall ..."
@@ -414,7 +693,7 @@ else
             tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
             (
                 cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
-                log ./configure --enable-optimizations
+                log ./configure --enable-optimizations --with-ensurepip=install
                 log make -j "$(nproc)"
                 log sudo make altinstall
             )
@@ -423,6 +702,12 @@ else
     fi
 fi
 
+# Check if the specified Python version exists
+if ! command -v python"${PYTHON_VERSION%.*}" &> /dev/null
+then
+    echo "$(date "+%Y-%m-%d %H:%M:%S") - Error: python${PYTHON_VERSION%.*} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
+    exit 1
+fi
 # Create and activate virtual environment
 echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Creating virtual environment..."
@@ -452,8 +737,9 @@ else
         install_basic_dependencies "$pkg_manager" wxpython_deps
         log pip install wxpython
     elif WHEEL_URL=$(get_latest_wheel_url); then
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Found matching wxPython wheel; downloading it from extras.wxpython.org"
         WHEEL_FILE=$(basename "$WHEEL_URL")
+        echo
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Found matching wxPython wheel; downloading it from extras.wxpython.org ($WHEEL_URL)"
         log curl -O "$WHEEL_URL"
         echo "$(date "+%Y-%m-%d %H:%M:%S") - Download successful. Installing wxPython from $WHEEL_FILE..."
         log pip install "$WHEEL_FILE"
@@ -464,13 +750,15 @@ else
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
 
-        WHEEL_NAME="wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${OS_VERSION}-${PYTHON_VERSION}.whl"
+        WHEEL_NAME="wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${OS_VERSION}.whl"
 
         WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
         WX_PYTHON_FILE="${WHEEL_NAME%-linux_x86_64*}-linux_x86_64.whl"
 
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - There is no macthing wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud..."
+        echo
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - There is no macthing wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($WX_PYTHON_NEXTCLOUD_URL)"
         if curl -f -X GET "$WX_PYTHON_NEXTCLOUD_URL" --output "$WX_PYTHON_FILE"; then
+            echo
             echo "$(date "+%Y-%m-%d %H:%M:%S") - Download successful. Installing wxPython from $WX_PYTHON_FILE..."
             log pip install "$WX_PYTHON_FILE"
             log rm "$WX_PYTHON_FILE"
@@ -515,7 +803,9 @@ echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - Adding ${USER} to a psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
 log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
-echo -e "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" | sudo tee -a /etc/security/limits.d/99-psychopylimits.conf
+# Clear the security file before writing to it
+sudo sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+
 
 # Detect the shell
 SHELL_NAME=$(basename "$SHELL")
@@ -555,15 +845,63 @@ case $SHELL_NAME in
         ;;
 esac
 
+# create desktop shortcut if the directory exists
+# Define paths
+DESKTOP_SHORTCUT="${HOME}/Desktop/"
+DESKTOP_DIR="${HOME}/.local/share/applications/"
+BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
+PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
+ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
+ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
+
+if [ "$DISABLE_SHORTCUT" = false ]; then
+  if [ -d "$DESKTOP_SHORTCUT" ]; then
+    # Download the PsychoPy icon if it doesn't exist
+    if curl --output /dev/null --silent --head --fail "$ICON_URL"; then
+      echo "Downloading PsychoPy icon..."
+      curl -o "$ICON_FILE" "$ICON_URL"
+    fi
+
+    # Verify if the icon was downloaded
+    if [ ! -f "$ICON_FILE" ]; then
+      echo "PsychoPy icon not found. Skipping icon setting."
+      ICON_FILE=""
+    fi
+
+    # Define pretty names
+    PRETTY_NAME_NO_ARGS="PsychoPy (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
+    PRETTY_NAME_CODER="PsychoPy Coder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
+    PRETTY_NAME_BUILDER="PsychoPy Builder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
+
+    # Create .desktop files on the Desktop
+    FILE_NO_ARGS=$(create_desktop_file "" "$PRETTY_NAME_NO_ARGS")
+    FILE_CODER=$(create_desktop_file "--coder" "$PRETTY_NAME_CODER")
+    FILE_BUILDER=$(create_desktop_file "--builder" "$PRETTY_NAME_BUILDER")
+
+    # Create symlinks in the applications directory
+    if [ -d "$DESKTOP_DIR" ]; then
+      ln -s "$FILE_NO_ARGS" "${DESKTOP_DIR}${PRETTY_NAME_NO_ARGS}.desktop"
+      ln -s "$FILE_CODER" "${DESKTOP_DIR}${PRETTY_NAME_CODER}.desktop"
+      ln -s "$FILE_BUILDER" "${DESKTOP_DIR}${PRETTY_NAME_BUILDER}.desktop"
+    else
+      echo "Applications directory $DESKTOP_DIR does not exist. Skipping application menu shortcut creation."
+    fi
+  else
+    echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
+  fi
+else
+  echo "Desktop shortcut creation disabled by user."
+fi
+
 echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - PsychoPy installation complete!"
-
 echo
 echo "To update your path, run:"
 echo "source $CONFIG_FILE"
 echo
-echo "To start PsychoPy, use:"
+echo "To start PsychoPy from terminal, use:"
 echo "psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
 echo
-echo "If above command is not working use:"
+echo "You can also use your desktop-icons if they are created succesfully"
+echo "If above command or desktop-icons are not working use:"
 echo "${PSYCHOPY_DIR}/bin/psychopy"

@@ -8,7 +8,7 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Fedora 39
 - (CentOS 9)
 
-Additional distributions may be tested and supported in the future. All tests are conducted on Virtual Machines only.
+Additional distributions may be working. These are the one I tested. All tests are conducted on Virtual Machines only.
 
 **Note:**
 
@@ -64,6 +64,7 @@ Execute script; see options below for more information.
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
+- `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
 - `-h`, `--help` : Show help message.
 
 **Note:**
@@ -92,8 +93,11 @@ The script performs the following steps:
 - Installs PsychoPy.
 - Adds the current user to a `psychopy` group and sets security limits.
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
+- Creates a desktop shortcut by default. 
 
 ## Post-Installation
+
+### If you do not want to use the desktop icon or creation fails:
 
 To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
 
@@ -128,10 +132,6 @@ Note: All commands will be displayed with the actual versions and paths at the e
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
 
-### Additional Tasks
-
-- Add self-hosted action runners for Debian, Fedora, and CentOS.
-
 ## Links
 
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
@@ -140,40 +140,148 @@ Note: All commands will be displayed with the actual versions and paths at the e
 ## Automatic Github Action Test Results
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-# Report generated on 2024-07-25
+# Report generated on 2024-07-30
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
+| debian-12 | 3.10.14 | 2023.2.3 |  | ❌ |
+| debian-12 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
+| debian-12 | 3.10.14 | 2023.2.3 | git | ❌ |
+| debian-12 | 3.10.14 | 2024.1.4 |  | ❌ |
+| debian-12 | 3.10.14 | 2024.1.4 | 2023.2.0 | ❌ |
+| debian-12 | 3.10.14 | 2024.1.4 | git | ❌ |
+| debian-12 | 3.10.14 | git |  | ✅ |
+| debian-12 | 3.10.14 | git | 2023.2.0 | ✅ |
+| debian-12 | 3.10.14 | git | git | ✅ |
+| debian-12 | 3.10.14 | latest |  | ✅ |
+| debian-12 | 3.10.14 | latest | 2023.2.0 | ✅ |
+| debian-12 | 3.10.14 | latest | git | ✅ |
+| debian-12 | 3.8.19 | 2023.2.3 |  | ✅ |
+| debian-12 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| debian-12 | 3.8.19 | 2023.2.3 | git | ✅ |
+| debian-12 | 3.8.19 | 2024.1.4 |  | ✅ |
+| debian-12 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| debian-12 | 3.8.19 | 2024.1.4 | git | ✅ |
+| debian-12 | 3.8.19 | git |  | ✅ |
+| debian-12 | 3.8.19 | git | 2023.2.0 | ✅ |
+| debian-12 | 3.8.19 | git | git | ✅ |
+| debian-12 | 3.8.19 | latest |  | ✅ |
+| debian-12 | 3.8.19 | latest | 2023.2.0 | ✅ |
+| debian-12 | 3.8.19 | latest | git | ✅ |
+| debian-12 | 3.9.19 | 2023.2.3 |  | ❌ |
+| debian-12 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
+| debian-12 | 3.9.19 | 2023.2.3 | git | ❌ |
+| debian-12 | 3.9.19 | 2024.1.4 |  | ❌ |
+| debian-12 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
+| debian-12 | 3.9.19 | 2024.1.4 | git | ❌ |
+| debian-12 | 3.9.19 | git |  | ✅ |
+| debian-12 | 3.9.19 | git | 2023.2.0 | ✅ |
+| debian-12 | 3.9.19 | git | git | ✅ |
+| debian-12 | 3.9.19 | latest |  | ✅ |
+| debian-12 | 3.9.19 | latest | 2023.2.0 | ✅ |
+| debian-12 | 3.9.19 | latest | git | ✅ |
+| fedora-39 | 3.10.14 | 2023.2.3 |  | ❌ |
+| fedora-39 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
+| fedora-39 | 3.10.14 | 2023.2.3 | git | ❌ |
+| fedora-39 | 3.10.14 | 2024.1.4 |  | ❌ |
+| fedora-39 | 3.10.14 | 2024.1.4 | 2023.2.0 | ❌ |
+| fedora-39 | 3.10.14 | 2024.1.4 | git | ❌ |
+| fedora-39 | 3.10.14 | git |  | ✅ |
+| fedora-39 | 3.10.14 | git | 2023.2.0 | ✅ |
+| fedora-39 | 3.10.14 | git | git | ✅ |
+| fedora-39 | 3.10.14 | latest |  | ✅ |
+| fedora-39 | 3.10.14 | latest | 2023.2.0 | ✅ |
+| fedora-39 | 3.10.14 | latest | git | ✅ |
+| fedora-39 | 3.8.19 | 2023.2.3 |  | ✅ |
+| fedora-39 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| fedora-39 | 3.8.19 | 2023.2.3 | git | ✅ |
+| fedora-39 | 3.8.19 | 2024.1.4 |  | ✅ |
+| fedora-39 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| fedora-39 | 3.8.19 | 2024.1.4 | git | ✅ |
+| fedora-39 | 3.8.19 | git |  | ✅ |
+| fedora-39 | 3.8.19 | git | 2023.2.0 | ✅ |
+| fedora-39 | 3.8.19 | git | git | ✅ |
+| fedora-39 | 3.8.19 | latest |  | ✅ |
+| fedora-39 | 3.8.19 | latest | 2023.2.0 | ✅ |
+| fedora-39 | 3.8.19 | latest | git | ✅ |
+| fedora-39 | 3.9.19 | 2023.2.3 |  | ❌ |
+| fedora-39 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
+| fedora-39 | 3.9.19 | 2023.2.3 | git | ❌ |
+| fedora-39 | 3.9.19 | 2024.1.4 |  | ❌ |
+| fedora-39 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
+| fedora-39 | 3.9.19 | 2024.1.4 | git | ❌ |
+| fedora-39 | 3.9.19 | git |  | ✅ |
+| fedora-39 | 3.9.19 | git | 2023.2.0 | ✅ |
+| fedora-39 | 3.9.19 | git | git | ✅ |
+| fedora-39 | 3.9.19 | latest |  | ✅ |
+| fedora-39 | 3.9.19 | latest | 2023.2.0 | ✅ |
+| fedora-39 | 3.9.19 | latest | git | ✅ |
+| pop-22.04 | 3.10.14 | 2023.2.3 |  | ❌ |
+| pop-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
+| pop-22.04 | 3.10.14 | 2023.2.3 | git | ❌ |
+| pop-22.04 | 3.10.14 | 2024.1.4 |  | ❌ |
+| pop-22.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ❌ |
+| pop-22.04 | 3.10.14 | 2024.1.4 | git | ❌ |
+| pop-22.04 | 3.10.14 | git |  | ✅ |
+| pop-22.04 | 3.10.14 | git | 2023.2.0 | ✅ |
+| pop-22.04 | 3.10.14 | git | git | ✅ |
+| pop-22.04 | 3.10.14 | latest |  | ✅ |
+| pop-22.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
+| pop-22.04 | 3.10.14 | latest | git | ✅ |
+| pop-22.04 | 3.8.19 | 2023.2.3 |  | ✅ |
+| pop-22.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| pop-22.04 | 3.8.19 | 2023.2.3 | git | ✅ |
+| pop-22.04 | 3.8.19 | 2024.1.4 |  | ✅ |
+| pop-22.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| pop-22.04 | 3.8.19 | 2024.1.4 | git | ✅ |
+| pop-22.04 | 3.8.19 | git |  | ✅ |
+| pop-22.04 | 3.8.19 | git | 2023.2.0 | ✅ |
+| pop-22.04 | 3.8.19 | git | git | ✅ |
+| pop-22.04 | 3.8.19 | latest |  | ✅ |
+| pop-22.04 | 3.8.19 | latest | 2023.2.0 | ✅ |
+| pop-22.04 | 3.8.19 | latest | git | ✅ |
+| pop-22.04 | 3.9.19 | 2023.2.3 |  | ❌ |
+| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
+| pop-22.04 | 3.9.19 | 2023.2.3 | git | ❌ |
+| pop-22.04 | 3.9.19 | 2024.1.4 |  | ❌ |
+| pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
+| pop-22.04 | 3.9.19 | 2024.1.4 | git | ❌ |
+| pop-22.04 | 3.9.19 | git |  | ✅ |
+| pop-22.04 | 3.9.19 | git | 2023.2.0 | ✅ |
+| pop-22.04 | 3.9.19 | git | git | ✅ |
+| pop-22.04 | 3.9.19 | latest |  | ✅ |
+| pop-22.04 | 3.9.19 | latest | 2023.2.0 | ✅ |
+| pop-22.04 | 3.9.19 | latest | git | ✅ |
 | ubuntu-20.04 | 3.10.14 | 2023.2.3 |  | ❌ |
 | ubuntu-20.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-20.04 | 3.10.14 | 2023.2.3 | git | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.3 |  | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.3 | git | ❌ |
+| ubuntu-20.04 | 3.10.14 | 2024.1.4 |  | ❌ |
+| ubuntu-20.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ❌ |
+| ubuntu-20.04 | 3.10.14 | 2024.1.4 | git | ❌ |
 | ubuntu-20.04 | 3.10.14 | git |  | ✅ |
 | ubuntu-20.04 | 3.10.14 | git | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.10.14 | git | git | ✅ |
 | ubuntu-20.04 | 3.10.14 | latest |  | ✅ |
 | ubuntu-20.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.10.14 | latest | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2023.2.3 |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2023.2.3 | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2024.1.3 |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2024.1.3 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | 2024.1.3 | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | git |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | git | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | git | git | ✅ |
-| ubuntu-20.04 | 3.8.16 | latest |  | ✅ |
-| ubuntu-20.04 | 3.8.16 | latest | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.16 | latest | git | ✅ |
+| ubuntu-20.04 | 3.8.19 | 2023.2.3 |  | ✅ |
+| ubuntu-20.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| ubuntu-20.04 | 3.8.19 | 2023.2.3 | git | ✅ |
+| ubuntu-20.04 | 3.8.19 | 2024.1.4 |  | ✅ |
+| ubuntu-20.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| ubuntu-20.04 | 3.8.19 | 2024.1.4 | git | ✅ |
+| ubuntu-20.04 | 3.8.19 | git |  | ✅ |
+| ubuntu-20.04 | 3.8.19 | git | 2023.2.0 | ✅ |
+| ubuntu-20.04 | 3.8.19 | git | git | ✅ |
+| ubuntu-20.04 | 3.8.19 | latest |  | ✅ |
+| ubuntu-20.04 | 3.8.19 | latest | 2023.2.0 | ✅ |
+| ubuntu-20.04 | 3.8.19 | latest | git | ✅ |
 | ubuntu-20.04 | 3.9.19 | 2023.2.3 |  | ❌ |
 | ubuntu-20.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-20.04 | 3.9.19 | 2023.2.3 | git | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.3 |  | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.3 | git | ❌ |
+| ubuntu-20.04 | 3.9.19 | 2024.1.4 |  | ❌ |
+| ubuntu-20.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
+| ubuntu-20.04 | 3.9.19 | 2024.1.4 | git | ❌ |
 | ubuntu-20.04 | 3.9.19 | git |  | ✅ |
 | ubuntu-20.04 | 3.9.19 | git | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.9.19 | git | git | ✅ |
@@ -183,33 +291,33 @@ Note: All commands will be displayed with the actual versions and paths at the e
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 |  | ❌ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 | git | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.3 |  | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.3 | git | ❌ |
+| ubuntu-22.04 | 3.10.14 | 2024.1.4 |  | ❌ |
+| ubuntu-22.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ❌ |
+| ubuntu-22.04 | 3.10.14 | 2024.1.4 | git | ❌ |
 | ubuntu-22.04 | 3.10.14 | git |  | ✅ |
 | ubuntu-22.04 | 3.10.14 | git | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.10.14 | git | git | ✅ |
 | ubuntu-22.04 | 3.10.14 | latest |  | ✅ |
 | ubuntu-22.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.10.14 | latest | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2023.2.3 |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2023.2.3 | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2024.1.3 |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2024.1.3 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | 2024.1.3 | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | git |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | git | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | git | git | ✅ |
-| ubuntu-22.04 | 3.8.16 | latest |  | ✅ |
-| ubuntu-22.04 | 3.8.16 | latest | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.16 | latest | git | ✅ |
+| ubuntu-22.04 | 3.8.19 | 2023.2.3 |  | ✅ |
+| ubuntu-22.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| ubuntu-22.04 | 3.8.19 | 2023.2.3 | git | ✅ |
+| ubuntu-22.04 | 3.8.19 | 2024.1.4 |  | ✅ |
+| ubuntu-22.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| ubuntu-22.04 | 3.8.19 | 2024.1.4 | git | ✅ |
+| ubuntu-22.04 | 3.8.19 | git |  | ✅ |
+| ubuntu-22.04 | 3.8.19 | git | 2023.2.0 | ✅ |
+| ubuntu-22.04 | 3.8.19 | git | git | ✅ |
+| ubuntu-22.04 | 3.8.19 | latest |  | ✅ |
+| ubuntu-22.04 | 3.8.19 | latest | 2023.2.0 | ✅ |
+| ubuntu-22.04 | 3.8.19 | latest | git | ✅ |
 | ubuntu-22.04 | 3.9.19 | 2023.2.3 |  | ❌ |
 | ubuntu-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-22.04 | 3.9.19 | 2023.2.3 | git | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.3 |  | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.3 | git | ❌ |
+| ubuntu-22.04 | 3.9.19 | 2024.1.4 |  | ❌ |
+| ubuntu-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
+| ubuntu-22.04 | 3.9.19 | 2024.1.4 | git | ❌ |
 | ubuntu-22.04 | 3.9.19 | git |  | ✅ |
 | ubuntu-22.04 | 3.9.19 | git | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.9.19 | git | git | ✅ |
@@ -219,34 +327,34 @@ Note: All commands will be displayed with the actual versions and paths at the e
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 |  | ❌ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | git | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.3 |  | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.3 | git | ❌ |
+| ubuntu-24.04 | 3.10.14 | 2024.1.4 |  | ❌ |
+| ubuntu-24.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ❌ |
+| ubuntu-24.04 | 3.10.14 | 2024.1.4 | git | ❌ |
 | ubuntu-24.04 | 3.10.14 | git |  | ✅ |
-| ubuntu-24.04 | 3.10.14 | git | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.10.14 | git | git | ✅ |
-| ubuntu-24.04 | 3.10.14 | latest |  | ✅ |
+| ubuntu-24.04 | 3.10.14 | git | 2023.2.0 | ❌ |
+| ubuntu-24.04 | 3.10.14 | git | git | ❌ |
+| ubuntu-24.04 | 3.10.14 | latest |  | ❌ |
 | ubuntu-24.04 | 3.10.14 | latest | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.10.14 | latest | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2023.2.3 |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2023.2.3 | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2024.1.3 |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2024.1.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | 2024.1.3 | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | git |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | git | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | git | git | ✅ |
-| ubuntu-24.04 | 3.8.16 | latest |  | ✅ |
-| ubuntu-24.04 | 3.8.16 | latest | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.16 | latest | git | ✅ |
+| ubuntu-24.04 | 3.10.14 | latest | git | ❌ |
+| ubuntu-24.04 | 3.8.19 | 2023.2.3 |  | ✅ |
+| ubuntu-24.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| ubuntu-24.04 | 3.8.19 | 2023.2.3 | git | ✅ |
+| ubuntu-24.04 | 3.8.19 | 2024.1.4 |  | ✅ |
+| ubuntu-24.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| ubuntu-24.04 | 3.8.19 | 2024.1.4 | git | ✅ |
+| ubuntu-24.04 | 3.8.19 | git |  | ❌ |
+| ubuntu-24.04 | 3.8.19 | git | 2023.2.0 | ✅ |
+| ubuntu-24.04 | 3.8.19 | git | git | ✅ |
+| ubuntu-24.04 | 3.8.19 | latest |  | ✅ |
+| ubuntu-24.04 | 3.8.19 | latest | 2023.2.0 | ❌ |
+| ubuntu-24.04 | 3.8.19 | latest | git | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 |  | ❌ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 | git | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.3 |  | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.3 | 2023.2.0 | ❌ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.3 | git | ❌ |
-| ubuntu-24.04 | 3.9.19 | git |  | ✅ |
+| ubuntu-24.04 | 3.9.19 | 2024.1.4 |  | ❌ |
+| ubuntu-24.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
+| ubuntu-24.04 | 3.9.19 | 2024.1.4 | git | ❌ |
+| ubuntu-24.04 | 3.9.19 | git |  | ❌ |
 | ubuntu-24.04 | 3.9.19 | git | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | git | git | ✅ |
 | ubuntu-24.04 | 3.9.19 | latest |  | ✅ |
