@@ -862,9 +862,9 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
     fi
 
     # Create .desktop files
-    FILE_NO_ARGS=$(create_desktop_file "${BASE_NAME}" "" "PsychoPy v. ${PSYCHOPY_VERSION_CLEAN} py v. ${PYTHON_VERSION_CLEAN}")
-    FILE_CODER=$(create_desktop_file "${BASE_NAME}_coder" "--coder" "PsychoPy Coder v. ${PSYCHOPY_VERSION_CLEAN} py v. ${PYTHON_VERSION_CLEAN}")
-    FILE_BUILDER=$(create_desktop_file "${BASE_NAME}_builder" "--builder" "PsychoPy Builder v. ${PSYCHOPY_VERSION_CLEAN} py v. ${PYTHON_VERSION_CLEAN}")
+    FILE_NO_ARGS=$(create_desktop_file "${BASE_NAME}" "" "PsychoPy (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})")
+    FILE_CODER=$(create_desktop_file "${BASE_NAME}_coder" "--coder" "PsychoPy Coder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})")
+    FILE_BUILDER=$(create_desktop_file "${BASE_NAME}_builder" "--builder" "PsychoPy Builder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})")
 
     # Copy the .desktop files to the desktop with prettier names
     if [ -d "$DESKTOP_SHORTCUT" ]; then
@@ -874,7 +874,6 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
         mv -f "$file" "$SHORTCUT.desktop"
         chmod +x "$SHORTCUT.desktop"
         gio set "$SHORTCUT.desktop" metadata::trusted true
-        echo "Desktop shortcut created at $SHORTCUT.desktop"
       done
     else
       echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
@@ -889,7 +888,6 @@ fi
 
 echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - PsychoPy installation complete!"
-
 echo
 echo "To update your path, run:"
 echo "source $CONFIG_FILE"
