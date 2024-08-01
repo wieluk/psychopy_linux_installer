@@ -27,7 +27,7 @@ jobs:
 
   run-installer:
     needs: syntax-check
-    runs-on: ${{ matrix.os }}
+    runs-on: [self-hosted, ${{ matrix.os }}]
     strategy:
       matrix:
         os: [ubuntu-24.04 , debian-12, fedora-39, pop-22.04, rocky-9.4, manjaro]

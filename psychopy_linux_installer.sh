@@ -546,10 +546,9 @@ version_greater_than() {
 
 # Function to create a .desktop file
 create_desktop_file() {
-    local name=$1
-    local exec_args=$2
-    local pretty_name=$3
-    local desktop_file="${DESKTOP_DIR}${name}.desktop"
+    local exec_args=$1
+    local pretty_name=$2
+    local desktop_file="${DESKTOP_DIR}${pretty_name}.desktop"
     {
     echo "[Desktop Entry]"
     echo "Version=1.0"
@@ -564,6 +563,7 @@ create_desktop_file() {
     echo "Categories=Education;Science;"
     } > "$desktop_file"
     chmod +x "$desktop_file"
+    gio set "$desktop_file" metadata::trusted true
     echo "$desktop_file"
 }
 
@@ -804,8 +804,8 @@ echo "$(date "+%Y-%m-%d %H:%M:%S") - Adding ${USER} to a psychopy group and sett
 log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
 # Clear the security file before writing to it
-sudo sh -c 'echo "" > /etc/security/limits.d/99-psychopylimits.conf'
-echo -e "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" | sudo tee -a /etc/security/limits.d/99-psychopylimits.conf
+sudo sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+
 
 # Detect the shell
 SHELL_NAME=$(basename "$SHELL")
@@ -848,15 +848,13 @@ esac
 # create desktop shortcut if the directory exists
 DESKTOP_DIR="${HOME}/.local/share/applications/"
 DESKTOP_SHORTCUT="${HOME}/Desktop/"
+BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
+PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
+ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
+ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
 
 if [ "$DISABLE_SHORTCUT" = false ]; then
   if [ -d "$DESKTOP_DIR" ]; then
-    # Define paths
-    BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
-    PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
-    ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
-    ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
-
     # Download the PsychoPy icon if it doesn't exist
     if curl --output /dev/null --silent --head --fail "$ICON_URL"; then
       echo "Downloading PsychoPy icon..."
@@ -869,22 +867,21 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
       ICON_FILE=""
     fi
 
-    # Create .desktop files
-    FILE_NO_ARGS=$(create_desktop_file "${BASE_NAME}" "" "PsychoPy (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})")
-    FILE_CODER=$(create_desktop_file "${BASE_NAME}_coder" "--coder" "PsychoPy Coder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})")
-    FILE_BUILDER=$(create_desktop_file "${BASE_NAME}_builder" "--builder" "PsychoPy Builder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})")
+    # Define pretty names
+    PRETTY_NAME_NO_ARGS="PsychoPy (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
+    PRETTY_NAME_CODER="PsychoPy Coder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
+    PRETTY_NAME_BUILDER="PsychoPy Builder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
 
-    # Copy the .desktop files to the desktop with prettier names
+    # Create .desktop files only in the applications directory
+    FILE_NO_ARGS=$(create_desktop_file "" "$PRETTY_NAME_NO_ARGS")
+    FILE_CODER=$(create_desktop_file "--coder" "$PRETTY_NAME_CODER")
+    FILE_BUILDER=$(create_desktop_file "--builder" "$PRETTY_NAME_BUILDER")
+
+    # Create symlinks on the Desktop
     if [ -d "$DESKTOP_SHORTCUT" ]; then
-      for file in "$FILE_NO_ARGS" "$FILE_CODER" "$FILE_BUILDER"; do
-        PRETTY_NAME=$(grep "^Name=" "$file" | cut -d'=' -f2)
-        SHORTCUT="${DESKTOP_SHORTCUT}${PRETTY_NAME// /_}.desktop"
-        cp -f "$file" "$SHORTCUT"
-        chmod +x "$file"
-        gio set "$file" metadata::trusted true
-        chmod +x "$SHORTCUT"
-        gio set "$SHORTCUT" metadata::trusted true
-      done
+      ln -s "$FILE_NO_ARGS" "${DESKTOP_SHORTCUT}${PRETTY_NAME_NO_ARGS}.desktop"
+      ln -s "$FILE_CODER" "${DESKTOP_SHORTCUT}${PRETTY_NAME_CODER}.desktop"
+      ln -s "$FILE_BUILDER" "${DESKTOP_SHORTCUT}${PRETTY_NAME_BUILDER}.desktop"
     else
       echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
     fi
