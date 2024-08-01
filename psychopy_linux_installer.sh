@@ -881,7 +881,7 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
         SHORTCUT="${DESKTOP_SHORTCUT}${PRETTY_NAME// /_}.desktop"
         cp -f "$file" "$SHORTCUT"
         chmod +x "$file"
-        gio set "$file"
+        gio set "$file" metadata::trusted true
         chmod +x "$SHORTCUT"
         gio set "$SHORTCUT" metadata::trusted true
       done
