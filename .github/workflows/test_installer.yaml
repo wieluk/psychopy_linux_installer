@@ -133,13 +133,14 @@ jobs:
       - name: Determine versions
         id: determine-versions
         run: |
+          # Determine PsychoPy version
           if [ "${{ matrix.psychopy_version }}" == "git" ]; then
             latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
             PSYCHOPY_VERSION_CLEAN=$(echo "${latest_version}" | tr -d ',;')
           else
             PSYCHOPY_VERSION_CLEAN=$(echo "${{ matrix.psychopy_version }}" | tr -d ',;')
           fi
-
+      
           # Determine BIDS version from GitLab if "git"
           if [ "${{ matrix.bids_version }}" == "git" ]; then
             latest_bids_version=$(curl -s https://gitlab.com/api/v4/projects/psygraz%2Fpsychopy-bids/releases | jq -r '.[0].tag_name')
@@ -147,10 +148,12 @@ jobs:
           else
             BIDS_VERSION_CLEAN=$(echo "${{ matrix.bids_version }}" | tr -d ',;')
           fi
-
-          # Set environment variables and outputs
+      
+          # Set environment variables and outputs using new method
           echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
           echo "BIDS_VERSION_CLEAN=$BIDS_VERSION_CLEAN" >> $GITHUB_ENV
+          echo "PSYCHOPY_VERSION_CLEAN=${PSYCHOPY_VERSION_CLEAN}" >> $GITHUB_ENV
+          echo "BIDS_VERSION_CLEAN=${BIDS_VERSION_CLEAN}" >> $GITHUB_ENV
         
       - name: Record result
         run: |
@@ -159,8 +162,8 @@ jobs:
             STATUS="✅"
           fi
       
-          PSYCHOPY_VERSION_CLEAN=${{ steps.determine-versions.outputs.psychopy_version_clean }}
-          BIDS_VERSION_CLEAN=${{ steps.determine-versions.outputs.bids_version_clean }}
+          PSYCHOPY_VERSION_CLEAN=${{ env.PSYCHOPY_VERSION_CLEAN }}
+          BIDS_VERSION_CLEAN=${{ env.BIDS_VERSION_CLEAN }}
       
           RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${PSYCHOPY_VERSION_CLEAN}-${BIDS_VERSION_CLEAN}.md"
           echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $PSYCHOPY_VERSION_CLEAN | $BIDS_VERSION_CLEAN | $STATUS |" >> $RESULT_FILE
@@ -169,9 +172,9 @@ jobs:
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ steps.determine-versions.outputs.psychopy_version_clean }}-${{ steps.determine-versions.outputs.bids_version_clean }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ steps.determine-versions.outputs.psychopy_version_clean }}-${{ steps.determine-versions.outputs.bids_version_clean }}.md
-
+          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}-${{ env.BIDS_VERSION_CLEAN }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}-${{ env.BIDS_VERSION_CLEAN }}.md
+      
       - name: remove tmp
         run: |
           sudo rm -r /tmp_dir
