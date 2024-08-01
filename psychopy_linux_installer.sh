@@ -17,7 +17,7 @@ show_help() {
     echo "  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use git for latest github version"
     echo "  --install_dir=DIR           Specify the installation directory (default: \"$HOME\")"
     echo "  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install; skip if not set"
-    echo "  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading"
+    echo "  --build=[none|python|wxpython|both] Build Python and/or wxPython from source instead of downloading. Default is python."
     echo "  -f, --force                 Force overwrite of existing installation directory"
     echo "  -v, --verbose               Enable verbose output"
     echo "  -d, --disable-shortcut      Disable desktop shortcut creation"
@@ -31,7 +31,7 @@ INSTALL_DIR="$HOME"
 BIDS_VERSION=""
 FORCE_OVERWRITE=false
 VERBOSE=false
-BUILD_PYTHON=false
+BUILD_PYTHON=true
 BUILD_WX=false
 DISABLE_SHORTCUT=false
 
@@ -74,11 +74,16 @@ for i in "$@"; do
             BUILD_ARG="${i#*=}"
             if [[ "$BUILD_ARG" == "python" ]]; then
                 BUILD_PYTHON=true
+                BUILD_WX=false
             elif [[ "$BUILD_ARG" == "wxpython" ]]; then
+                BUILD_PYTHON=false
                 BUILD_WX=true
             elif [[ "$BUILD_ARG" == "both" ]]; then
                 BUILD_PYTHON=true
                 BUILD_WX=true
+            elif [[ "$BUILD_ARG" == "none" ]]; then
+                BUILD_PYTHON=false
+                BUILD_WX=false
             else
                 echo "Invalid option for --build: $BUILD_ARG"
                 show_help
@@ -635,32 +640,31 @@ fi
 cd "${PSYCHOPY_DIR}" || exit
 
 
-if [ "$BUILD_PYTHON" = true ]; then
+
+if python"${PYTHON_VERSION%.*}" --version 2>&1 | grep -q "${PYTHON_VERSION}"; then
     echo
-    echo "$(date "+%Y-%m-%d %H:%M:%S") - Building Python ${PYTHON_VERSION} from source ..."
-    install_basic_dependencies "$pkg_manager" python_build_deps
-
-    OFFICIAL_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
-    TEMP_FILE="Python-${PYTHON_VERSION}.tgz"
-    TEMP_DIR="Python-${PYTHON_VERSION}_temp"
-
-    log curl -O "${OFFICIAL_URL}"
-    mkdir -p "${TEMP_DIR}"
-    tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
-    (
-        cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
-        log ./configure --enable-optimizations --with-ensurepip=install
-        log make -j "$(nproc)"
-        log sudo make altinstall
-    )
-    log sudo rm -rf "${TEMP_DIR}" "${TEMP_FILE}"
+    echo "$(date "+%Y-%m-%d %H:%M:%S") - Python version ${PYTHON_VERSION} is already installed."
 else
-    # Check if the specified Python version is already installed
-    if python"${PYTHON_VERSION%.*}" --version 2>&1 | grep -q "${PYTHON_VERSION}"; then
+    if [ "$BUILD_PYTHON" = true ]; then
         echo
-        echo "$(date "+%Y-%m-%d %H:%M:%S") - Python version ${PYTHON_VERSION} is already installed."
+        echo "$(date "+%Y-%m-%d %H:%M:%S") - Building Python ${PYTHON_VERSION} from source ..."
+        install_basic_dependencies "$pkg_manager" python_build_deps
+
+        OFFICIAL_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
+        TEMP_FILE="Python-${PYTHON_VERSION}.tgz"
+        TEMP_DIR="Python-${PYTHON_VERSION}_temp"
+
+        log curl -O "${OFFICIAL_URL}"
+        mkdir -p "${TEMP_DIR}"
+        tar -xf "${TEMP_FILE}" -C "${TEMP_DIR}"
+        (
+            cd "${TEMP_DIR}/Python-${PYTHON_VERSION}" || exit
+            log ./configure --enable-optimizations --with-ensurepip=install
+            log make -j "$(nproc)"
+            log sudo make altinstall
+        )
+        log sudo rm -rf "${TEMP_DIR}" "${TEMP_FILE}"
     else
-        # Try to download from Nextcloud first
         echo
         echo "$(date "+%Y-%m-%d %H:%M:%S") - Installing python build dependencies ..."
         log install_basic_dependencies "$pkg_manager" python_build_deps
