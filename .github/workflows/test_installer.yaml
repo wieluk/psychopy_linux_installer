@@ -1,4 +1,4 @@
-name: Run PsychoPy Installer on Multiple OS
+name: Run PsychoPy Installer on Multiple Linux OS
 
 on:
   push:
