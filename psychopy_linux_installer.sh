@@ -599,7 +599,7 @@ if [ "$PSYCHOPY_VERSION" == "git" ]; then
     PSYCHOPY_VERSION_CLEAN=$(echo "${latest_version}" | tr -d ',;')
 else
     PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
-
+fi
 
 PYTHON_VERSION_CLEAN=$(echo "${PYTHON_VERSION}" | tr -d ',;')
 
