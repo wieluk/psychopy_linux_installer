@@ -548,7 +548,7 @@ version_greater_than() {
 create_desktop_file() {
     local exec_args=$1
     local pretty_name=$2
-    local desktop_file="${DESKTOP_DIR}${pretty_name}.desktop"
+    local desktop_file="${DESKTOP_SHORTCUT}${pretty_name}.desktop"
     {
     echo "[Desktop Entry]"
     echo "Version=1.0"
@@ -846,15 +846,16 @@ case $SHELL_NAME in
 esac
 
 # create desktop shortcut if the directory exists
-DESKTOP_DIR="${HOME}/.local/share/applications/"
+# Define paths
 DESKTOP_SHORTCUT="${HOME}/Desktop/"
+DESKTOP_DIR="${HOME}/.local/share/applications/"
 BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
 PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
 ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
 ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
 
 if [ "$DISABLE_SHORTCUT" = false ]; then
-  if [ -d "$DESKTOP_DIR" ]; then
+  if [ -d "$DESKTOP_SHORTCUT" ]; then
     # Download the PsychoPy icon if it doesn't exist
     if curl --output /dev/null --silent --head --fail "$ICON_URL"; then
       echo "Downloading PsychoPy icon..."
@@ -872,26 +873,25 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
     PRETTY_NAME_CODER="PsychoPy Coder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
     PRETTY_NAME_BUILDER="PsychoPy Builder (v${PSYCHOPY_VERSION_CLEAN}) python(v${PYTHON_VERSION_CLEAN})"
 
-    # Create .desktop files only in the applications directory
+    # Create .desktop files on the Desktop
     FILE_NO_ARGS=$(create_desktop_file "" "$PRETTY_NAME_NO_ARGS")
     FILE_CODER=$(create_desktop_file "--coder" "$PRETTY_NAME_CODER")
     FILE_BUILDER=$(create_desktop_file "--builder" "$PRETTY_NAME_BUILDER")
 
-    # Create symlinks on the Desktop
-    if [ -d "$DESKTOP_SHORTCUT" ]; then
-      ln -s "$FILE_NO_ARGS" "${DESKTOP_SHORTCUT}${PRETTY_NAME_NO_ARGS}.desktop"
-      ln -s "$FILE_CODER" "${DESKTOP_SHORTCUT}${PRETTY_NAME_CODER}.desktop"
-      ln -s "$FILE_BUILDER" "${DESKTOP_SHORTCUT}${PRETTY_NAME_BUILDER}.desktop"
+    # Create symlinks in the applications directory
+    if [ -d "$DESKTOP_DIR" ]; then
+      ln -s "$FILE_NO_ARGS" "${DESKTOP_DIR}${PRETTY_NAME_NO_ARGS}.desktop"
+      ln -s "$FILE_CODER" "${DESKTOP_DIR}${PRETTY_NAME_CODER}.desktop"
+      ln -s "$FILE_BUILDER" "${DESKTOP_DIR}${PRETTY_NAME_BUILDER}.desktop"
     else
-      echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
+      echo "Applications directory $DESKTOP_DIR does not exist. Skipping application menu shortcut creation."
     fi
   else
-    echo "Directory $DESKTOP_DIR does not exist. Skipping desktop shortcut creation."
+    echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
   fi
 else
   echo "Desktop shortcut creation disabled by user."
 fi
-
 
 echo
 echo "$(date "+%Y-%m-%d %H:%M:%S") - PsychoPy installation complete!"
