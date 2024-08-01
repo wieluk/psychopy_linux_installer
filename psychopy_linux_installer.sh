@@ -593,7 +593,14 @@ elif [ "$PSYCHOPY_VERSION" != "git" ]; then
     check_pypi_for_version psychopy "${PSYCHOPY_VERSION}"
 fi
 
-PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
+if [ "$PSYCHOPY_VERSION" == "git" ]; then
+    latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    echo "The latest PsychoPy github version is: $latest_version"
+    PSYCHOPY_VERSION_CLEAN=$(echo "${latest_version}" | tr -d ',;')
+else
+    PSYCHOPY_VERSION_CLEAN=$(echo "${PSYCHOPY_VERSION}" | tr -d ',;')
+
+
 PYTHON_VERSION_CLEAN=$(echo "${PYTHON_VERSION}" | tr -d ',;')
 
 # Check PSYCHOPY_VERSION
