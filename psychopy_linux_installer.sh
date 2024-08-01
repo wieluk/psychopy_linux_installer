@@ -550,18 +550,22 @@ create_desktop_file() {
     local exec_args=$2
     local pretty_name=$3
     local desktop_file="${DESKTOP_DIR}${name}.desktop"
-    echo "[Desktop Entry]" > $desktop_file
-    echo "Name=${pretty_name}" >> $desktop_file
-    echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN} with ${exec_args}" >> $desktop_file
-    echo "Exec=${PSYCHOPY_EXEC} ${exec_args}" >> $desktop_file
+    {
+    echo "[Desktop Entry]"
+    echo "Version=1.0"
+    echo "Name=${pretty_name}"
+    echo "Comment=Run PsychoPy version ${PSYCHOPY_VERSION_CLEAN} with ${exec_args}"
+    echo "Exec=${PSYCHOPY_EXEC} ${exec_args}"
     if [ -n "$ICON_FILE" ]; then
-    echo "Icon=${ICON_FILE}" >> $desktop_file
+        echo "Icon=${ICON_FILE}"
     fi
-    echo "Terminal=false" >> $desktop_file
-    echo "Type=Application" >> $desktop_file
-    echo "Categories=Education;Science;" >> $desktop_file
-    chmod +x $desktop_file
-    echo $desktop_file
+    echo "Terminal=false"
+    echo "Type=Application"
+    echo "Categories=Education;Science;"
+    } > "$desktop_file"
+    chmod +x "$desktop_file"
+    echo "$desktop_file"
+}echo "$desktop_file"
 }
 
 
@@ -844,12 +848,12 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
     BASE_NAME="psychopy_${PSYCHOPY_VERSION_CLEAN}_py_${PYTHON_VERSION_CLEAN}"
     PSYCHOPY_EXEC="${PSYCHOPY_DIR}/bin/psychopy"
     ICON_URL="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
-    ICON_FILE="${PSYCHOPY_DIR}/psychopy.icon"
+    ICON_FILE="${PSYCHOPY_DIR}/psychopy.png"
 
     # Download the PsychoPy icon if it doesn't exist
     if curl --output /dev/null --silent --head --fail "$ICON_URL"; then
       echo "Downloading PsychoPy icon..."
-      curl -o $ICON_FILE $ICON_URL
+      curl -o "$ICON_FILE" "$ICON_URL"
     fi
 
     # Verify if the icon was downloaded
@@ -865,12 +869,12 @@ if [ "$DISABLE_SHORTCUT" = false ]; then
 
     # Copy the .desktop files to the desktop with prettier names
     if [ -d "$DESKTOP_SHORTCUT" ]; then
-      for file in $FILE_NO_ARGS $FILE_CODER $FILE_BUILDER; do
-        PRETTY_NAME=$(grep "^Name=" $file | cut -d'=' -f2)
-        SHORTCUT="${DESKTOP_SHORTCUT}${PRETTY_NAME}"
-        cp -f $file "$SHORTCUT"
-        chmod +x "$SHORTCUT"
-        echo "Desktop shortcut created at $SHORTCUT"
+      for file in "$FILE_NO_ARGS" "$FILE_CODER" "$FILE_BUILDER"; do
+        PRETTY_NAME=$(grep "^Name=" "$file" | cut -d'=' -f2)
+        SHORTCUT="${DESKTOP_SHORTCUT}${PRETTY_NAME// /_}"
+        cp -f "$file" "$SHORTCUT.desktop"
+        chmod +x "$SHORTCUT.desktop"
+        echo "Desktop shortcut created at $SHORTCUT.desktop"
       done
     else
       echo "Desktop directory $DESKTOP_SHORTCUT does not exist. Skipping desktop shortcut creation."
