@@ -1,0 +1,182 @@
+name: Run PsychoPy Installer on Multiple Linux OS with build option
+
+on:
+  push:
+    branches:
+      - main
+      - testing
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '.github/workflows/build_python_wxpython.yaml'
+      - '.github/workflows/test_installer.yaml'
+
+jobs:
+  syntax-check:
+    runs-on: [self-hosted, ubuntu-24.04]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Check Bash Syntax
+        run: bash -n $GITHUB_WORKSPACE/psychopy_linux_installer.sh
+
+      - name: Run ShellCheck
+        run: shellcheck -e SC1017 -e SC1091 $GITHUB_WORKSPACE/psychopy_linux_installer.sh
+
+  run-installer:
+    needs: syntax-check
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      matrix:
+        os: [ubuntu-24.04 , debian-12, fedora-39, pop-22.04, rocky-9.4]
+        python_version: ['3.8.19']
+        psychopy_version: ['latest']
+        bids_version: ['latest']
+      fail-fast: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make script executable
+        run: chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer.sh
+      
+      - name: create tmp and fix permissions
+        run: |
+          sudo rm -rf /tmp/*
+          sudo rm -rf /tmp_dir
+          sudo mkdir /tmp_dir
+          sudo chmod -R 777 /tmp_dir
+          sudo chown -R $USER:$USER /tmp_dir
+
+      - name: Run PsychoPy Linux Installer
+        id: run-installer
+        run: |
+          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force --verbose --non-interactive --build=both"
+          $GITHUB_WORKSPACE/psychopy_linux_installer.sh $ARGS | tee /tmp_dir/psychopy_install_output.log
+        shell: bash
+
+      - name: Extract PsychoPy start command
+        id: extract-command
+        continue-on-error: true
+        run: |
+          PSYCHOPY_COMMAND=$(tail -n 1 /tmp_dir/psychopy_install_output.log)
+          if [[ ! "$PSYCHOPY_COMMAND" =~ .*/psychopy_.*_py_.*/bin/psychopy$ ]]; then
+            echo "Invalid PsychoPy command format: $PSYCHOPY_COMMAND"
+            exit 1
+          fi
+          sudo chmod -R 777 ${GITHUB_WORKSPACE}
+          sudo chown -R $USER:$USER ${GITHUB_WORKSPACE}
+          PYTHON_VENV="$(dirname "$PSYCHOPY_COMMAND")/python"
+
+          echo "PYTHON_VENV command: $PYTHON_VENV"
+          echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_ENV
+          echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_OUTPUT
+          echo "PsychoPy start command: $PSYCHOPY_COMMAND"
+          echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
+          echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
+
+      - name: Verify PsychoPy installation with --help
+        id: verify-help
+        continue-on-error: true
+        run: ${{ env.PSYCHOPY_COMMAND }} -h
+        shell: bash
+
+      - name: Verify PsychoPy installation with --version
+        id: verify-version
+        continue-on-error: true
+        run: |
+          output=$(${{ env.PSYCHOPY_COMMAND }} -v 2>&1)
+          echo "$output"
+          version_line=$(echo "$output" | grep -E "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+")
+          if [ "$output" != "$version_line" ]; then
+            echo "::error::PsychoPy version check failed"
+            exit 1
+          fi
+        shell: bash
+
+      - name: copy psychopy tests to tmp
+        id: copy-tests
+        run: |
+          cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
+      
+      - name: run basic PsychoPy test
+        id: psychopy-test
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests
+          ${{ env.PYTHON_VENV }} /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
+          set -e
+          if ! tail -n 1 /tmp_dir/PsychoPy_tests/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
+            echo "::error::PsychoPy test output verification failed"
+            exit 1
+          fi
+
+      - name: Run extended PsychoPy Tests
+        id: psychopy-test-extended
+        continue-on-error: true
+        run: |
+          ${{ env.PYTHON_VENV }} /tmp_dir/PsychoPy_tests/psychopy_test_extended.py
+          set -e
+          if ! grep -qE "Visual Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
+            echo "::error::Visual Test Failed"
+            exit 1
+          fi
+          # if ! grep -qE "Audio Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
+          #   echo "::error::Audio Test Failed"
+          #   exit 1
+          # fi
+          if ! grep -qE "Keyboard Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
+            echo "::error::Keyboard Test Failed"
+            exit 1
+          fi
+          if ! grep -qE "Image Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
+            echo "::error::Image Test Failed"
+            exit 1
+          fi
+          if ! grep -qE "Timing Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
+            echo "::error::Timing Test Failed"
+            exit 1
+          fi
+          echo "All tests passed successfully."
+
+      - name: Verify BIDS installation simple
+        if: matrix.bids_version != ''
+        id: verify-bids
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          set +e
+          ${{ env.PYTHON_VENV }} /tmp_dir/PsychoPy_tests/BIDS/bids_test_simple.py 2>&1 | tee /tmp_dir/PsychoPy_tests/BIDS/output_simple.log
+          exit_status=$?
+          set -e
+          if [ $exit_status -ne 0 ]; then
+            echo "::error::BIDS simple test execution failed"
+            exit 1
+          fi
+      
+      - name: Verify BIDS installation exp_handler
+        if: matrix.bids_version != ''
+        id: verify-bids-handler
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          set +e
+          ${{ env.PYTHON_VENV }} /tmp_dir/PsychoPy_tests/BIDS/bids_test_exp_handler.py 2>&1 | tee /tmp_dir/PsychoPy_tests/BIDS/output_exp_handler.log
+          exit_status=$?
+          set -e
+          if [ $exit_status -ne 0 ]; then
+            echo "::error::BIDS exp_handler test execution failed"
+            exit 1
+          fi
+
+      - name: cleanup paths
+        run: |
+          sudo rm -rf /tmp/*
+          sudo rm -rf /tmp_dir
+          sudo rm -rf ~/Desktop/*
+          sudo rm -rf ~/.local/share/applications/*
+          sudo rm -rf ~/.cache
