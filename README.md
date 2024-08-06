@@ -141,7 +141,7 @@ Note: All commands will be displayed with the actual versions and paths at the e
 ## Automatic Github Action Test Results
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-# Report generated on 2024-08-05
+# Report generated on 2024-08-06
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
