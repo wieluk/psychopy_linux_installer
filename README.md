@@ -60,12 +60,12 @@ Execute script; see options below for more information.
 - `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.16`).
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.4`); use `latest` for latest pypi version; use `git` for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
-- `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install; skip if not set
+- `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
+- `--non-interactive` : Automatically answer `y` to all prompts"
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
 - `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
-- `--non-interactive` : Automatically answer `y` to all prompts"
 - `-h`, `--help` : Show help message.
 
 **Note:**
@@ -74,7 +74,7 @@ The default version for `--psychopy_version` is no longer set to the latest vers
 ## Examples
 
 - `./psychopy_linux_installer.sh` (all default)
-- `./psychopy_linux_installer.sh --psychopy_version=2024.1.3 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
+- `./psychopy_linux_installer.sh --psychopy_version=2024.1.4 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
 
 ## Script Details
 

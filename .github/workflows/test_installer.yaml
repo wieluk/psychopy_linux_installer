@@ -35,7 +35,7 @@ jobs:
         os: [ubuntu-24.04 , debian-12, fedora-39, pop-22.04, rocky-9.4]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
         psychopy_version: ['latest', 'git', '2023.2.3', '2024.1.4']
-        bids_version: ['', 'latest']
+        bids_version: ['None', 'latest']
       fail-fast: false
     steps:
       - name: Checkout repository
@@ -144,7 +144,7 @@ jobs:
           echo "All tests passed successfully."
 
       - name: Verify BIDS installation simple
-        if: matrix.bids_version != ''
+        if: matrix.bids_version != 'None'
         id: verify-bids
         continue-on-error: true
         run: |
@@ -159,7 +159,7 @@ jobs:
           fi
       
       - name: Verify BIDS installation exp_handler
-        if: matrix.bids_version != ''
+        if: matrix.bids_version != 'None'
         id: verify-bids-handler
         continue-on-error: true
         run: |
@@ -201,8 +201,6 @@ jobs:
           elif [ "${{ matrix.bids_version }}" == "latest" ]; then
             latest_bids_version=$(get_latest_pypi_version "psychopy_bids")
             BIDS_VERSION_CLEAN=$(echo "${latest_bids_version}" | tr -d ',;')
-          elif [ -z "${{ matrix.bids_version }}" ]; then
-            BIDS_VERSION_CLEAN="None"
           else
             BIDS_VERSION_CLEAN=$(echo "${{ matrix.bids_version }}" | tr -d ',;')
           fi
@@ -216,7 +214,14 @@ jobs:
       - name: Record result
         run: |
           STATUS="❌"
-          if [[ "${{ steps.run-installer.outcome }}" == "success" && "${{ steps.extract-command.outcome }}" == "success" && "${{ steps.verify-help.outcome }}" == "success" && "${{ steps.verify-version.outcome }}" == "success" && "${{ steps.psychopy-test.outcome }}" == "success" && "${{ steps.psychopy-test-extended.outcome }}" == "success" && ( -z "${{ matrix.bids_version }}" || "${{ steps.verify-bids.outcome }}" == "success" )  && ( -z "${{ matrix.bids_version }}" || "${{ steps.verify-bids-handler.outcome }}" == "success" )]]; then
+          if [[ "${{ steps.run-installer.outcome }}" == "success" && 
+                "${{ steps.extract-command.outcome }}" == "success" && 
+                "${{ steps.verify-help.outcome }}" == "success" && 
+                "${{ steps.verify-version.outcome }}" == "success" && 
+                "${{ steps.psychopy-test.outcome }}" == "success" && 
+                "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
+                ( "${{ matrix.bids_version }}" == "None" || "${{ steps.verify-bids.outcome }}" == "success" ) && 
+                ( "${{ matrix.bids_version }}" == "None" || "${{ steps.verify-bids-handler.outcome }}" == "success" ) ]]; then
             STATUS="✅"
           fi
       
