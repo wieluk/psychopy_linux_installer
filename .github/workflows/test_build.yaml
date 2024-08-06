@@ -144,7 +144,7 @@ jobs:
           echo "All tests passed successfully."
 
       - name: Verify BIDS installation simple
-        if: matrix.bids_version != ''
+        if: matrix.bids_version != 'None'
         id: verify-bids
         continue-on-error: true
         run: |
@@ -159,7 +159,7 @@ jobs:
           fi
       
       - name: Verify BIDS installation exp_handler
-        if: matrix.bids_version != ''
+        if: matrix.bids_version != 'None'
         id: verify-bids-handler
         continue-on-error: true
         run: |

@@ -16,12 +16,12 @@ Options:
   --python_version=VERSION    Specify the Python version to install (default: 3.8.16)
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use git for latest github version
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
-  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install; skip if not set
+  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
+  --non-interactive           Automatically answer 'yes' to all prompts
   -f, --force                 Force overwrite of existing installation directory
   -v, --verbose               Enable verbose output
   -d, --disable-shortcut      Disable desktop shortcut creation
-  --non-interactive           Automatically answer 'yes' to all prompts
   -h, --help                  Show this help message
 EOF
 }
@@ -30,7 +30,7 @@ EOF
 python_version="3.8.16"
 psychopy_version="2024.1.4"
 install_dir="$HOME"
-bids_version=""
+bids_version="latest"
 force_overwrite=false
 verbose=false
 build_python=false
@@ -325,12 +325,12 @@ create_desktop_file() {
 
 
 
+
 log_message "Starting the installation of PsychoPy with Python $python_version"
 
 os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
 log_message "Detected ${os_version} as OS"
 
-# Detect the package manager
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
     log_message "No compatible package manager found. Exiting."
@@ -343,7 +343,6 @@ update_package_manager "$pkg_manager"
 log_message "Installing git, curl, and jq."
 install_dependencies "$pkg_manager" script_deps
 
-# Determine PsychoPy version
 if [ "$psychopy_version" == "latest" ]; then
     psychopy_version=$(get_latest_pypi_version "psychopy")
 elif [ "$psychopy_version" != "git" ]; then
@@ -358,7 +357,6 @@ else
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 fi
 
-# Check PSYCHOPY_VERSION
 if [ -n "$psychopy_version_clean" ] && ( version_greater_than "$psychopy_version_clean" "2023.2.3" || [ "$psychopy_version_clean" = "git" ] ) && { [ "$os_version" = "debian-11" ] || [ "$os_version" = "ubuntu-18.04" ]; }; then
     prompt_message="Your PsychoPy version ($psychopy_version_clean) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $os_version. Do you want to change it to the stable version 2023.2.3? (y/N): "
     change_version=$(prompt_user "$prompt_message")
@@ -370,7 +368,6 @@ if [ -n "$psychopy_version_clean" ] && ( version_greater_than "$psychopy_version
     fi
 fi
 
-# Perform version check if the python_version argument was not provided
 if ! $python_version_provided; then
     python_actual_version=$(python3 --version 2>&1)
     if [[ $python_actual_version =~ Python\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
@@ -378,7 +375,6 @@ if ! $python_version_provided; then
         minor=${BASH_REMATCH[2]}
         patch=${BASH_REMATCH[3]}
 
-        # Check if the version is >= 3.8 and < 3.11
         if (( major == 3 && minor >= 8 && minor < 11 )); then
             log_message "Python version $major.$minor.$patch is already installed and is within the specified range."
             prompt_message="Do you want to use the existing Python version $major.$minor.$patch? (y/N): "
@@ -400,7 +396,6 @@ else
 fi
 python_version_clean=$(echo "${python_version}" | tr -d ',;')
 
-# Create PsychoPy directory
 psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 if [ -d "${psychopy_dir}" ]; then
     if [ "$force_overwrite" = true ]; then
@@ -417,7 +412,6 @@ else
 fi
 cd "${psychopy_dir}" || exit
 
-# Install basic dependencies
 log_message "Installing PsychoPy dependencies. This might take a while ..."
 install_dependencies "$pkg_manager" psychopy_deps
 
@@ -480,22 +474,18 @@ else
     fi
 fi
 
-# Check if the specified Python version exists
 if ! command -v python"${python_version%.*}" &> /dev/null; then
     log_message "Error: python${python_version%.*} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
     exit 1
 fi
 
-# Create and activate virtual environment
 log_message "Creating virtual environment..."
 log python"${python_version%.*}" -m venv "${psychopy_dir}"
 log_message "Activating virtual environment..."
 log source "${psychopy_dir}/bin/activate"
 
-# Upgrade pip and setuptools, and install wxPython
 log_message "Upgrading pip, distro, six, psychtoolbox and attrdict ..."
-log pip install -U pip
-log pip install -U distro six psychtoolbox attrdict
+log pip install -U pip distro six psychtoolbox attrdict
 
 if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
     log_message "PsychoPy version is less than 2024.2.0, installing numpy<2"
@@ -507,7 +497,6 @@ if [ "$build_wx" = true ]; then
     install_dependencies "$pkg_manager" wxpython_deps
     log pip install wxpython
 else
-    # Check if wxPython is installed
     if python -c "import wx" &> /dev/null; then
         log_message "wxPython is already installed."
     elif pip cache list | grep -q "wxPython"; then
@@ -523,7 +512,6 @@ else
         log rm "$wheel_file"
         log_message "Installed wxPython from $wheel_file"
     else
-        # Try to download wxPython wheel from Nextcloud
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
 
@@ -545,7 +533,6 @@ else
     fi
 fi
 
-# Install PsychoPy
 log_message "Installing PsychoPy version ${psychopy_version_clean}"
 if [ "$psychopy_version" == "git" ]; then
     log pip install git+https://github.com/psychopy/psychopy
@@ -553,8 +540,7 @@ else
     log pip install psychopy=="${psychopy_version_clean}"
 fi
 
-# Install BIDS
-if [ -n "$bids_version" ]; then
+if [ "$bids_version" != "None" ]; then
     log_message "Installing PsychoPy-BIDS version ${bids_version}..."
     if [ "$bids_version" == "latest" ]; then
         bids_version=$(get_latest_pypi_version "psychopy_bids")
@@ -562,6 +548,7 @@ if [ -n "$bids_version" ]; then
     if [ "$bids_version" == "git" ]; then
         log pip install git+https://gitlab.com/psygraz/psychopy-bids
     else
+        check_pypi_for_version psychopy_bids "${bids_version}"
         log pip install psychopy_bids=="${bids_version}"
     fi
     log pip install seedir
@@ -576,38 +563,32 @@ log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
 sudo sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
-# Create desktop shortcut if the directory exists
-desktop_shortcut="${HOME}/Desktop/"
-desktop_dir="${HOME}/.local/share/applications/"
-psychopy_exec="${psychopy_dir}/bin/psychopy"
-icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
-icon_file="${psychopy_dir}/psychopy.png"
-
 if [ "$disable_shortcut" = false ]; then
     if [ -d "$desktop_shortcut" ]; then
-        # Download the PsychoPy icon if it doesn't exist
+        desktop_shortcut="${HOME}/Desktop/"
+        desktop_dir="${HOME}/.local/share/applications/"
+        psychopy_exec="${psychopy_dir}/bin/psychopy"
+        icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
+        icon_file="${psychopy_dir}/psychopy.png"
+
         if curl --output /dev/null --silent --head --fail "$icon_url"; then
             log_message "Downloading PsychoPy icon..."
             curl -o "$icon_file" "$icon_url"
         fi
 
-        # Verify if the icon was downloaded
         if [ ! -f "$icon_file" ]; then
             log_message "PsychoPy icon not found. Skipping icon setting."
             icon_file=""
         fi
 
-        # Define pretty names
         pretty_name_no_args="PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})"
         pretty_name_coder="PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})"
         pretty_name_builder="PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})"
 
-        # Create .desktop files on the Desktop
         file_no_args=$(create_desktop_file "" "$pretty_name_no_args")
         file_coder=$(create_desktop_file "--coder" "$pretty_name_coder")
         file_builder=$(create_desktop_file "--builder" "$pretty_name_builder")
 
-        # Create symlinks in the applications directory
         if [ -d "$desktop_dir" ]; then
             ln -sf "$file_no_args" "${desktop_dir}${pretty_name_no_args}.desktop"
             ln -sf "$file_coder" "${desktop_dir}${pretty_name_coder}.desktop"
@@ -622,13 +603,9 @@ else
     log_message "Desktop shortcut creation disabled by user."
 fi
 
-# Detect the shell
+
 shell_name=$(basename "$SHELL")
-
-# Create the bin directory
 mkdir -p "${psychopy_dir}/.bin"
-
-# Create the symbolic link
 ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
 case $shell_name in
