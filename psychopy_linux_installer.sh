@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.8.16)
+  --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use git for latest github version
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
@@ -26,8 +26,7 @@ Options:
 EOF
 }
 
-# Default versions and directory
-python_version="3.8.16"
+python_version="3.8.19"
 psychopy_version="2024.1.4"
 install_dir="$HOME"
 bids_version="latest"
@@ -39,7 +38,6 @@ disable_shortcut=false
 python_version_provided=false
 non_interactive=false
 
-# Parse input arguments
 for arg in "$@"; do
     case $arg in
         --python_version=*)
@@ -275,24 +273,26 @@ check_pypi_for_version() {
 
 get_latest_wheel_url() {
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-    local wheel_dir="${base_url}${os_version}/"
-    local python_version
+    local wheel_dir
+    local python_version_short
     local html
     local wheels
     local latest_wheel
     local wheel_url
 
-    python_version=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
+    wheel_dir="${base_url}${os_version}/"
+    python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
     html=$(curl -s "$wheel_dir")
-    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${python_version}.*\.whl" | grep -v ".asc" | sort)
+    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
 
     if [ -z "$wheels" ]; then
-        echo "No matching wxPython wheel found for ${os_version} and Python ${python_version}."
+        echo "No matching wxPython wheel found for ${os_version}, Python ${python_version_short}, and ${processor_structure}."
         return 1
     fi
 
     latest_wheel=$(echo "$wheels" | tail -n 1)
     wheel_url="${wheel_dir}${latest_wheel}"
+
     echo "$wheel_url"
     return 0
 }
@@ -329,7 +329,8 @@ create_desktop_file() {
 log_message "Starting the installation of PsychoPy with Python $python_version"
 
 os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
-log_message "Detected ${os_version} as OS"
+processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
+log_message "Detected ${os_version} as OS with ${processor_structure} processor"
 
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
@@ -440,11 +441,11 @@ else
         log_message "Installing python build dependencies ..."
         log install_dependencies "$pkg_manager" python_build_deps
 
-        nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_${python_version}_${os_version}.tar.gz"
-        temp_file="python_${python_version}_${os_version}.tar.gz"
-        temp_dir="python_${python_version}_${os_version}_temp"
+        nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
+        temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
+        temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
 
-        log_message "Trying to download prebuilt Python ${python_version} for ${os_version} from Nextcloud ($nextcloud_url)..."
+        log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ($nextcloud_url)..."
         if curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
             log_message "Successfully downloaded Python ${python_version} ... making a altinstall ..."
             mkdir -p "${temp_dir}"
@@ -515,10 +516,16 @@ else
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
 
-        wheel_name="wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${os_version}.whl"
+        get_latest_version() {
+            curl -s "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04/" | \
+            grep -oP 'wxPython-\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1
+        }
+        wxpython_version=$(get_latest_version)
+
+        wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
 
         wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
-        wx_python_file="${wheel_name%-linux_x86_64*}-linux_x86_64.whl"
+        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
 
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
         if curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file"; then
@@ -558,22 +565,21 @@ fi
 
 deactivate
 
-log_message "Adding ${USER} to a psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
+log_message "Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
 log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
 sudo sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
 if [ "$disable_shortcut" = false ]; then
+    desktop_shortcut="${HOME}/Desktop/"
     if [ -d "$desktop_shortcut" ]; then
-        desktop_shortcut="${HOME}/Desktop/"
         desktop_dir="${HOME}/.local/share/applications/"
         psychopy_exec="${psychopy_dir}/bin/psychopy"
         icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
         icon_file="${psychopy_dir}/psychopy.png"
 
         if curl --output /dev/null --silent --head --fail "$icon_url"; then
-            log_message "Downloading PsychoPy icon..."
-            curl -o "$icon_file" "$icon_url"
+            log curl -o "$icon_file" "$icon_url"
         fi
 
         if [ ! -f "$icon_file" ]; then
@@ -627,6 +633,7 @@ case $shell_name in
         ;;
     *)
         log_message "Unsupported shell: $shell_name"
+        echo
         log_message "PsychoPy installation complete!"
         echo
         echo "To start PsychoPy, use:"
@@ -635,6 +642,7 @@ case $shell_name in
         ;;
 esac
 
+echo
 log_message "PsychoPy installation complete!"
 echo
 echo "To update your path, run:"
