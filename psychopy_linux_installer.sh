@@ -516,19 +516,17 @@ else
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
 
-        get_latest_version() {
-            curl -s "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04/" | \
-            grep -oP 'wxPython-\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1
-        }
-        wxpython_version=$(get_latest_version)
+        wxpython_version=$(get_latest_pypi_version wxpython)
 
         wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
-
+        wheel_name_fallback="wxPython-4.2.1-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
         wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
+        wx_python_nextcloud_url_fallback="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback}"
+        
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
 
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
-        if curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file"; then
+        if curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file"; then
             log_message "Download successful. Installing wxPython from $wx_python_file..."
             log pip install "$wx_python_file"
             log rm "$wx_python_file"
