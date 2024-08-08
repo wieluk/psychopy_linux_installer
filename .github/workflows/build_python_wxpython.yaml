@@ -3,39 +3,48 @@ on:
   push:
     branches:
       - main
+      - testing
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
 
 jobs:
   build:
-    runs-on: [self-hosted, "${{ matrix.os }}"]
+    #runs-on: [self-hosted, "${{ matrix.os }}"]
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, centos-9, fedora-39, pop-22.04, rocky-9.4, manjaro]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, centos-9, fedora-39, pop-22.04, rocky-9.4]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
       fail-fast: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install curl
+      - name: Install curl and python-pip
         run: |
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
-            sudo apt-get install -y curl
+            sudo apt-get install -y curl python3-pip
           elif command -v pacman > /dev/null; then
             sudo pacman -Syu --noconfirm
-            sudo pacman -S --noconfirm curl
+            sudo pacman -S --noconfirm curl python-pip
           elif command -v dnf > /dev/null; then
             sudo dnf check-update || true
-            sudo dnf install -y curl
+            sudo dnf install -y curl python3-pip
           elif command -v yum > /dev/null; then
             sudo yum check-update || true
-            sudo yum install -y curl
+            sudo yum install -y curl python3-pip
           else
             echo "Unsupported package manager"
             exit 1
           fi
+
+      - name: create tmp
+        run: |
+          sudo rm -rf /tmp_dir
+          sudo mkdir /tmp_dir
+          sudo chmod -R 777 /tmp_dir
+          sudo chown -R $USER:$USER /tmp_dir
 
       - name: Check if Python and wxPython files already exist
         id: check-files
@@ -45,11 +54,23 @@ jobs:
           PYTHON_MAJOR="${PYTHON_VERSION%%.*}"
           PYTHON_MINOR="${PYTHON_VERSION#*.}"
           PYTHON_MINOR="${PYTHON_MINOR%%.*}"
-          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_${PYTHON_VERSION}_${OS_VERSION}.tar.gz"
-          WHEEL_NAME="wxPython-0-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-linux_x86_64-${OS_VERSION}.whl"
+          PROCESSOR_STRUCTURE=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)")
+
+          if ! command -v pip &> /dev/null; then
+            python -m ensurepip --upgrade
+          fi
+          cd /tmp_dir
+          pip download wxPython
+          tarball=$(ls wxPython-*.tar.gz)
+          tar -xzf "$tarball"
+          
+          LATEST_WXPYTHON_VERSION=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
+          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
+          WHEEL_NAME="wxPython-${LATEST_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
           WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
 
           echo "Checking URL for Python: ${NEXTCLOUD_URL}"
+          
           echo "Checking URL for wxPython: ${WX_PYTHON_NEXTCLOUD_URL}"
           
           PYTHON_EXISTS=false
@@ -69,15 +90,9 @@ jobs:
           else
             echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
+            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
+            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_OUTPUT
           fi
-
-      - name: create tmp
-        if: env.skip_process == 'false'
-        run: |
-          sudo rm -rf /tmp_dir
-          sudo mkdir /tmp_dir
-          sudo chmod -R 777 /tmp_dir
-          sudo chown -R $USER:$USER /tmp_dir
 
       - name: Set up dependencies
         if: env.skip_process == 'false'
@@ -156,7 +171,7 @@ jobs:
         if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
-          FILE_PATH="/tmp_dir/python_${PYTHON_VERSION}_${{ matrix.os }}.tar.gz"
+          FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
@@ -173,23 +188,23 @@ jobs:
           mkdir /tmp_dir/wxpython
           cd /tmp_dir/wxpython
           pip download wxPython
-          tar -xzf wxPython-*.tar.gz
+          tarball=$(ls wxPython-*.tar.gz)
+          tar -xzf "$tarball"
+          wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
           pip wheel .
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
           wheel_file=$(ls wxPython-*.whl)
-          identified_wheel_file="/tmp_dir/wxPython-0-cp${python_major}${python_minor}-cp${python_major}${python_minor}-linux_x86_64-${{ matrix.os }}.whl"
+          identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
       - name: clean up
-        if: env.skip_process == 'false'
         run: |
-          sudo rm -r /tmp_dir
-          pip cache purge
+          sudo rm -rf /tmp_dir
           sudo rm -rf /usr/local/lib/python3.*
           rm -rf ~/.cache
           
