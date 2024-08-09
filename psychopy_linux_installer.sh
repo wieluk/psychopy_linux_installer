@@ -14,7 +14,7 @@ show_help() {
 Usage: ./install_psychopy.sh [options]
 Options:
   --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
-  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use latest for latest pypi version; use git for latest github version
+  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: latest); use latest for latest pypi version; use git for latest github version
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
@@ -27,7 +27,7 @@ EOF
 }
 
 python_version="3.8.19"
-psychopy_version="2024.1.4"
+psychopy_version="latest"
 install_dir="$HOME"
 bids_version="latest"
 force_overwrite=false
