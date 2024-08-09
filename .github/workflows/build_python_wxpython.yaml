@@ -205,6 +205,6 @@ jobs:
       - name: clean up
         run: |
           sudo rm -rf /tmp_dir
-          sudo rm -rf /usr/local/lib/python3.*
           rm -rf ~/.cache
+          sudo rm -rf /tmp/*
           
