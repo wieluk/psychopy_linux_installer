@@ -141,7 +141,7 @@ Note: All commands will be displayed with the actual versions and paths at the e
 ## Automatic Github Action Test Results
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-# Report generated on 2024-08-08
+# Report generated on 2024-08-09
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
@@ -196,26 +196,26 @@ Note: All commands will be displayed with the actual versions and paths at the e
 | pop-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.10.14 | 2024.1.4 | None | ❌ |
+| pop-22.04 | 3.10.14 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.10.14 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
+| pop-22.04 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ❌ |
 | pop-22.04 | 3.10.14 | untagged-4387d73b9220e140af9b | None | ✅ |
 | pop-22.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.1.4 | None | ❌ |
+| pop-22.04 | 3.8.19 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | None | ✅ |
 | pop-22.04 | 3.8.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | None | ❌ |
-| pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ❌ |
-| pop-22.04 | 3.9.19 | 2024.1.4 | None | ✅ |
+| pop-22.04 | 3.9.19 | 2023.2.3 | None | ✅ |
+| pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
+| pop-22.04 | 3.9.19 | 2024.1.4 | None | ❌ |
 | pop-22.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ❌ |
+| pop-22.04 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | rocky-9.4 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.10.14 | 2023.2.3 | None | ✅ |
@@ -241,7 +241,7 @@ Note: All commands will be displayed with the actual versions and paths at the e
 | rocky-9.4 | 3.9.19 | 2024.2.1 | None | ✅ |
 | rocky-9.4 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ❌ |
+| ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.1.4 | None | ✅ |
