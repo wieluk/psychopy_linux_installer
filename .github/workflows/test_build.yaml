@@ -125,10 +125,6 @@ jobs:
             echo "::error::Visual Test Failed"
             exit 1
           fi
-          # if ! grep -qE "Audio Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
-          #   echo "::error::Audio Test Failed"
-          #   exit 1
-          # fi
           if ! grep -qE "Keyboard Test Passed" /tmp_dir/PsychoPy_tests/psychopy_test_extended.log; then
             echo "::error::Keyboard Test Failed"
             exit 1

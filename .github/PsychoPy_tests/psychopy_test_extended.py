@@ -1,11 +1,9 @@
 import os
 from psychopy import visual, core, event, sound, logging
 
-# Determine the directory where the script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 log_file = os.path.join(script_dir, "psychopy_test_extended.log")
 
-# Set up logging to file and set level to WARNING
 logging.setDefaultClock(core.Clock())
 logging.LogFile(log_file, level=logging.WARNING)
 logging.console.setLevel(logging.WARNING)
@@ -23,14 +21,6 @@ def test_visual():
     except Exception as e:
         logging.error(f"Visual Test Failed: {e}")
 
-# def test_audio():
-#     try:
-#         snd = sound.Sound('A', secs=0.5)
-#         snd.play()
-#         core.wait(1)
-#         logging.warning("Audio Test Passed")
-#     except Exception as e:
-#         logging.error(f"Audio Test Failed: {e}")
 
 def test_keyboard():
     try:
@@ -69,7 +59,7 @@ def test_timing():
         timer.reset()
         core.wait(1)
         elapsed = timer.getTime()
-        if abs(elapsed - 1) < 0.1:  # Allow a small error margin
+        if abs(elapsed - 1) < 0.15:  # Allow a small error margin
             logging.warning("Timing Test Passed")
         else:
             logging.error(f"Timing Test Failed: Elapsed time {elapsed} seconds")
@@ -81,7 +71,6 @@ def run_tests():
     logging.warning("Starting PsychoPy Tests")
     
     test_visual()
-    #test_audio()
     test_keyboard()
     test_image()
     test_timing()

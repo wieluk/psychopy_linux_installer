@@ -13,11 +13,11 @@ Additional distributions may be working. These are the one I tested. All tests a
 
 **Note:**
 
-- Ubuntu 18.04, Debian 11 and CentOS 9 do not work with the default (2024.1.4) PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower. Or fix dependency errors manually (and please tell me how to fix them).
+- Ubuntu 18.04, Debian 11 and CentOS 9 do not work with the latest PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower. Or fix dependency errors manually (and please tell me how to fix them).
 
 ## Important Information
 
-- PsychoPy requires Python >= 3.8 or <3.11.
+- PsychoPy requires Python 3.8, 3.9 or 3.10.
 - The specified/default(3.8.16) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.

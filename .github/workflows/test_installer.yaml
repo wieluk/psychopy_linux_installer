@@ -271,7 +271,8 @@ jobs:
       - name: Create result table
         run: |
           current_date=$(date '+%Y-%m-%d')
-          echo "# Report generated on $current_date" > results.md
+          echo "### Report generated on $current_date" > results.md
+          echo "### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> results.md
           echo "" >> results.md
           echo "| OS | Python Version | PsychoPy Version | BIDS Version | Status |" >> results.md
           echo "|---|---|---|---|---|" >> results.md
