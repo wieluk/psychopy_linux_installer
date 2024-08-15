@@ -9,22 +9,20 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Rocky Linux 9
 - (CentOS 9)
 
-Additional distributions may be working. These are the one I tested. All tests are conducted on Virtual Machines only.
+Additional distributions may be working.
 
-**Note:**
-
-- Ubuntu 18.04, Debian 11 and CentOS 9 do not work with the latest PsychoPy version. They fail to install pyqt6. Use PsychoPy version 2023.2.3 or lower. Or fix dependency errors manually (and please tell me how to fix them).
+**Note:** 
+Ubuntu 18.04, Debian 11, and CentOS 9 are not compatible with the latest PsychoPy version due to issues with installing PyQt6. For these systems, use PsychoPy version 2023.2.3 or earlier. Alternatively, you can attempt to resolve the dependency errors manually (and please share any solutions you find).
 
 ## Important Information
 
-- PsychoPy requires Python 3.8, 3.9 or 3.10.
+- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
 - The specified/default(3.8.16) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
-- The script attempts to download a pre-made Python .tar.gz file from my [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If it fails to find a matching version, it will download from python.org and build from source.
-- The script also tries to find a wxPython version from their [website](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to my [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs). If this also fails, wxPython is built from source.
-- Building Python and wxPython might take some time (1-2 hours).
-- The script output is minimal by default. Use the --verbose option to view detailed output.
+- The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
+- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source. Building Python and wxPython may take 1-2 hours.
+- The script provides minimal output by default. Use the --verbose option for detailed logging.
 
 ## Usage
 
@@ -62,7 +60,7 @@ Execute script; see options below for more information.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
-- `--non-interactive` : Automatically answer `y` to all prompts"
+- `--non-interactive` : Automatically answer `y` to all prompts.
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
 - `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
@@ -97,26 +95,21 @@ The script performs the following steps:
 - Creates a desktop shortcut by default. 
 
 ## Post-Installation
-
-### If you do not want to use the desktop icons or creation fails:
-
-To refresh the path for different shells (.bashrc,.zshrc,config.fish,.cshrc,.tcshrc), use the following command:
-
-`source $CONFIG_FILE`
-
-For default Ubuntu, the command should be:
-
-`source ~/.bashrc`
-
-To start PsychoPy, use:
+After installation, desktop icons for PsychoPy will be created automatically, and the application will be added to your system's PATH as:
 
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
-If adding to the path did not work, use the absolute path:
+Refreshing your system's PATH may be necessary.
+
+
+
+You can also launch PsychoPy directly using the absolute path:
 
 `${PSYCHOPY_DIR}/bin/psychopy`
 
-Note: All commands will be displayed with the actual versions and paths at the end of the script.
+
+**Note:** 
+All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
 
 ## To-Do
 

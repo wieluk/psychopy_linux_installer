@@ -18,7 +18,7 @@ Options:
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
-  --non-interactive           Automatically answer 'yes' to all prompts
+  --non-interactive           Automatically answer 'y' to all prompts
   -f, --force                 Force overwrite of existing installation directory
   -v, --verbose               Enable verbose output
   -d, --disable-shortcut      Disable desktop shortcut creation
@@ -326,11 +326,10 @@ create_desktop_file() {
 
 
 
-log_message "Starting the installation of PsychoPy with Python $python_version"
-
 os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
 processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-log_message "Detected ${os_version} as OS with ${processor_structure} processor"
+log_message "Initiating PsychoPy installation with Python $python_version on ${os_version} (${processor_structure} architecture)."
+
 
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
@@ -370,8 +369,8 @@ if [ -n "$psychopy_version_clean" ] && ( version_greater_than "$psychopy_version
 fi
 
 if ! $python_version_provided; then
-    python_actual_version=$(python3 --version 2>&1)
-    if [[ $python_actual_version =~ Python\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    python_system_version=$(python3 --version 2>&1)
+    if [[ $python_system_version =~ Python\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
         major=${BASH_REMATCH[1]}
         minor=${BASH_REMATCH[2]}
         patch=${BASH_REMATCH[3]}
@@ -411,7 +410,8 @@ else
     log_message "Creating PsychoPy directory at ${psychopy_dir} ..."
     mkdir -p "${psychopy_dir}"
 fi
-cd "${psychopy_dir}" || exit
+cd "${psychopy_dir}" || { log_message "Failed to change directory to ${psychopy_dir}. Exiting."; exit 1; }
+
 
 log_message "Installing PsychoPy dependencies. This might take a while ..."
 install_dependencies "$pkg_manager" psychopy_deps
@@ -419,9 +419,10 @@ install_dependencies "$pkg_manager" psychopy_deps
 if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
     log_message "Python version ${python_version} is already installed."
 else
+    log_message "Installing python build dependencies ..."
+    log install_dependencies "$pkg_manager" python_build_deps
     if [ "$build_python" = true ]; then
         log_message "Building Python ${python_version} from source ..."
-        install_dependencies "$pkg_manager" python_build_deps
 
         official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
         temp_file="Python-${python_version}.tgz"
@@ -438,9 +439,6 @@ else
         )
         log sudo rm -rf "${temp_dir}" "${temp_file}"
     else
-        log_message "Installing python build dependencies ..."
-        log install_dependencies "$pkg_manager" python_build_deps
-
         nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
         temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
         temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
@@ -480,16 +478,15 @@ if ! command -v python"${python_version%.*}" &> /dev/null; then
     exit 1
 fi
 
-log_message "Creating virtual environment..."
+log_message "Creating and activating virtual environment..."
 log python"${python_version%.*}" -m venv "${psychopy_dir}"
-log_message "Activating virtual environment..."
 log source "${psychopy_dir}/bin/activate"
 
 log_message "Upgrading pip, distro, six, psychtoolbox and attrdict ..."
 log pip install -U pip distro six psychtoolbox attrdict
 
 if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
-    log_message "PsychoPy version is less than 2024.2.0, installing numpy<2"
+    log_message "PsychoPy version < 2024.2.0, installing numpy<2"
     log pip install "numpy<2"
 fi
 
@@ -502,7 +499,6 @@ else
         log_message "wxPython is already installed."
     elif pip cache list | grep -q "wxPython"; then
         log_message "A wxPython wheel is already in the pip cache. Installing from cache."
-        install_dependencies "$pkg_manager" wxpython_deps
         log pip install wxpython
     elif wheel_url=$(get_latest_wheel_url); then
         wheel_file=$(basename "$wheel_url")
