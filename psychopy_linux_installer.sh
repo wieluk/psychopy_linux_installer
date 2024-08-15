@@ -444,7 +444,7 @@ else
         temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
 
         log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ($nextcloud_url)..."
-        if curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
+        if log curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
             log_message "Successfully downloaded Python ${python_version} ... making a altinstall ..."
             mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
@@ -522,7 +522,7 @@ else
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
 
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
-        if curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file"; then
+        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file"; then
             log_message "Download successful. Installing wxPython from $wx_python_file..."
             log pip install "$wx_python_file"
             log rm "$wx_python_file"
