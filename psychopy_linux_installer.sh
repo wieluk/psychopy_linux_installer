@@ -522,7 +522,7 @@ else
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
 
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
-        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file"; then
+        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file"; then
             log_message "Download successful. Installing wxPython from $wx_python_file..."
             log pip install "$wx_python_file"
             log rm "$wx_python_file"
