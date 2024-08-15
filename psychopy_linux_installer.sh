@@ -14,7 +14,7 @@ show_help() {
 Usage: ./install_psychopy.sh [options]
 Options:
   --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
-  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: latest); use git for latest github version
+  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
@@ -27,7 +27,7 @@ EOF
 }
 
 python_version="3.8.19"
-psychopy_version="latest"
+psychopy_version="2024.1.4"
 install_dir="$HOME"
 bids_version="latest"
 force_overwrite=false
@@ -443,7 +443,7 @@ else
         temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
         temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
 
-        log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ($nextcloud_url)..."
+        log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
         if log curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
             log_message "Successfully downloaded Python ${python_version} ... making a altinstall ..."
             mkdir -p "${temp_dir}"
@@ -521,9 +521,9 @@ else
         
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
 
-        log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
+        log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
         if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file"; then
-            log_message "Download successful. Installing wxPython from $wx_python_file..."
+            log_message "Download successful. Installing wxPython from $wx_python_file"
             log pip install "$wx_python_file"
             log rm "$wx_python_file"
         else

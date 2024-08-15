@@ -56,7 +56,7 @@ Execute script; see options below for more information.
 ## Options
 
 - `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.16`).
-- `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `latest`); use `git` for the latest GitHub version.
+- `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
@@ -67,7 +67,7 @@ Execute script; see options below for more information.
 - `-h`, `--help` : Show help message.
 
 **Note:**
-The default version for `--psychopy_version` is set to latest. Sometimes new releases introduce bugs for Linux that require manual fixes. 
+The default version for `--psychopy_version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
 
 ## Examples
 
