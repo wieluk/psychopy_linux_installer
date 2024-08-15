@@ -58,9 +58,10 @@ jobs:
             latest_pypi_version_clean=$(echo "$latest_pypi_version" | tr -d ',;')
 
             if [ "$latest_version_clean" == "$latest_pypi_version_clean" ]; then
-              echo "The latest PsychoPy version on GitHub is the same as on PyPI. Skipping the remaining steps."
-              exit 0
-            fi
+            echo "The latest PsychoPy version on GitHub is the same as on PyPI. Skipping the remaining steps."
+            echo "STOP_JOB=true" >> $GITHUB_ENV
+            exit 0
+          fi
 
             PSYCHOPY_VERSION_CLEAN="$latest_version_clean"
 
