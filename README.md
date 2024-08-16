@@ -131,8 +131,8 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-### Report generated on 2024-08-15
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10402712925)
+### Report generated on 2024-08-16
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10423695199)
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
@@ -184,7 +184,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | pop-22.04 | 3.8.19 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
 | pop-22.04 | 3.9.19 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | 2024.1.4 | None | ✅ |
@@ -221,7 +221,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-24.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.2.1 | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | None | ✅ |
+| ubuntu-24.04 | 3.9.19 | 2023.2.3 | None | ❌ |
 | ubuntu-24.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.1.4 | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
