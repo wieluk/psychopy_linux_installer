@@ -131,7 +131,7 @@ All commands, along with the installed versions and set paths, as well as the co
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
 - [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
 
-## Automatic Github Action Test Results
+## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
 
 <!-- BEGIN INSTALLATION_RESULTS -->
 ### Report generated on 2024-08-15
@@ -231,7 +231,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-24.04 | 3.9.19 | 2024.2.1 | None | ✅ |
 <!-- END INSTALLATION_RESULTS -->
 
-## WxPython and Python versions
+## Built Python and wxPython Versions Available for Download
 
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
 
