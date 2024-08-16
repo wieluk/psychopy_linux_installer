@@ -17,7 +17,7 @@ Ubuntu 18.04, Debian 11, and CentOS 9 are not compatible with the latest PsychoP
 ## Important Information
 
 - PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
-- The specified/default(3.8.16) Python version is installed as `altinstall` if not present.
+- The specified/default(3.10.14) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
@@ -55,7 +55,7 @@ Execute script; see options below for more information.
 
 ## Options
 
-- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.16`).
+- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10.14`).
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation

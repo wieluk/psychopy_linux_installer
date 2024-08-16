@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
+  --python_version=VERSION    Specify the Python version to install (default: 3.10.14)
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
@@ -26,7 +26,7 @@ Options:
 EOF
 }
 
-python_version="3.8.19"
+python_version="3.10.14"
 psychopy_version="2024.1.4"
 install_dir="$HOME"
 bids_version="latest"
@@ -189,44 +189,46 @@ install_dependencies() {
 
     case $pkg_manager in
         apt)
-            script_deps=(git curl jq)
+            script_deps=(
+                git curl jq
+            )
             psychopy_deps=(
-                python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 libglib2.0-dev libpulse-dev
-                libusb-1.0-0-dev portaudio19-dev libasound2-dev libgl1-mesa-dev libglu1-mesa-dev
-                libgstreamer-plugins-base1.0-dev libjpeg-dev liblo-dev libnotify-dev libsdl2-dev
-                libsm-dev libtiff-dev libxtst-dev libsndfile1-dev libportmidi-dev python3-venv
+                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv
             )
             python_build_deps=(
-                build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev
-                libreadline-dev libffi-dev libbz2-dev libsqlite3-dev python3-dev libexpat1-dev
+                build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils
             )
-            wxpython_deps=(python3-dev libpng-dev libtiff5-dev freeglut3-dev)
+            wxpython_deps=(
+                libjpeg-dev libpng-dev libsm-dev libglu1-mesa-dev
+            )
             ;;
         yum|dnf)
-            script_deps=(git curl jq)
+            script_deps=(
+                git curl jq
+            )
             psychopy_deps=(
-                python3-pip make gcc gtk3-devel epel-release pulseaudio-libs-devel portaudio-devel
-                alsa-lib-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel
-                libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel
-                libXtst-devel portmidi-devel xcb-util libxcb-devel
+                python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel
             )
             python_build_deps=(
-                gcc-c++ gcc zlib-devel ncurses-devel nss-devel openssl-devel readline-devel
-                libffi-devel bzip2-devel sqlite-devel python3-devel
+            gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel
             )
-            wxpython_deps=(python3-devel freeglut-devel libpng-devel expat-devel)
+            wxpython_deps=(
+                libjpeg-devel libpng-devel libSM-devel mesa-libGLU-devel
+            )
             ;;
         pacman)
-            script_deps=(git curl jq)
+            script_deps=(
+                git curl jq
+            )
             psychopy_deps=(
-                python-pip make gcc gstreamer libpulse libusb portaudio alsa-lib mesa gtk3
-                libjpeg-turbo libnotify sdl2 libsm libtiff libxtst libsndfile portmidi liblo
-                xcb-util python-virtualenv libxcb
+                python gtk3 webkit2gtk libxcb mesa
             )
             python_build_deps=(
-                python base-devel zlib ncurses gdbm nss openssl readline libffi bzip2 sqlite expat
+                base-devel openssl zlib sqlite libffi bzip2 readline xz
             )
-            wxpython_deps=(python freeglut libpng)
+            wxpython_deps=(
+                libjpeg libpng libsm mesa glu
+            )
             ;;
         *)
             echo "No compatible package manager found."; exit 1 ;;
@@ -357,8 +359,8 @@ else
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 fi
 
-if [ -n "$psychopy_version_clean" ] && ( version_greater_than "$psychopy_version_clean" "2023.2.3" || [ "$psychopy_version_clean" = "git" ] ) && { [ "$os_version" = "debian-11" ] || [ "$os_version" = "ubuntu-18.04" ]; }; then
-    prompt_message="Your PsychoPy version ($psychopy_version_clean) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $os_version. Do you want to change it to the stable version 2023.2.3? (y/N): "
+if [ -n "$psychopy_version_clean" ] && version_greater_than "$psychopy_version_clean" "2023.2.3" && { [ "$os_version" = "debian-11" ] || [ "$os_version" = "ubuntu-18.04" ] || [ "$os_version" = "centos-9" ]; }; then
+    prompt_message="Your PsychoPy version ($psychopy_version_clean) is higher than 2023.2.3 and might require manual fixes on $os_version. Do you want to change it to the stable version 2023.2.3? (y/N): "
     change_version=$(prompt_user "$prompt_message")
     if [[ "$change_version" =~ ^[Yy]$ ]]; then
         psychopy_version_clean="2023.2.3"
