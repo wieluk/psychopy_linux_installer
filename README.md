@@ -134,8 +134,8 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Automatic Github Action Test Results
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-### Report generated on 2024-08-13
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10364498564)
+### Report generated on 2024-08-15
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10402712925)
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
@@ -145,120 +145,90 @@ All commands, along with the installed versions and set paths, as well as the co
 | debian-12 | 3.10.14 | 2024.1.4 | None | ✅ |
 | debian-12 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | debian-12 | 3.10.14 | 2024.2.1 | None | ✅ |
-| debian-12 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| debian-12 | 3.10.14 | untagged-4387d73b9220e140af9b | None | ✅ |
 | debian-12 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | debian-12 | 3.8.19 | 2023.2.3 | None | ✅ |
 | debian-12 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | debian-12 | 3.8.19 | 2024.1.4 | None | ✅ |
 | debian-12 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | debian-12 | 3.8.19 | 2024.2.1 | None | ✅ |
-| debian-12 | 3.8.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| debian-12 | 3.8.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | debian-12 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | debian-12 | 3.9.19 | 2023.2.3 | None | ✅ |
 | debian-12 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | debian-12 | 3.9.19 | 2024.1.4 | None | ✅ |
 | debian-12 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | debian-12 | 3.9.19 | 2024.2.1 | None | ✅ |
-| debian-12 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| debian-12 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | fedora-39 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | fedora-39 | 3.10.14 | 2023.2.3 | None | ✅ |
 | fedora-39 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
 | fedora-39 | 3.10.14 | 2024.1.4 | None | ✅ |
 | fedora-39 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | fedora-39 | 3.10.14 | 2024.2.1 | None | ✅ |
-| fedora-39 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| fedora-39 | 3.10.14 | untagged-4387d73b9220e140af9b | None | ✅ |
 | fedora-39 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | fedora-39 | 3.8.19 | 2023.2.3 | None | ✅ |
 | fedora-39 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | fedora-39 | 3.8.19 | 2024.1.4 | None | ✅ |
 | fedora-39 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | fedora-39 | 3.8.19 | 2024.2.1 | None | ✅ |
-| fedora-39 | 3.8.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| fedora-39 | 3.8.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | fedora-39 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | fedora-39 | 3.9.19 | 2023.2.3 | None | ✅ |
 | fedora-39 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | fedora-39 | 3.9.19 | 2024.1.4 | None | ✅ |
 | fedora-39 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | fedora-39 | 3.9.19 | 2024.2.1 | None | ✅ |
-| fedora-39 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| fedora-39 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | pop-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.10.14 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.10.14 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| pop-22.04 | 3.10.14 | untagged-4387d73b9220e140af9b | None | ✅ |
 | pop-22.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.8.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| pop-22.04 | 3.8.19 | untagged-4387d73b9220e140af9b | None | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
+| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| pop-22.04 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | rocky-9.4 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.10.14 | 2023.2.3 | None | ✅ |
 | rocky-9.4 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.10.14 | 2024.1.4 | None | ✅ |
 | rocky-9.4 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.10.14 | 2024.2.1 | None | ✅ |
-| rocky-9.4 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| rocky-9.4 | 3.10.14 | untagged-4387d73b9220e140af9b | None | ✅ |
 | rocky-9.4 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.8.19 | 2023.2.3 | None | ✅ |
 | rocky-9.4 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.8.19 | 2024.1.4 | None | ✅ |
 | rocky-9.4 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.8.19 | 2024.2.1 | None | ✅ |
-| rocky-9.4 | 3.8.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| rocky-9.4 | 3.8.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | rocky-9.4 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.9.19 | 2023.2.3 | None | ✅ |
 | rocky-9.4 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.9.19 | 2024.1.4 | None | ✅ |
 | rocky-9.4 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.9.19 | 2024.2.1 | None | ✅ |
-| rocky-9.4 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| rocky-9.4 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.1.4 | None | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.2.1 | None | ✅ |
-| ubuntu-24.04 | 3.10.14 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.10.14 | untagged-4387d73b9220e140af9b | None | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.1.4 | None | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| ubuntu-24.04 | 3.8.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.1.4 | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.2.1 | None | ✅ |
-| ubuntu-24.04 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 <!-- END INSTALLATION_RESULTS -->
 
 ## WxPython and Python versions for download
