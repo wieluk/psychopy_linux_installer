@@ -87,11 +87,14 @@ jobs:
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "Both files exist. Skipping the process."
             echo "skip_process=true" >> $GITHUB_ENV
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${LATEST_WXPYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $LATEST_WXPYTHON_VERSION |" >> $RESULT_FILE
+            cat $RESULT_FILE
+            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
           else
             echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
-            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
-            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_OUTPUT
+            echo "WXPYTHON_VERSION=$LATEST_WXPYTHON_VERSION" >> $GITHUB_ENV
           fi
 
       - name: Set up dependencies
@@ -202,9 +205,75 @@ jobs:
           deactivate
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${wxpython_version}.md"
+          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $wxpython_version |" >> $RESULT_FILE
+          cat $RESULT_FILE
+          echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
+
+      - name: Upload result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md
+
       - name: clean up
         run: |
           sudo rm -rf /tmp_dir
           rm -rf ~/.cache
           sudo rm -rf /tmp/*
           
+
+  update-readme:
+    needs: build
+    runs-on: [self-hosted, ubuntu-24.04]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Pull changes from remote
+        run: git pull
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: Create result table
+        run: |
+          current_date=$(date '+%Y-%m-%d')
+          echo "### Report generated on $current_date" > results.md
+          echo "" >> results.md
+          echo "| OS | Python Version | WxPython Version |" >> results.md
+          echo "|---|---|---|" >> results.md
+          for file in ./artifacts/*.md; do
+            cat "$file" >> results.md
+          done
+
+          # Sort the results by OS, Python Version, PsychoPy Version, BIDS Version, and Status
+          {
+            head -n 4 results.md
+            tail -n +5 results.md | sort -t'|' -k2,2 -k3,3 -k4,4
+          } > sorted_results.md
+
+          mv sorted_results.md results.md
+
+      - name: Update README.md with results
+        run: |
+          sed -i '/<!-- BEGIN PRECOMPILED_VERSIONS -->/,/<!-- END PRECOMPILED_VERSIONS -->/{//!d}' README.md
+          sed -i '/<!-- BEGIN PRECOMPILED_VERSIONS -->/r results.md' README.md
+
+      - name: Commit and push changes
+        run: |
+          git add README.md
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update README.md with PsychoPy builds"
+            git push
+          fi

@@ -260,3 +260,10 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-24.04 | 3.9.19 | untagged-4387d73b9220e140af9b | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | untagged-4387d73b9220e140af9b | None | ✅ |
 <!-- END INSTALLATION_RESULTS -->
+
+## WxPython and Python versions for download
+[wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
+[Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
+<!-- BEGIN PRECOMPILED_VERSIONS -->
+
+<!-- END PRECOMPILED_VERSIONS -->
