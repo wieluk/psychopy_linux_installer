@@ -193,7 +193,7 @@ install_dependencies() {
                 git curl jq
             )
             psychopy_deps=(
-                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv
+                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv libsdl2-dev
             )
             python_build_deps=(
                 build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils
@@ -207,10 +207,10 @@ install_dependencies() {
                 git curl jq
             )
             psychopy_deps=(
-                python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel
+                python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel
             )
             python_build_deps=(
-            gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel
+                gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel
             )
             wxpython_deps=(
                 libjpeg-devel libpng-devel libSM-devel mesa-libGLU-devel
@@ -221,7 +221,7 @@ install_dependencies() {
                 git curl jq
             )
             psychopy_deps=(
-                python gtk3 webkit2gtk libxcb mesa
+                python gtk3 webkit2gtk libxcb mesa sdl2
             )
             python_build_deps=(
                 base-devel openssl zlib sqlite libffi bzip2 readline xz
