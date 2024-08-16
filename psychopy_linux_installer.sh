@@ -1,24 +1,13 @@
 #!/bin/bash
-set -e
-trap 'catch_errors $LINENO $BASH_COMMAND' ERR
-
-catch_errors() {
-    local lineno=$1
-    local cmd=$2
-    echo "Error on line $lineno: $cmd"
-    exit 1
-}
-
 show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
+  --python_version=VERSION    Specify the Python version to install (default: 3.10.14)
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
-  --non-interactive           Automatically answer 'y' to all prompts
   -f, --force                 Force overwrite of existing installation directory
   -v, --verbose               Enable verbose output
   -d, --disable-shortcut      Disable desktop shortcut creation
@@ -26,7 +15,7 @@ Options:
 EOF
 }
 
-python_version="3.8.19"
+python_version="3.10.14"
 psychopy_version="2024.1.4"
 install_dir="$HOME"
 bids_version="latest"
@@ -35,14 +24,11 @@ verbose=false
 build_python=false
 build_wx=false
 disable_shortcut=false
-python_version_provided=false
-non_interactive=false
 
 for arg in "$@"; do
     case $arg in
         --python_version=*)
             python_version="${arg#*=}"
-            python_version_provided=true
             ;;
         --psychopy_version=*)
             psychopy_version="${arg#*=}"
@@ -61,9 +47,6 @@ for arg in "$@"; do
             ;;
         -d|--disable-shortcut)
             disable_shortcut=true
-            ;;
-        --non-interactive)
-            non_interactive=true
             ;;
         -h|--help)
             show_help
@@ -96,16 +79,6 @@ for arg in "$@"; do
             ;;
     esac
 done
-
-prompt_user() {
-    local prompt_message=$1
-    if [ "$non_interactive" = true ]; then
-        echo "y"
-    else
-        read -r -p "$prompt_message" response
-        echo "$response"
-    fi
-}
 
 log() {
     if [ "$verbose" = true ]; then
@@ -189,44 +162,47 @@ install_dependencies() {
 
     case $pkg_manager in
         apt)
-            script_deps=(git curl jq)
+            script_deps=(
+                git curl jq
+            )
             psychopy_deps=(
-                python3-pip make gcc libgtk-3-dev libgstreamer-gl1.0-0 libglib2.0-dev libpulse-dev
-                libusb-1.0-0-dev portaudio19-dev libasound2-dev libgl1-mesa-dev libglu1-mesa-dev
-                libgstreamer-plugins-base1.0-dev libjpeg-dev liblo-dev libnotify-dev libsdl2-dev
-                libsm-dev libtiff-dev libxtst-dev libsndfile1-dev libportmidi-dev python3-venv
+                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev
             )
             python_build_deps=(
-                build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev
-                libreadline-dev libffi-dev libbz2-dev libsqlite3-dev python3-dev libexpat1-dev
+                build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils
             )
-            wxpython_deps=(python3-dev libpng-dev libtiff5-dev freeglut3-dev)
+            wxpython_deps=(
+                libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libjpeg-dev libpng-dev libtiff-dev libnotify-dev libsm-dev
+            )
             ;;
         yum|dnf)
-            script_deps=(git curl jq)
+            script_deps=(
+                git curl jq
+            )
             psychopy_deps=(
-                python3-pip make gcc gtk3-devel epel-release pulseaudio-libs-devel portaudio-devel
-                alsa-lib-devel mesa-libGL-devel mesa-libGLU-devel gstreamer1-plugins-base-devel
-                libjpeg-turbo-devel libnotify-devel SDL2-devel libSM-devel libtiff-devel
-                libXtst-devel portmidi-devel xcb-util libxcb-devel
+                python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel
             )
             python_build_deps=(
-                gcc-c++ gcc zlib-devel ncurses-devel nss-devel openssl-devel readline-devel
-                libffi-devel bzip2-devel sqlite-devel python3-devel
+                gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel
             )
-            wxpython_deps=(python3-devel freeglut-devel libpng-devel expat-devel)
+            wxpython_deps=(
+                libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel
+
+            )
             ;;
         pacman)
-            script_deps=(git curl jq)
+            script_deps=(
+                git curl jq
+            )
             psychopy_deps=(
-                python-pip make gcc gstreamer libpulse libusb portaudio alsa-lib mesa gtk3
-                libjpeg-turbo libnotify sdl2 libsm libtiff libxtst libsndfile portmidi liblo
-                xcb-util python-virtualenv libxcb
+                python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib
             )
             python_build_deps=(
-                python base-devel zlib ncurses gdbm nss openssl readline libffi bzip2 sqlite expat
+                base-devel openssl zlib sqlite libffi bzip2 readline xz
             )
-            wxpython_deps=(python freeglut libpng)
+            wxpython_deps=(
+                libjpeg libpng libsm mesa gstreamer gstreamer-base freeglut libjpeg libpng libtiff libnotify              
+            )
             ;;
         *)
             echo "No compatible package manager found."; exit 1 ;;
@@ -345,55 +321,16 @@ install_dependencies "$pkg_manager" script_deps
 
 if [ "$psychopy_version" == "latest" ]; then
     psychopy_version=$(get_latest_pypi_version "psychopy")
-elif [ "$psychopy_version" != "git" ]; then
-    check_pypi_for_version psychopy "${psychopy_version}"
-fi
-
-if [ "$psychopy_version" == "git" ]; then
+    psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
+elif [ "$psychopy_version" == "git" ]; then
     latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     log_message "The latest PsychoPy github version is: $latest_version"
     psychopy_version_clean=$(echo "${latest_version}" | tr -d ',;')
 else
+    check_pypi_for_version psychopy "${psychopy_version}"
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 fi
 
-if [ -n "$psychopy_version_clean" ] && ( version_greater_than "$psychopy_version_clean" "2023.2.3" || [ "$psychopy_version_clean" = "git" ] ) && { [ "$os_version" = "debian-11" ] || [ "$os_version" = "ubuntu-18.04" ]; }; then
-    prompt_message="Your PsychoPy version ($psychopy_version_clean) is higher than 2023.2.3 or set to 'git' and might require manual fixes on $os_version. Do you want to change it to the stable version 2023.2.3? (y/N): "
-    change_version=$(prompt_user "$prompt_message")
-    if [[ "$change_version" =~ ^[Yy]$ ]]; then
-        psychopy_version_clean="2023.2.3"
-        log_message "PsychoPy version changed to 2023.2.3."
-    else
-        log_message "Keeping PsychoPy version $psychopy_version_clean."
-    fi
-fi
-
-if ! $python_version_provided; then
-    python_system_version=$(python3 --version 2>&1)
-    if [[ $python_system_version =~ Python\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-        major=${BASH_REMATCH[1]}
-        minor=${BASH_REMATCH[2]}
-        patch=${BASH_REMATCH[3]}
-
-        if (( major == 3 && minor >= 8 && minor < 11 )); then
-            log_message "Python version $major.$minor.$patch is already installed and is within the specified range."
-            prompt_message="Do you want to use the existing Python version $major.$minor.$patch? (y/N): "
-            use_existing_python=$(prompt_user "$prompt_message")
-            if [[ "$use_existing_python" =~ ^[Yy]$ ]]; then
-                python_version="$major.$minor.$patch"
-                log_message "Using existing Python version $python_version."
-            else
-                log_message "Using default Python version $python_version."
-            fi
-        else
-            log_message "Installed Python version $major.$minor.$patch is not within the specified range. Using default Python version $python_version."
-        fi
-    else
-        log_message "Python version could not be determined. Using default Python version $python_version."
-    fi
-else
-    check_python_version "${python_version}"
-fi
 python_version_clean=$(echo "${python_version}" | tr -d ',;')
 
 psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
@@ -534,11 +471,21 @@ else
     fi
 fi
 
+if ! pip show wxPython &> /dev/null; then
+    log "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
+    exit 1
+fi
+
 log_message "Installing PsychoPy version ${psychopy_version_clean}"
 if [ "$psychopy_version" == "git" ]; then
     log pip install git+https://github.com/psychopy/psychopy
 else
     log pip install psychopy=="${psychopy_version_clean}"
+fi
+
+if ! pip show psychopy &> /dev/null; then
+    log "Error: PsychoPy is not installed succesfully. Something went wrong during the installation. Use --verbose flag."
+    exit 1
 fi
 
 if [ "$bids_version" != "None" ]; then
@@ -553,6 +500,10 @@ if [ "$bids_version" != "None" ]; then
         log pip install psychopy_bids=="${bids_version}"
     fi
     log pip install seedir
+
+    if ! pip show psychopy_bids &> /dev/null; then
+    log "Warning: psychopy_bids is not installed succesfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
+    fi
 else
     log_message "Skipping PsychoPy-BIDS installation."
 fi

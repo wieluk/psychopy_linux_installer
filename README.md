@@ -2,22 +2,20 @@
 
 This script facilitates the installation of [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
 
-- Ubuntu 24.04, 22.04, 20.04, (18.04)
+- Ubuntu 24.04, 22.04, 20.04, 18.04
 - Pop!_OS 22.04
-- Debian 12, (11)
+- Debian 12, 11
 - Fedora 39
 - Rocky Linux 9
-- (CentOS 9)
+- CentOS 9
 
 Additional distributions may be working.
 
-**Note:** 
-Ubuntu 18.04, Debian 11, and CentOS 9 are not compatible with the latest PsychoPy version due to issues with installing PyQt6. For these systems, use PsychoPy version 2023.2.3 or earlier. Alternatively, you can attempt to resolve the dependency errors manually (and please share any solutions you find).
 
 ## Important Information
 
-- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
-- The specified/default(3.8.16) Python version is installed as `altinstall` if not present.
+- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10. PsychoPy seems to be moving towards Python3.10.
+- The specified/default(3.10.14) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
@@ -55,12 +53,11 @@ Execute script; see options below for more information.
 
 ## Options
 
-- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.16`).
+- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10.14`).
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
-- `--non-interactive` : Automatically answer `y` to all prompts.
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
 - `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
@@ -134,8 +131,8 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-### Report generated on 2024-08-15
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10402712925)
+### Report generated on 2024-08-16
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10423695199)
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
@@ -187,7 +184,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | pop-22.04 | 3.8.19 | 2024.1.4 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
+| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ❌ |
 | pop-22.04 | 3.9.19 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.9.19 | 2024.1.4 | None | ✅ |
@@ -224,7 +221,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-24.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.2.1 | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | None | ✅ |
+| ubuntu-24.04 | 3.9.19 | 2023.2.3 | None | ❌ |
 | ubuntu-24.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.1.4 | None | ✅ |
 | ubuntu-24.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |

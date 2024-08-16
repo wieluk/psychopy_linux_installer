@@ -32,7 +32,7 @@ jobs:
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
-        os: [ubuntu-24.04 , debian-12, fedora-39, pop-22.04, rocky-9.4]
+        os: [ubuntu-24.04 , ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
         python_version: ['3.10.5']
         psychopy_version: ['latest']
         bids_version: ['latest']
@@ -55,7 +55,7 @@ jobs:
       - name: Run PsychoPy Linux Installer
         id: run-installer
         run: |
-          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force --verbose --non-interactive --build=both"
+          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force --verbose --build=both"
           $GITHUB_WORKSPACE/psychopy_linux_installer.sh $ARGS | tee /tmp_dir/psychopy_install_output.log
         shell: bash
 
