@@ -2,21 +2,19 @@
 
 This script facilitates the installation of [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
 
-- Ubuntu 24.04, 22.04, 20.04, (18.04)
+- Ubuntu 24.04, 22.04, 20.04, 18.04
 - Pop!_OS 22.04
-- Debian 12, (11)
+- Debian 12, 11
 - Fedora 39
 - Rocky Linux 9
-- (CentOS 9)
+- CentOS 9
 
 Additional distributions may be working.
 
-**Note:** 
-Ubuntu 18.04, Debian 11, and CentOS 9 are not compatible with the latest PsychoPy version due to issues with installing PyQt6. For these systems, use PsychoPy version 2023.2.3 or earlier. Alternatively, you can attempt to resolve the dependency errors manually (and please share any solutions you find).
 
 ## Important Information
 
-- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
+- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10. PsychoPy seems to be moving towards Python3.10.
 - The specified/default(3.10.14) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
@@ -60,7 +58,6 @@ Execute script; see options below for more information.
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
-- `--non-interactive` : Automatically answer `y` to all prompts.
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
 - `-d`, `--disable-shortcut` : Disable desktop shortcut creation.

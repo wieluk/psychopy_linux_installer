@@ -1,14 +1,4 @@
 #!/bin/bash
-set -e
-trap 'catch_errors $LINENO $BASH_COMMAND' ERR
-
-catch_errors() {
-    local lineno=$1
-    local cmd=$2
-    echo "Error on line $lineno: $cmd"
-    exit 1
-}
-
 show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
@@ -18,7 +8,6 @@ Options:
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
-  --non-interactive           Automatically answer 'y' to all prompts
   -f, --force                 Force overwrite of existing installation directory
   -v, --verbose               Enable verbose output
   -d, --disable-shortcut      Disable desktop shortcut creation
@@ -35,14 +24,11 @@ verbose=false
 build_python=false
 build_wx=false
 disable_shortcut=false
-python_version_provided=false
-non_interactive=false
 
 for arg in "$@"; do
     case $arg in
         --python_version=*)
             python_version="${arg#*=}"
-            python_version_provided=true
             ;;
         --psychopy_version=*)
             psychopy_version="${arg#*=}"
@@ -61,9 +47,6 @@ for arg in "$@"; do
             ;;
         -d|--disable-shortcut)
             disable_shortcut=true
-            ;;
-        --non-interactive)
-            non_interactive=true
             ;;
         -h|--help)
             show_help
@@ -96,16 +79,6 @@ for arg in "$@"; do
             ;;
     esac
 done
-
-prompt_user() {
-    local prompt_message=$1
-    if [ "$non_interactive" = true ]; then
-        echo "y"
-    else
-        read -r -p "$prompt_message" response
-        echo "$response"
-    fi
-}
 
 log() {
     if [ "$verbose" = true ]; then
@@ -347,55 +320,16 @@ install_dependencies "$pkg_manager" script_deps
 
 if [ "$psychopy_version" == "latest" ]; then
     psychopy_version=$(get_latest_pypi_version "psychopy")
-elif [ "$psychopy_version" != "git" ]; then
-    check_pypi_for_version psychopy "${psychopy_version}"
-fi
-
-if [ "$psychopy_version" == "git" ]; then
+    psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
+elif [ "$psychopy_version" == "git" ]; then
     latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     log_message "The latest PsychoPy github version is: $latest_version"
     psychopy_version_clean=$(echo "${latest_version}" | tr -d ',;')
 else
+    check_pypi_for_version psychopy "${psychopy_version}"
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 fi
 
-if [ -n "$psychopy_version_clean" ] && version_greater_than "$psychopy_version_clean" "2023.2.3" && { [ "$os_version" = "debian-11" ] || [ "$os_version" = "ubuntu-18.04" ] || [ "$os_version" = "centos-9" ]; }; then
-    prompt_message="Your PsychoPy version ($psychopy_version_clean) is higher than 2023.2.3 and might require manual fixes on $os_version. Do you want to change it to the stable version 2023.2.3? (y/N): "
-    change_version=$(prompt_user "$prompt_message")
-    if [[ "$change_version" =~ ^[Yy]$ ]]; then
-        psychopy_version_clean="2023.2.3"
-        log_message "PsychoPy version changed to 2023.2.3."
-    else
-        log_message "Keeping PsychoPy version $psychopy_version_clean."
-    fi
-fi
-
-if ! $python_version_provided; then
-    python_system_version=$(python3 --version 2>&1)
-    if [[ $python_system_version =~ Python\ ([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-        major=${BASH_REMATCH[1]}
-        minor=${BASH_REMATCH[2]}
-        patch=${BASH_REMATCH[3]}
-
-        if (( major == 3 && minor >= 8 && minor < 11 )); then
-            log_message "Python version $major.$minor.$patch is already installed and is within the specified range."
-            prompt_message="Do you want to use the existing Python version $major.$minor.$patch? (y/N): "
-            use_existing_python=$(prompt_user "$prompt_message")
-            if [[ "$use_existing_python" =~ ^[Yy]$ ]]; then
-                python_version="$major.$minor.$patch"
-                log_message "Using existing Python version $python_version."
-            else
-                log_message "Using default Python version $python_version."
-            fi
-        else
-            log_message "Installed Python version $major.$minor.$patch is not within the specified range. Using default Python version $python_version."
-        fi
-    else
-        log_message "Python version could not be determined. Using default Python version $python_version."
-    fi
-else
-    check_python_version "${python_version}"
-fi
 python_version_clean=$(echo "${python_version}" | tr -d ',;')
 
 psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
