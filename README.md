@@ -231,8 +231,10 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-24.04 | 3.9.19 | 2024.2.1 | None | ✅ |
 <!-- END INSTALLATION_RESULTS -->
 
-## WxPython and Python versions for download
+## WxPython and Python versions
+
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
+
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
 <!-- BEGIN PRECOMPILED_VERSIONS -->
 
