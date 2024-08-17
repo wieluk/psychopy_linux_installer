@@ -19,7 +19,8 @@ Additional distributions may be working.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
-- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source. Building Python and wxPython may take 1-2 hours.
+- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source. If latest wxpython version fails building, it will fallback to version 4.1.1 if no `--wxpython_version` is set. (fixes fedora-40)
+- Building Python and wxPython may take 1-2 hours.
 - The script provides minimal output by default. Use the --verbose option for detailed logging.
 
 ## Usage
@@ -55,6 +56,7 @@ Execute script; see options below for more information.
 
 - `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10.14`).
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
+- `--wxpython_version=VERSION` : Specify the wxPython version to install (default: `latest`)
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."

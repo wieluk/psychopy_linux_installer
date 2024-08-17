@@ -18,38 +18,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up dependencies
+        
+      - name: Install curl and python-pip
         run: |
           if command -v apt-get > /dev/null; then
-              sudo apt-get update || true
-              sudo apt-get install -y \
-                  git curl jq python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 \
-                  libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev \
-                  libasound2-dev build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev \
-                  libreadline-dev xz-utils libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools \
-                  gstreamer1.0-x freeglut3-dev libtiff-dev libnotify-dev libsm-dev
-
-          elif command -v yum > /dev/null || command -v dnf > /dev/null; then
-              sudo yum -y update || sudo dnf -y update || true
-              sudo yum install -y \
-                  git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama \
-                  mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel \
-                  gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel \
-                  xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base \
-                  gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel
-
+            sudo apt-get update || true
+            sudo apt-get install -y curl python3-pip
           elif command -v pacman > /dev/null; then
-              sudo pacman -Sy || true
-              sudo pacman -S --noconfirm \
-                  git curl jq python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu \
-                  libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 \
-                  readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut \
-                  libtiff libnotify
-
+            sudo pacman -Syu --noconfirm
+            sudo pacman -S --noconfirm curl python-pip
+          elif command -v dnf > /dev/null; then
+            sudo dnf check-update || true
+            sudo dnf install -y curl python3-pip
+          elif command -v yum > /dev/null; then
+            sudo yum check-update || true
+            sudo yum install -y curl python3-pip
           else
-              echo "No compatible package manager found."
-              exit 1
+            echo "Unsupported package manager"
+            exit 1
           fi
                   
       - name: create tmp
@@ -77,14 +63,16 @@ jobs:
           tarball=$(ls wxPython-*.tar.gz)
           tar -xzf "$tarball"
           
-          LATEST_WXPYTHON_VERSION=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
-          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
-          WHEEL_NAME="wxPython-${LATEST_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
-
-          echo "Checking URL for Python: ${NEXTCLOUD_URL}"
           
-          echo "Checking URL for wxPython: ${WX_PYTHON_NEXTCLOUD_URL}"
+          LATEST_WXPYTHON_VERSION=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
+          FALLBACK_WXPYTHON_VERSION="4.1.1"
+          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
+          
+          WHEEL_NAME="wxPython-${LATEST_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+          WHEEL_NAME_FALLBACK="wxPython-${FALLBACK_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+          
+          WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
+          WX_PYTHON_NEXTCLOUD_URL_FALLBACK="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME_FALLBACK}"
           
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
@@ -95,19 +83,80 @@ jobs:
 
           if curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
             WXPYTHON_EXISTS=true
+            WX_PYTHON_VERSION=$LATEST_WXPYTHON_VERSION
+          elif curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL_FALLBACK}" --output /dev/null; then
+            WXPYTHON_EXISTS=true
+            WX_PYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION
           fi
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "Both files exist. Skipping the process."
             echo "skip_process=true" >> $GITHUB_ENV
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${LATEST_WXPYTHON_VERSION}.md"
-            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $LATEST_WXPYTHON_VERSION |" >> $RESULT_FILE
-            cat $RESULT_FILE
-            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
-            echo "WXPYTHON_VERSION=$LATEST_WXPYTHON_VERSION" >> $GITHUB_ENV
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WX_PYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WX_PYTHON_VERSION |" >> $RESULT_FILE
+            cat $RESULT_FILE   
           else
             echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
+          fi
+
+          echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
+          echo "FALLBACK_WXPYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION" >> $GITHUB_ENV
+          
+      - name: Set up dependencies
+        if: env.skip_process == 'false'
+        run: |
+          if command -v apt-get > /dev/null; then
+            sudo apt-get update || true
+            packages=(
+              git curl jq python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 
+              libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev 
+              libasound2-dev build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev 
+              libreadline-dev xz-utils libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools 
+              gstreamer1.0-x freeglut3-dev libtiff-dev libnotify-dev libsm-dev
+            )
+            for pkg in "${packages[@]}"; do
+              sudo apt-get install -y "$pkg" || true
+            done
+          elif command -v pacman > /dev/null; then
+            sudo pacman -Syu --noconfirm || true
+            packages=(
+                git curl jq python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu 
+                libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 
+                readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut 
+                libtiff libnotify
+            )
+            for pkg in "${packages[@]}"; do
+              sudo pacman -S --noconfirm "$pkg" || true
+            done
+          elif command -v dnf > /dev/null; then
+            sudo dnf check-update || true
+            packages=(
+              git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama 
+              mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
+              gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
+              xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
+              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel
+            )
+            for pkg in "${packages[@]}"; do
+              sudo dnf install -y "$pkg" || true
+            done
+          elif command -v yum > /dev/null; then
+            sudo yum check-update || true
+            packages=(
+              git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama 
+              mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
+              gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
+              xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
+              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel
+            )
+            for pkg in "${packages[@]}"; do
+              sudo yum install -y "$pkg" || true
+            done
+          else
+            echo "Unsupported package manager"
+            exit 1
           fi
 
       - name: Download and install Python
@@ -128,9 +177,10 @@ jobs:
           PYTHON_VERSION="${{ matrix.python_version }}"
           FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
+          echo "uploading $FILE_PATH to Nextcloud."
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
-      - name: Build wxPython in venv and upload to nextcloud
+      - name: Build wxPython in venv and upload to Nextcloud
         if: env.skip_process == 'false'
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -142,21 +192,53 @@ jobs:
           pip install wheel
           mkdir /tmp_dir/wxpython
           cd /tmp_dir/wxpython
+          
+          # Download wxPython
           pip download wxPython
           tarball=$(ls wxPython-*.tar.gz)
           tar -xzf "$tarball"
           wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
-          pip wheel .
+          
+          if pip wheel .; then
+              echo "Successfully built wxPython version $wxpython_version."
+          else
+              cd /tmp
+              rm -rf  /tmp_dir/wxpython*
+              mkdir /tmp_dir/wxpython
+              cd /tmp_dir/wxpython
+              
+              echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version ${{ env.FALLBACK_WXPYTHON_VERSION}}."
+              wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
+              
+              pip download "wxPython==$wxpython_version"
+              
+              tarball=$(ls wxPython-*.tar.gz)
+              tar -xzf "$tarball"
+                  
+              wxPython_dir=$(find . -type d -name "wxPython-*")
+              cd "$wxPython_dir"
+              
+              if pip wheel .; then
+                  echo "Successfully built wxPython version $wxpython_version as a fallback."
+              else
+                  echo "Error: Fallback version $wxpython_version also failed to build. Exiting."
+                  exit 1 
+              fi
+          fi
+                    
+          # Rename and upload the wheel file
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
           wheel_file=$(ls wxPython-*.whl)
           identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
+          echo "uploading $identified_wheel_file to Nextcloud."
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
-
+      
+          # Output results
           RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${wxpython_version}.md"
           echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $wxpython_version |" >> $RESULT_FILE
           cat $RESULT_FILE
