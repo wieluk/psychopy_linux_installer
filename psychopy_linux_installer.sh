@@ -172,7 +172,7 @@ install_dependencies() {
                 build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils
             )
             wxpython_deps=(
-                libjpeg-dev libpng-dev libsm-dev
+                libjpeg-dev libpng-dev libsm-devlibgtk-3-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libjpeg-dev libpng-dev libtiff-dev libnotify-dev libsm-dev
             )
             ;;
         yum|dnf)
@@ -180,13 +180,14 @@ install_dependencies() {
                 git curl jq
             )
             psychopy_deps=(
-                python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel
+                python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel
             )
             python_build_deps=(
                 gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel
             )
             wxpython_deps=(
-                libjpeg-devel libpng-devel libSM-devel 
+                libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel
+
             )
             ;;
         pacman)
@@ -194,13 +195,13 @@ install_dependencies() {
                 git curl jq
             )
             psychopy_deps=(
-                python gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib
+                python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib
             )
             python_build_deps=(
                 base-devel openssl zlib sqlite libffi bzip2 readline xz
             )
             wxpython_deps=(
-                libjpeg libpng libsm mesa
+                libjpeg libpng libsm mesa gstreamer gstreamer-base freeglut libjpeg libpng libtiff libnotify              
             )
             ;;
         *)
