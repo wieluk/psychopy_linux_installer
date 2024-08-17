@@ -83,18 +83,20 @@ jobs:
 
           if curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
             WXPYTHON_EXISTS=true
+            WX_PYTHON_VERSION=$LATEST_WXPYTHON_VERSION
           elif curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL_FALLBACK}" --output /dev/null; then
             WXPYTHON_EXISTS=true
+            WX_PYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION
           fi
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "Both files exist. Skipping the process."
             echo "skip_process=true" >> $GITHUB_ENV
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${LATEST_WXPYTHON_VERSION}.md"
-            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $LATEST_WXPYTHON_VERSION |" >> $RESULT_FILE
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WX_PYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WX_PYTHON_VERSION |" >> $RESULT_FILE
             cat $RESULT_FILE
             echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
-            echo "WXPYTHON_VERSION=$LATEST_WXPYTHON_VERSION" >> $GITHUB_ENV
+            echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
             echo "FALLBACK_WXPYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION" >> $GITHUB_ENV
           else
             echo "One or both files do not exist. Continuing with the process."
