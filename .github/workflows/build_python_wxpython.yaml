@@ -199,7 +199,6 @@ jobs:
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
           
-          # Attempt to build the wheel
           if pip wheel .; then
               echo "Successfully built wxPython version $wxpython_version."
           else
@@ -209,9 +208,14 @@ jobs:
               # Clean up and prepare to build the fallback version
               cd /tmp_dir/wxpython
               rm -rf "$wxPython_dir"
+              
+              # Download the fallback version
               pip download "wxPython==$fallback_version"
-              tarball=$(ls wxPython-*.tar.gz)
+              
+              # Explicitly use the fallback version for the tarball
+              tarball="wxPython-${fallback_version}.tar.gz"
               tar -xzf "$tarball"
+              
               wxpython_version=$fallback_version
               wxPython_dir=$(find . -type d -name "wxPython-*")
               cd "$wxPython_dir"
@@ -220,10 +224,10 @@ jobs:
                   echo "Successfully built wxPython version $wxpython_version as a fallback."
               else
                   echo "Error: Fallback version $fallback_version also failed to build. Exiting."
-                  exit 1  # Exit the script with an error status
+                  exit 1 
               fi
           fi
-          
+                    
           # Rename and upload the wheel file
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
