@@ -471,11 +471,21 @@ else
     fi
 fi
 
+if ! pip show wxPython &> /dev/null; then
+    log "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
+    exit 1
+fi
+
 log_message "Installing PsychoPy version ${psychopy_version_clean}"
 if [ "$psychopy_version" == "git" ]; then
     log pip install git+https://github.com/psychopy/psychopy
 else
     log pip install psychopy=="${psychopy_version_clean}"
+fi
+
+if ! pip show psychopy &> /dev/null; then
+    log "Error: PsychoPy is not installed succesfully. Something went wrong during the installation. Use --verbose flag."
+    exit 1
 fi
 
 if [ "$bids_version" != "None" ]; then
@@ -490,6 +500,10 @@ if [ "$bids_version" != "None" ]; then
         log pip install psychopy_bids=="${bids_version}"
     fi
     log pip install seedir
+
+    if ! pip show psychopy_bids &> /dev/null; then
+    log "Warning: psychopy_bids is not installed succesfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
+    fi
 else
     log_message "Skipping PsychoPy-BIDS installation."
 fi
