@@ -172,7 +172,7 @@ install_dependencies() {
                 build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils
             )
             wxpython_deps=(
-                libjpeg-dev libpng-dev libsm-devlibgtk-3-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libjpeg-dev libpng-dev libtiff-dev libnotify-dev libsm-dev
+                libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libjpeg-dev libpng-dev libtiff-dev libnotify-dev libsm-dev
             )
             ;;
         yum|dnf)
