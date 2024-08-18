@@ -254,6 +254,40 @@ check_pypi_for_version() {
     fi
 }
 
+install_wxpython() {
+    version=$1
+    if log pip install "wxpython==$version"; then
+        log_message "Successfully installed wxPython version $version."
+        return 0
+    else
+        log_message "Error: Installing wxPython version $version failed."
+        return 1
+    fi
+}
+
+attempt_build_wxpython() {
+    log_message "Building wxPython from source. This might take a while ..."
+    install_dependencies "$pkg_manager" wxpython_deps
+
+    if install_wxpython "$wxpython_version"; then
+        return 0
+    else
+        if [ "$wxpython_version_set_by_user" = false ]; then
+            log_message "Attempting to use a fallback version."
+            fallback_version="4.1.1"
+            if install_wxpython "$fallback_version"; then
+                return 0
+            else
+                log_message "Error: Fallback version $fallback_version also failed to install. Please check your environment and dependencies."
+                exit 1
+            fi
+        else
+            log_message "No fallback will be attempted because a specific version was set by the user."
+            exit 1
+        fi
+    fi
+}
+
 get_wxpython_wheel() {
     local wxpython_version="$1"
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
@@ -264,16 +298,13 @@ get_wxpython_wheel() {
     local latest_wheel
     local wheel_url
 
-    # Assuming os_version and processor_structure are already defined elsewhere in your script
     wheel_dir="${base_url}${os_version}/"
     python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
     html=$(curl -s "$wheel_dir")
 
     if [ "$wxpython_version" = "latest" ]; then
-        # Look for wheels that match the Python version and processor architecture, ignoring the wxPython version
         wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
     else
-        # Look for wheels that match the specified wxPython version, Python version, and processor architecture
         wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
     fi
 
@@ -451,18 +482,20 @@ if [ "$wxpython_version" = "latest" ]; then
 fi
 
 if [ "$build_wx" = true ]; then
-    log_message "Building wxPython from source. This might take a while ..."
-    install_dependencies "$pkg_manager" wxpython_deps
-    log pip install "wxpython==$wxpython_version"
+    attempt_build_wxpython
 else
     if wheel_url=$(get_wxpython_wheel "$wxpython_version"); then
         wheel_file=$(basename "$wheel_url")
         log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
         log curl -O "$wheel_url"
         log_message "Download successful. Installing wxPython from $wheel_file..."
-        log pip install "$wheel_file"
-        log rm "$wheel_file"
-        log_message "Installed wxPython from $wheel_file"
+        if log pip install "$wheel_file"; then
+            log_message "Installed wxPython from $wheel_file"
+            log rm "$wheel_file"
+        else
+            log_message "Error: Installing wxPython from $wheel_file failed. Attempting to build from source."
+            attempt_build_wxpython
+        fi
     else
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
@@ -480,30 +513,15 @@ else
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
         if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wx_python_file"; then
             log_message "Download successful. Installing wxPython from $wx_python_file"
-            log pip install "$wx_python_file"
-            log rm "$wx_python_file"
-        else
-            log_message "Failed to download wxPython wheel. Attempting to build wxPython from source. This might take a while ..."
-            install_dependencies "$pkg_manager" wxpython_deps
-
-            if log pip install "wxpython==$wxpython_version"; then
-                log_message "Successfully built and installed wxPython version $wxpython_version."
+            if log pip install "$wx_python_file"; then
+                log rm "$wx_python_file"
             else
-                if [ "$wxpython_version_set_by_user" = false ]; then
-                    log_message "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version."
-                    fallback_version="4.1.1"  # Set your desired fallback version here
-
-                    if log pip install "wxpython==$fallback_version"; then
-                        log_message "Successfully installed wxPython version $fallback_version as a fallback."
-                    else
-                        log_message "Error: Fallback version $fallback_version also failed to install. Please check your environment and dependencies."
-                        exit 1  
-                    fi
-                else
-                    log_message "Error: Building wxPython version $wxpython_version failed. No fallback will be attempted because a specific version was set by the user."
-                    exit 1  
-                fi
+                log_message "Error: Installing wxPython from $wx_python_file failed. Attempting to build from source."
+                attempt_build_wxpython
             fi
+        else
+            log_message "Failed to download wxPython wheel. Attempting to build wxPython from source."
+            attempt_build_wxpython
         fi
     fi
 fi
