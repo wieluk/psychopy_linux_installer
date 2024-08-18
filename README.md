@@ -5,12 +5,15 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Ubuntu 24.04, 22.04, 20.04, 18.04
 - Pop!_OS 22.04
 - Debian 12, 11
-- Fedora 39
+- Fedora (40), 39
 - Rocky Linux 9
 - CentOS 9
 
 Additional distributions may be working.
 
+
+**Note:**
+Fedora 40 only works on python3.8 with wxpython 4.1.1.
 
 ## Important Information
 

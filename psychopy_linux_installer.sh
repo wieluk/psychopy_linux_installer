@@ -323,7 +323,11 @@ get_wxpython_wheel() {
 
 
 version_greater_than() {
-    [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
+    if [[ "$1" =~ ^[0-9]+(\.[0-9]+)*$ ]] && [[ "$2" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+        [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
+    else
+        return 1
+    fi
 }
 
 create_desktop_file() {
@@ -372,15 +376,14 @@ if [ "$psychopy_version" == "latest" ]; then
     psychopy_version=$(get_latest_pypi_version "psychopy")
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 elif [ "$psychopy_version" == "git" ]; then
-    latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    log_message "The latest PsychoPy github version is: $latest_version"
-    psychopy_version_clean=$(echo "${latest_version}" | tr -d ',;')
+    psychopy_version_clean=git_dev
 else
     check_pypi_for_version psychopy "${psychopy_version}"
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 fi
 
 python_version_clean=$(echo "${python_version}" | tr -d ',;')
+check_python_version "${python_version_clean}"
 
 psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 if [ -d "${psychopy_dir}" ]; then
@@ -468,8 +471,8 @@ log_message "Creating and activating virtual environment..."
 log python"${python_version%.*}" -m venv "${psychopy_dir}"
 log source "${psychopy_dir}/bin/activate"
 
-log_message "Upgrading pip, distro, six, psychtoolbox and attrdict ..."
-log pip install -U pip distro six psychtoolbox attrdict
+log_message "Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
+log pip install -U pip distro sip six psychtoolbox attrdict
 
 if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
     log_message "PsychoPy version < 2024.2.0, installing numpy<2"
@@ -533,7 +536,7 @@ fi
 
 log_message "Installing PsychoPy version ${psychopy_version_clean}"
 if [ "$psychopy_version" == "git" ]; then
-    log pip install git+https://github.com/psychopy/psychopy
+    log pip install git+https://github.com/psychopy/psychopy.git@dev
 else
     log pip install psychopy=="${psychopy_version_clean}"
 fi

@@ -74,10 +74,8 @@ jobs:
 
           echo "PYTHON_VENV command: $PYTHON_VENV"
           echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_ENV
-          echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_OUTPUT
           echo "PsychoPy start command: $PSYCHOPY_COMMAND"
           echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
-          echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
 
       - name: Verify PsychoPy installation with --help
         id: verify-help

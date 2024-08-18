@@ -63,7 +63,6 @@ jobs:
           tarball=$(ls wxPython-*.tar.gz)
           tar -xzf "$tarball"
           
-          
           LATEST_WXPYTHON_VERSION=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           FALLBACK_WXPYTHON_VERSION="4.1.1"
           NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
@@ -200,6 +199,7 @@ jobs:
           wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
+          pip install -U pip distro sip six
           
           if pip wheel .; then
               echo "Successfully built wxPython version $wxpython_version."
@@ -259,6 +259,7 @@ jobs:
 
   update-readme:
     needs: build
+    if: ${{ always() }}
     runs-on: [self-hosted, ubuntu-24.04]
     steps:
       - name: Checkout repository
