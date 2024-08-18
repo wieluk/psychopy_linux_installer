@@ -278,7 +278,7 @@ attempt_build_wxpython() {
             if install_wxpython "$fallback_version"; then
                 return 0
             else
-                log_message "Error: Fallback version $fallback_version also failed to install. Please check your environment and dependencies."
+                log_message "Error: Fallback version $fallback_version also failed to install. Please open a github issue without your system info."
                 exit 1
             fi
         else
