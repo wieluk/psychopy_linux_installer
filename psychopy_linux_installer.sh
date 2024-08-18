@@ -3,7 +3,7 @@ show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.10.14)
+  --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --wxpython_version=VERSION     Specify the wxPython version to install (default: latest)
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
@@ -16,7 +16,7 @@ Options:
 EOF
 }
 
-python_version="3.10.14"
+python_version="3.8.19"
 psychopy_version="2024.1.4"
 wxpython_version="latest"
 wxpython_version_set_by_user=false
@@ -278,7 +278,7 @@ attempt_build_wxpython() {
             if install_wxpython "$fallback_version"; then
                 return 0
             else
-                log_message "Error: Fallback version $fallback_version also failed to install. Please check your environment and dependencies."
+                log_message "Error: Fallback version $fallback_version also failed to install. Please open a github issue without your system info."
                 exit 1
             fi
         else

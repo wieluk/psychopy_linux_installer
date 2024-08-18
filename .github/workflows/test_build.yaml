@@ -33,7 +33,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-24.04 , ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
-        python_version: ['3.10.5']
+        python_version: ['3.8.5']
         psychopy_version: ['latest']
         bids_version: ['latest']
       fail-fast: false

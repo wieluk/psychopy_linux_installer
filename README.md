@@ -5,20 +5,17 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Ubuntu 24.04, 22.04, 20.04, 18.04
 - Pop!_OS 22.04
 - Debian 12, 11
-- Fedora (40), 39
+- Fedora 40, 39
 - Rocky Linux 9
 - CentOS 9
 
 Additional distributions may be working.
 
 
-**Note:**
-Fedora 40 only works on python3.8 with wxpython 4.1.1.
-
 ## Important Information
 
-- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10. PsychoPy seems to be moving towards Python3.10.
-- The specified/default(3.10.14) Python version is installed as `altinstall` if not present.
+- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10. 
+- The specified/default(3.8.19) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
@@ -57,7 +54,7 @@ Execute script; see options below for more information.
 
 ## Options
 
-- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10.14`).
+- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`).
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
 - `--wxpython_version=VERSION` : Specify the wxPython version to install (default: `latest`)
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
