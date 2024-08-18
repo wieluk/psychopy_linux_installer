@@ -259,6 +259,7 @@ jobs:
 
   update-readme:
     needs: build
+    if: ${{ always() }}
     runs-on: [self-hosted, ubuntu-24.04]
     steps:
       - name: Checkout repository
