@@ -97,12 +97,13 @@ jobs:
             cat $RESULT_FILE
             echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
             echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
-            echo "FALLBACK_WXPYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION" >> $GITHUB_ENV
+            
           else
             echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
           fi
-
+          echo "FALLBACK_WXPYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION" >> $GITHUB_ENV
+          
       - name: Set up dependencies
         if: env.skip_process == 'false'
         run: |
@@ -203,27 +204,25 @@ jobs:
               echo "Successfully built wxPython version $wxpython_version."
           else
               echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version."
-              fallback_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
+              wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
               
               # Clean up and prepare to build the fallback version
               cd /tmp_dir/wxpython
               rm -rf "$wxPython_dir"
               
               # Download the fallback version
-              pip download "wxPython==$fallback_version"
+              pip download "wxPython==$wxpython_version"
               
-              # Explicitly use the fallback version for the tarball
-              tarball="wxPython-${fallback_version}.tar.gz"
+              tarball=$(ls wxPython-*.tar.gz)
               tar -xzf "$tarball"
-              
-              wxpython_version=$fallback_version
+                  
               wxPython_dir=$(find . -type d -name "wxPython-*")
               cd "$wxPython_dir"
               
               if pip wheel .; then
                   echo "Successfully built wxPython version $wxpython_version as a fallback."
               else
-                  echo "Error: Fallback version $fallback_version also failed to build. Exiting."
+                  echo "Error: Fallback version $wxpython_version also failed to build. Exiting."
                   exit 1 
               fi
           fi
