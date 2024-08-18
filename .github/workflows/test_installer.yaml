@@ -34,7 +34,7 @@ jobs:
       matrix:
         os: [ubuntu-24.04 , ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
-        psychopy_version: ['latest', 'git', '2023.2.3', '2024.1.4']
+        psychopy_version: ['latest', '2023.2.3', '2024.1.4']
         bids_version: ['None', 'latest']
       fail-fast: false
     steps:
@@ -49,34 +49,14 @@ jobs:
           }
           
           # Determine PsychoPy version
-          if [ "${{ matrix.psychopy_version }}" == "git" ]; then
-            latest_version=$(curl -s https://api.github.com/repos/psychopy/psychopy/releases/latest | grep -Po '"tag_name": "\K[^"]+')
-            latest_pypi_version=$(get_latest_pypi_version "psychopy")
-
-            # Clean both versions before comparing
-            latest_version_clean=$(echo "$latest_version" | tr -d ',;')
-            latest_pypi_version_clean=$(echo "$latest_pypi_version" | tr -d ',;')
-
-            if [ "$latest_version_clean" == "$latest_pypi_version_clean" ]; then
-            echo "The latest PsychoPy version on GitHub is the same as on PyPI. Skipping the remaining steps."
-            echo "STOP_JOB=true" >> $GITHUB_ENV
-            exit 0
-          fi
-
-            PSYCHOPY_VERSION_CLEAN="$latest_version_clean"
-
-          elif [ "${{ matrix.psychopy_version }}" == "latest" ]; then
+          if [ "${{ matrix.psychopy_version }}" == "latest" ]; then
             PSYCHOPY_VERSION_CLEAN=$(get_latest_pypi_version "psychopy" | tr -d ',;')
-
           else
             PSYCHOPY_VERSION_CLEAN=$(echo "${{ matrix.psychopy_version }}" | tr -d ',;')
           fi
             
           # Determine BIDS version
-          if [ "${{ matrix.bids_version }}" == "git" ]; then
-            latest_bids_version=$(curl -s https://gitlab.com/api/v4/projects/psygraz%2Fpsychopy-bids/releases | jq -r '.[0].tag_name')
-            BIDS_VERSION_CLEAN=$(echo "${latest_bids_version}" | tr -d ',;')
-          elif [ "${{ matrix.bids_version }}" == "latest" ]; then
+          if [ "${{ matrix.bids_version }}" == "latest" ]; then
             latest_bids_version=$(get_latest_pypi_version "psychopy_bids")
             BIDS_VERSION_CLEAN=$(echo "${latest_bids_version}" | tr -d ',;')
           else
@@ -86,19 +66,14 @@ jobs:
           # Set environment variables and outputs
           echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
           echo "BIDS_VERSION_CLEAN=$BIDS_VERSION_CLEAN" >> $GITHUB_ENV
-          echo "PSYCHOPY_VERSION_CLEAN=${PSYCHOPY_VERSION_CLEAN}" >> $GITHUB_ENV
-          echo "BIDS_VERSION_CLEAN=${BIDS_VERSION_CLEAN}" >> $GITHUB_ENV
       
       - name: Checkout repository
         uses: actions/checkout@v4
-        if: env.STOP_JOB != 'true'
       
       - name: Make script executable
         run: chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer.sh
-        if: env.STOP_JOB != 'true'
       
       - name: create tmp and fix permissions
-        if: env.STOP_JOB != 'true'
         run: |
           sudo rm -rf /tmp/*
           sudo rm -rf /tmp_dir
@@ -107,7 +82,6 @@ jobs:
           sudo chown -R $USER:$USER /tmp_dir
 
       - name: Run PsychoPy Linux Installer
-        if: env.STOP_JOB != 'true'
         id: run-installer
         run: |
           ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force"
@@ -115,7 +89,6 @@ jobs:
         shell: bash
 
       - name: Extract PsychoPy start command
-        if: env.STOP_JOB != 'true'
         id: extract-command
         continue-on-error: true
         run: |
@@ -130,20 +103,16 @@ jobs:
 
           echo "PYTHON_VENV command: $PYTHON_VENV"
           echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_ENV
-          echo "PYTHON_VENV=$PYTHON_VENV" >> $GITHUB_OUTPUT
           echo "PsychoPy start command: $PSYCHOPY_COMMAND"
           echo "PSYCHOPY_COMMAND=$PSYCHOPY_COMMAND" >> $GITHUB_ENV
-          echo "psychopy_command=$PSYCHOPY_COMMAND" >> $GITHUB_OUTPUT
 
       - name: Verify PsychoPy installation with --help
-        if: env.STOP_JOB != 'true'
         id: verify-help
         continue-on-error: true
         run: ${{ env.PSYCHOPY_COMMAND }} -h
         shell: bash
 
       - name: Verify PsychoPy installation with --version
-        if: env.STOP_JOB != 'true'
         id: verify-version
         continue-on-error: true
         run: |
@@ -157,13 +126,11 @@ jobs:
         shell: bash
 
       - name: copy psychopy tests to tmp
-        if: env.STOP_JOB != 'true'
         id: copy-tests
         run: |
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
       
       - name: run basic PsychoPy test
-        if: env.STOP_JOB != 'true'
         id: psychopy-test
         continue-on-error: true
         run: |
@@ -176,7 +143,6 @@ jobs:
           fi
 
       - name: Run extended PsychoPy Tests
-        if: env.STOP_JOB != 'true'
         id: psychopy-test-extended
         continue-on-error: true
         run: |
@@ -205,7 +171,7 @@ jobs:
           echo "All tests passed successfully."
 
       - name: Verify BIDS installation simple
-        if: env.STOP_JOB != 'true' && matrix.bids_version != 'None'
+        if: matrix.bids_version != 'None'
         id: verify-bids
         continue-on-error: true
         run: |
@@ -220,7 +186,7 @@ jobs:
           fi
       
       - name: Verify BIDS installation exp_handler
-        if: env.STOP_JOB != 'true' && matrix.bids_version != 'None'
+        if: matrix.bids_version != 'None'
         id: verify-bids-handler
         continue-on-error: true
         run: |
@@ -233,10 +199,8 @@ jobs:
             echo "::error::BIDS exp_handler test execution failed"
             exit 1
           fi
-
         
       - name: Record result
-        if: env.STOP_JOB != 'true'
         run: |
           STATUS="❌"
           if [[ "${{ steps.run-installer.outcome }}" == "success" && 
@@ -259,7 +223,6 @@ jobs:
           cat $RESULT_FILE
       
       - name: Upload result artifact
-        if: env.STOP_JOB != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}-${{ env.BIDS_VERSION_CLEAN }}
