@@ -177,6 +177,7 @@ jobs:
           PYTHON_VERSION="${{ matrix.python_version }}"
           FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
+          echo "uploading $FILE_PATH to Nextcloud."
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
       - name: Build wxPython in venv and upload to Nextcloud
@@ -204,12 +205,12 @@ jobs:
               echo "Successfully built wxPython version $wxpython_version."
           else
               cd /tmp
-              rm -rf  /tmp_dir/wxpython
+              rm -rf  /tmp_dir/wxpython*
               mkdir /tmp_dir/wxpython
               cd /tmp_dir/wxpython
               
+              echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version ${{ env.FALLBACK_WXPYTHON_VERSION}}."
               wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
-              echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version $wxpython_version."
               
               pip download "wxPython==$wxpython_version"
               
@@ -234,6 +235,7 @@ jobs:
           identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
+          echo "uploading $identified_wheel_file to Nextcloud."
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
       
           # Output results
