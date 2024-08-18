@@ -203,14 +203,14 @@ jobs:
           if pip wheel .; then
               echo "Successfully built wxPython version $wxpython_version."
           else
-              echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version."
-              wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
-              
-              # Clean up and prepare to build the fallback version
+              cd /tmp
+              rm -rf  /tmp_dir/wxpython
+              mkdir /tmp_dir/wxpython
               cd /tmp_dir/wxpython
-              rm -rf "$wxPython_dir"
               
-              # Download the fallback version
+              wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
+              echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version $wxpython_version."
+              
               pip download "wxPython==$wxpython_version"
               
               tarball=$(ls wxPython-*.tar.gz)
