@@ -266,15 +266,15 @@ install_wxpython() {
 }
 
 attempt_build_wxpython() {
-    log_message "Building wxPython from source. This might take a while ..."
+    log_message "Building wxPython $wxpython_version from source. This might take a while ..."
     install_dependencies "$pkg_manager" wxpython_deps
 
     if install_wxpython "$wxpython_version"; then
         return 0
     else
         if [ "$wxpython_version_set_by_user" = false ]; then
-            log_message "Attempting to use a fallback version."
             fallback_version="4.1.1"
+            log_message "Attempting to build fallback wxpyton $fallback_version."
             if install_wxpython "$fallback_version"; then
                 return 0
             else

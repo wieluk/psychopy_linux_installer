@@ -94,14 +94,14 @@ jobs:
             echo "skip_process=true" >> $GITHUB_ENV
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WX_PYTHON_VERSION}.md"
             echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WX_PYTHON_VERSION |" >> $RESULT_FILE
-            cat $RESULT_FILE
-            echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
-            echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
-            
+            cat $RESULT_FILE   
           else
             echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
           fi
+
+          echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
           echo "FALLBACK_WXPYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION" >> $GITHUB_ENV
           
       - name: Set up dependencies
