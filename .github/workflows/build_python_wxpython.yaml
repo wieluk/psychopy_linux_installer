@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - testing
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
 
