@@ -138,9 +138,9 @@ detect_package_manager() {
 update_package_manager() {
     local pkg_manager=$1
     case $pkg_manager in
-        apt) log sudo apt-get update ;;
-        yum) log sudo yum update -y ;;
-        dnf) log sudo dnf update -y ;;
+        apt) log sudo apt-get update -qq ;;
+        yum) log sudo yum update -y -q ;;
+        dnf) log sudo dnf update -y -q ;;
         pacman) log sudo pacman -Syu --noconfirm ;;
         *) echo "No compatible package manager found."; exit 1 ;;
     esac
@@ -153,9 +153,9 @@ install_packages() {
     
     for package in "${packages[@]}"; do
         case $pkg_manager in
-            apt) log sudo apt-get install -y "$package" || echo "Package $package not found, skipping." ;;
-            yum) log sudo yum install -y "$package" || echo "Package $package not found, skipping." ;;
-            dnf) log sudo dnf install -y "$package" || echo "Package $package not found, skipping." ;;
+            apt) log sudo apt-get install -y -qq "$package" || echo "Package $package not found, skipping." ;;
+            yum) log sudo yum install -y -q "$package" || echo "Package $package not found, skipping." ;;
+            dnf) log sudo dnf install -y -q "$package" || echo "Package $package not found, skipping." ;;
             pacman) log sudo pacman -S --noconfirm "$package" || echo "Package $package not found, skipping." ;;
             *) echo "No compatible package manager found."; exit 1 ;;
         esac
@@ -289,7 +289,8 @@ attempt_build_wxpython() {
 }
 
 get_wxpython_wheel() {
-    local wxpython_version="$1"
+    local wxpython_latest="$1"
+    local wxpython_version="$2"
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
     local wheel_dir
     local python_version_short
@@ -302,7 +303,7 @@ get_wxpython_wheel() {
     python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
     html=$(curl -s "$wheel_dir")
 
-    if [ "$wxpython_version" = "latest" ]; then
+    if [ "$wxpython_latest" = "true" ]; then
         wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
     else
         wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
@@ -481,13 +482,16 @@ fi
 
 if [ "$wxpython_version" = "latest" ]; then
     wxpython_version=$(get_latest_pypi_version "wxPython")
+    wxpython_latest=true
     log_message "Latest wxPython version detected: $wxpython_version"
+else
+    wxpython_latest=false
 fi
 
 if [ "$build_wx" = true ]; then
     attempt_build_wxpython
 else
-    if wheel_url=$(get_wxpython_wheel "$wxpython_version"); then
+    if wheel_url=$(get_wxpython_wheel "$wxpython_latest" "$wxpython_version"); then
         wheel_file=$(basename "$wheel_url")
         log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
         log curl -O "$wheel_url"
