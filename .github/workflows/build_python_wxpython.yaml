@@ -157,8 +157,10 @@ jobs:
             exit 1
           fi
 
-      - name: Download and install Python
+      - name: Download, make and upload Python
         if: env.skip_process == 'false'
+        id: build-python
+        continue-on-error: true
         run: |
           cd /tmp_dir
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -169,17 +171,15 @@ jobs:
           make -j "$(nproc)"
           sudo make altinstall
 
-      - name: Create tarball of Python build and upload to nextcloud
-        if: env.skip_process == 'false'
-        run: |
-          PYTHON_VERSION="${{ matrix.python_version }}"
           FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
           echo "uploading $FILE_PATH to Nextcloud."
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
-      - name: Build wxPython in venv and upload to Nextcloud
+      - name: Download, build and upload wxPython
+        id: build-wxpython
         if: env.skip_process == 'false'
+        continue-on-error: true
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
           SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
@@ -236,12 +236,30 @@ jobs:
           deactivate
           echo "uploading $identified_wheel_file to Nextcloud."
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
-      
-          # Output results
-          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${wxpython_version}.md"
-          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $wxpython_version |" >> $RESULT_FILE
-          cat $RESULT_FILE
           echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
+
+      - name: Create and Record Result Table
+        if: env.skip_process == 'false'
+        run: |
+          # Default to failure indicators
+          PYTHON_STATUS="❌"
+          WXPYTHON_STATUS="❌"
+          
+          # Check if the relevant steps succeeded and update status accordingly
+          if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
+            PYTHON_STATUS="${{ matrix.python_version }}"
+          fi
+          
+          if [[ "${{ steps.build-wxpython.outcome }}" == "success" ]]; then
+            WXPYTHON_STATUS="${{ env.WXPYTHON_VERSION }}"
+          fi
+          
+          # Output the result to a file
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md"
+          echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
+          
+          # Display the content of the result file
+          cat $RESULT_FILE
 
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
