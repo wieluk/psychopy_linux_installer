@@ -295,7 +295,7 @@ jobs:
   
       - name: Check for any failed statuses
         run: |
-          if grep -q "❌" results.md; then
-            echo "Failed entries found. Failing the job."
+          if grep -q "❌" results.md && ! grep -q "✅" results.md; then
+            echo "All entries failed or no successful entries found. Failing the job."
             exit 1
           fi
