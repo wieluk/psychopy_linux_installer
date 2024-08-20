@@ -1,11 +1,22 @@
 #!/bin/bash
+# ==============================================================================
+#  Title:         install_psychopy.sh
+#  Description:   This script installs PsychoPy with specified versions of
+#                 Python, wxPython, and optional PsychoPy-BIDS integration.
+#  Author:        Lukas Wiertz
+#  Date:          2024-08-20
+#  Version:       1.0
+#  License:       GNU General Public License v3.0
+# ==============================================================================
+
+# Function to show help message
 show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
 Options:
   --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
-  --wxpython_version=VERSION     Specify the wxPython version to install (default: latest)
+  --wxpython_version=VERSION  Specify the wxPython version to install (default: latest)
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
@@ -16,6 +27,7 @@ Options:
 EOF
 }
 
+# Set default values for variables
 python_version="3.8.19"
 psychopy_version="2024.1.4"
 wxpython_version="latest"
@@ -28,6 +40,7 @@ build_python=false
 build_wx=false
 disable_shortcut=false
 
+# Parse command line arguments
 for arg in "$@"; do
     case $arg in
         --python_version=*)
@@ -87,6 +100,7 @@ for arg in "$@"; do
     esac
 done
 
+# Logging function for verbose output
 log() {
     if [ "$verbose" = true ]; then
         "$@"
@@ -95,10 +109,12 @@ log() {
     fi
 }
 
+# Function to print log messages with timestamp
 log_message() {
     echo "$(date "+%Y-%m-%d %H:%M:%S") - $1"
 }
 
+# Function to detect the OS version
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -121,6 +137,7 @@ detect_os_version() {
     fi
 }
 
+# Function to detect the package manager for the OS
 detect_package_manager() {
     if command -v apt-get > /dev/null 2>&1; then
         echo "apt"
@@ -135,6 +152,7 @@ detect_package_manager() {
     fi
 }
 
+# Function to update the package manager
 update_package_manager() {
     local pkg_manager=$1
     case $pkg_manager in
@@ -146,6 +164,7 @@ update_package_manager() {
     esac
 }
 
+# Function to install packages using the package manager
 install_packages() {
     local pkg_manager=$1
     shift
@@ -162,11 +181,13 @@ install_packages() {
     done
 }
 
+# Function to install different types of dependencies
 install_dependencies() {
     local pkg_manager=$1
     local dep_type=$2
     local dependencies=()
 
+    # Define dependencies for different package managers
     case $pkg_manager in
         apt)
             script_deps=(
@@ -194,7 +215,6 @@ install_dependencies() {
             )
             wxpython_deps=(
                 libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel
-
             )
             ;;
         pacman)
@@ -215,6 +235,7 @@ install_dependencies() {
             echo "No compatible package manager found."; exit 1 ;;
     esac
     
+    # Set the list of dependencies based on the type requested
     case $dep_type in
         script_deps) dependencies=("${script_deps[@]}") ;;
         python_build_deps) dependencies=("${python_build_deps[@]}") ;;
@@ -223,9 +244,11 @@ install_dependencies() {
         *) echo "Invalid dependency type specified."; exit 1 ;;
     esac
 
+    # Install the dependencies
     install_packages "$pkg_manager" "${dependencies[@]}"
 }
 
+# Function to check if the Python version exists
 check_python_version() {
     local version=$1
     if ! curl -s --head --fail "https://www.python.org/ftp/python/${version}/Python-${version}.tgz" > /dev/null; then
@@ -234,6 +257,7 @@ check_python_version() {
     fi
 }
 
+# Function to get the latest version of a package from PyPI
 get_latest_pypi_version() {
     local package_name=$1
     local latest_version
@@ -245,6 +269,7 @@ get_latest_pypi_version() {
     echo "$latest_version"
 }
 
+# Function to check if a specific version of a package exists on PyPI
 check_pypi_for_version() {
     local package=$1
     local version=$2
@@ -254,6 +279,7 @@ check_pypi_for_version() {
     fi
 }
 
+# Function to install wxPython
 install_wxpython() {
     version=$1
     if log pip install "wxpython==$version"; then
@@ -265,6 +291,7 @@ install_wxpython() {
     fi
 }
 
+# Function to attempt building wxPython from source
 attempt_build_wxpython() {
     log_message "Building wxPython $wxpython_version from source. This might take a while ..."
     install_dependencies "$pkg_manager" wxpython_deps
@@ -274,7 +301,7 @@ attempt_build_wxpython() {
     else
         if [ "$wxpython_version_set_by_user" = false ]; then
             fallback_version="4.1.1"
-            log_message "Attempting to build fallback wxpyton $fallback_version."
+            log_message "Attempting to build fallback wxpython $fallback_version."
             if install_wxpython "$fallback_version"; then
                 return 0
             else
@@ -288,6 +315,7 @@ attempt_build_wxpython() {
     fi
 }
 
+# Function to get the URL for the wxPython wheel
 get_wxpython_wheel() {
     local wxpython_latest="$1"
     local wxpython_version="$2"
@@ -321,8 +349,7 @@ get_wxpython_wheel() {
     return 0
 }
 
-
-
+# Function to compare version numbers
 version_greater_than() {
     if [[ "$1" =~ ^[0-9]+(\.[0-9]+)*$ ]] && [[ "$2" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
         [ "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1" ]
@@ -331,6 +358,7 @@ version_greater_than() {
     fi
 }
 
+# Function to create a desktop shortcut file
 create_desktop_file() {
     local exec_args=$1
     local pretty_name=$2
@@ -353,26 +381,27 @@ create_desktop_file() {
     echo "$desktop_file"
 }
 
-
-
-
+# Detect OS version and architecture
 os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
 processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
 log_message "Initiating PsychoPy installation with Python $python_version on ${os_version} (${processor_structure} architecture)."
 
-
+# Detect package manager
 pkg_manager=$(detect_package_manager)
 if [ "$pkg_manager" == "none" ]; then
     log_message "No compatible package manager found. Exiting."
     exit 1
 fi
 
+# Update package manager
 log_message "Updating ${pkg_manager} package manager."
 update_package_manager "$pkg_manager"
 
+# Install basic dependencies
 log_message "Installing git, curl, and jq."
 install_dependencies "$pkg_manager" script_deps
 
+# Determine PsychoPy version to install
 if [ "$psychopy_version" == "latest" ]; then
     psychopy_version=$(get_latest_pypi_version "psychopy")
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
@@ -383,9 +412,11 @@ else
     psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
 fi
 
+# Clean up Python version string
 python_version_clean=$(echo "${python_version}" | tr -d ',;')
 check_python_version "${python_version_clean}"
 
+# Set up PsychoPy installation directory
 psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 if [ -d "${psychopy_dir}" ]; then
     if [ "$force_overwrite" = true ]; then
@@ -402,13 +433,15 @@ else
 fi
 cd "${psychopy_dir}" || { log_message "Failed to change directory to ${psychopy_dir}. Exiting."; exit 1; }
 
-
+# Install PsychoPy dependencies
 log_message "Installing PsychoPy dependencies. This might take a while ..."
 install_dependencies "$pkg_manager" psychopy_deps
 
+# Check if Python is already installed
 if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
     log_message "Python version ${python_version} is already installed."
 else
+    # Install Python build dependencies
     log_message "Installing python build dependencies ..."
     log install_dependencies "$pkg_manager" python_build_deps
     if [ "$build_python" = true ]; then
@@ -429,13 +462,14 @@ else
         )
         log sudo rm -rf "${temp_dir}" "${temp_file}"
     else
+        # Attempt to download pre-built Python version
         nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
         temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
         temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
 
         log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
         if log curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-            log_message "Successfully downloaded Python ${python_version} ... making a altinstall ..."
+            log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
             mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
@@ -444,6 +478,7 @@ else
             )
             log sudo rm -rf "${temp_dir}" "${temp_file}"
         else
+            # If download fails, build from source
             log_message "Failed to download from Nextcloud. Building from official Python source. This might take a while ..."
             official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
             temp_file="Python-${python_version}.tgz"
@@ -463,23 +498,28 @@ else
     fi
 fi
 
+# Check if Python was successfully installed
 if ! command -v python"${python_version%.*}" &> /dev/null; then
     log_message "Error: python${python_version%.*} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
     exit 1
 fi
 
+# Create and activate virtual environment
 log_message "Creating and activating virtual environment..."
 log python"${python_version%.*}" -m venv "${psychopy_dir}"
 log source "${psychopy_dir}/bin/activate"
 
+# Upgrade pip and install required Python packages
 log_message "Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
 log pip install -U pip distro sip six psychtoolbox attrdict
 
+# Install numpy if PsychoPy version is less than 2024.2.0
 if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
     log_message "PsychoPy version < 2024.2.0, installing numpy<2"
     log pip install "numpy<2"
 fi
 
+# Determine wxPython version and install it
 if [ "$wxpython_version" = "latest" ]; then
     wxpython_version=$(get_latest_pypi_version "wxPython")
     wxpython_latest=true
@@ -504,6 +544,7 @@ else
             attempt_build_wxpython
         fi
     else
+        # If no wheel is found, try downloading from Nextcloud or build from source
         python_major=$(python -c "import sys; print(sys.version_info.major)")
         python_minor=$(python -c "import sys; print(sys.version_info.minor)")
 
@@ -533,11 +574,13 @@ else
     fi
 fi
 
+# Check if wxPython was successfully installed
 if ! pip show wxPython &> /dev/null; then
     log "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
     exit 1
 fi
 
+# Install PsychoPy
 log_message "Installing PsychoPy version ${psychopy_version_clean}"
 if [ "$psychopy_version" == "git" ]; then
     log pip install git+https://github.com/psychopy/psychopy.git@dev
@@ -545,11 +588,13 @@ else
     log pip install psychopy=="${psychopy_version_clean}"
 fi
 
+# Check if PsychoPy was successfully installed
 if ! pip show psychopy &> /dev/null; then
-    log "Error: PsychoPy is not installed succesfully. Something went wrong during the installation. Use --verbose flag."
+    log "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use --verbose flag."
     exit 1
 fi
 
+# Install PsychoPy-BIDS if specified
 if [ "$bids_version" != "None" ]; then
     log_message "Installing PsychoPy-BIDS version ${bids_version}..."
     if [ "$bids_version" == "latest" ]; then
@@ -564,19 +609,22 @@ if [ "$bids_version" != "None" ]; then
     log pip install seedir
 
     if ! pip show psychopy_bids &> /dev/null; then
-    log "Warning: psychopy_bids is not installed succesfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
+        log "Warning: psychopy_bids is not installed successfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
     fi
 else
     log_message "Skipping PsychoPy-BIDS installation."
 fi
 
+# Deactivate virtual environment
 deactivate
 
+# Add user to the 'psychopy' group and set security limits
 log_message "Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
 log sudo groupadd --force psychopy
 log sudo usermod -a -G psychopy "$USER"
 sudo sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
+# Create desktop shortcut if not disabled
 if [ "$disable_shortcut" = false ]; then
     desktop_shortcut="${HOME}/Desktop/"
     if [ -d "$desktop_shortcut" ]; then
@@ -616,11 +664,12 @@ else
     log_message "Desktop shortcut creation disabled by user."
 fi
 
-
+# Add PsychoPy to PATH
 shell_name=$(basename "$SHELL")
 mkdir -p "${psychopy_dir}/.bin"
 ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
+# Update shell configuration to include PsychoPy in PATH
 case $shell_name in
     bash)
         config_file="$HOME/.bashrc"
@@ -649,6 +698,7 @@ case $shell_name in
         ;;
 esac
 
+# Print completion message with instructions
 echo
 log_message "PsychoPy installation complete!"
 echo
