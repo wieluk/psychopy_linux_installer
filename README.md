@@ -320,7 +320,7 @@ All commands, along with the installed versions and set paths, as well as the co
 
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
 <!-- BEGIN PRECOMPILED_VERSIONS -->
-### Report generated on 2024-08-18
+### Report generated on 2024-08-20
 
 | OS | Python Version | WxPython Version |
 |---|---|---|
@@ -336,6 +336,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | fedora-39 | 3.10.14 | 4.2.1 |
 | fedora-39 | 3.8.19 | 4.2.1 |
 | fedora-39 | 3.9.19 | 4.2.1 |
+| fedora-40 | 3.10.14 | ❌ |
 | fedora-40 | 3.8.19 | 4.1.1 |
 | fedora-40 | 3.9.19 | 4.1.1 |
 | pop-22.04 | 3.10.14 | 4.2.1 |
