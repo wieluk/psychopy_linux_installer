@@ -137,7 +137,7 @@ All commands, along with the installed versions and set paths, as well as the co
 ### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10485242549)
 
 | OS | Python Version | PsychoPy Version | Status |
-|---|---|---|---|---|
+|---|---|---|---|
 | centos-9 | 3.10.14 | 2023.2.3 | ✅ |
 | centos-9 | 3.10.14 | 2024.1.4 | ✅ |
 | centos-9 | 3.10.14 | 2024.2.1 | ✅ |

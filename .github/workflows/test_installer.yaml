@@ -253,7 +253,7 @@ jobs:
           echo "### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> results.md
           echo "" >> results.md
           echo "| OS | Python Version | PsychoPy Version | Status |" >> results.md
-          echo "|---|---|---|---|---|" >> results.md
+          echo "|---|---|---|---|" >> results.md
           for file in ./artifacts/*.md; do
             cat "$file" >> results.md
           done
