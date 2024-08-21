@@ -250,7 +250,9 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
       - name: Pull changes from remote
-        run: git pull
+        run: |
+          git fetch origin
+          git reset --hard origin/${{ github.ref_name }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -278,11 +280,16 @@ jobs:
 
           mv sorted_results.md results.md
 
-      - name: Update README.md with results
+      - name: Update README.md with results if not empty
         run: |
-          sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/,/<!-- END INSTALLATION_RESULTS -->/{//!d}' README.md
-          sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/r results.md' README.md
-
+          if [ -s results.md ]; then
+            sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/,/<!-- END INSTALLATION_RESULTS -->/{//!d}' README.md
+            sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/r results.md' README.md
+          else
+            echo "results.md is empty; skipping."
+            exit 0
+          fi
+      
       - name: Commit and push changes
         run: |
           git add README.md
@@ -290,7 +297,7 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "Update README.md with PsychoPy installation results"
-            git push
+            git push --force
           fi
   
       - name: Check for any failed statuses
