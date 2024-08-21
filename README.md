@@ -239,7 +239,7 @@ All commands, along with the installed versions and set paths, as well as the co
 
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
 <!-- BEGIN PRECOMPILED_VERSIONS -->
-### Report generated on 2024-08-20
+### Report generated on 2024-08-21
 
 | OS | Python Version | WxPython Version |
 |---|---|---|
