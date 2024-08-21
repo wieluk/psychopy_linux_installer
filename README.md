@@ -133,8 +133,8 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-### Report generated on 2024-08-19
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10449698291)
+### Report generated on 2024-08-21
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10484595385)
 
 | OS | Python Version | PsychoPy Version | BIDS Version | Status |
 |---|---|---|---|---|
@@ -146,16 +146,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | centos-9 | 3.10.14 | 2024.2.1 | None | ✅ |
 | centos-9 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | centos-9 | 3.8.19 | 2023.2.3 | None | ✅ |
-| centos-9 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| centos-9 | 3.8.19 | 2024.1.4 | None | ✅ |
-| centos-9 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| centos-9 | 3.8.19 | 2024.2.1 | None | ✅ |
-| centos-9 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| centos-9 | 3.9.19 | 2023.2.3 | None | ✅ |
-| centos-9 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| centos-9 | 3.9.19 | 2024.1.4 | None | ✅ |
-| centos-9 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| centos-9 | 3.9.19 | 2024.2.1 | None | ✅ |
 | debian-11 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | debian-11 | 3.10.14 | 2023.2.3 | None | ✅ |
 | debian-11 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -167,13 +157,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | debian-11 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | debian-11 | 3.8.19 | 2024.1.4 | None | ✅ |
 | debian-11 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| debian-11 | 3.8.19 | 2024.2.1 | None | ✅ |
-| debian-11 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| debian-11 | 3.9.19 | 2023.2.3 | None | ✅ |
-| debian-11 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| debian-11 | 3.9.19 | 2024.1.4 | None | ✅ |
-| debian-11 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| debian-11 | 3.9.19 | 2024.2.1 | None | ✅ |
 | debian-12 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | debian-12 | 3.10.14 | 2023.2.3 | None | ✅ |
 | debian-12 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -185,13 +168,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | debian-12 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | debian-12 | 3.8.19 | 2024.1.4 | None | ✅ |
 | debian-12 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| debian-12 | 3.8.19 | 2024.2.1 | None | ✅ |
-| debian-12 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| debian-12 | 3.9.19 | 2023.2.3 | None | ✅ |
-| debian-12 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| debian-12 | 3.9.19 | 2024.1.4 | None | ✅ |
-| debian-12 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| debian-12 | 3.9.19 | 2024.2.1 | None | ✅ |
 | fedora-39 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | fedora-39 | 3.10.14 | 2023.2.3 | None | ✅ |
 | fedora-39 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -200,28 +176,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | fedora-39 | 3.10.14 | 2024.2.1 | None | ✅ |
 | fedora-39 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | fedora-39 | 3.8.19 | 2023.2.3 | None | ✅ |
-| fedora-39 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| fedora-39 | 3.8.19 | 2024.1.4 | None | ✅ |
-| fedora-39 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| fedora-39 | 3.8.19 | 2024.2.1 | None | ✅ |
-| fedora-39 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| fedora-39 | 3.9.19 | 2023.2.3 | None | ✅ |
-| fedora-39 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| fedora-39 | 3.9.19 | 2024.1.4 | None | ✅ |
-| fedora-39 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| fedora-39 | 3.9.19 | 2024.2.1 | None | ✅ |
-| fedora-40 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| fedora-40 | 3.8.19 | 2023.2.3 | None | ✅ |
-| fedora-40 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| fedora-40 | 3.8.19 | 2024.1.4 | None | ✅ |
-| fedora-40 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| fedora-40 | 3.8.19 | 2024.2.1 | None | ✅ |
-| fedora-40 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| fedora-40 | 3.9.19 | 2023.2.3 | None | ✅ |
-| fedora-40 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| fedora-40 | 3.9.19 | 2024.1.4 | None | ✅ |
-| fedora-40 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| fedora-40 | 3.9.19 | 2024.2.1 | None | ✅ |
 | pop-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -231,15 +185,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | pop-22.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
 | pop-22.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | pop-22.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.1.4 | None | ✅ |
-| pop-22.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | None | ✅ |
-| pop-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.9.19 | 2024.1.4 | None | ✅ |
-| pop-22.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| pop-22.04 | 3.9.19 | 2024.2.1 | None | ✅ |
 | rocky-9.4 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | rocky-9.4 | 3.10.14 | 2023.2.3 | None | ✅ |
 | rocky-9.4 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -268,14 +213,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-20.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | ubuntu-20.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-20.04 | 3.8.19 | 2024.1.4 | None | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 | None | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.4 | None | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.2.1 | None | ✅ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | ubuntu-22.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -286,14 +223,6 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-22.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | ubuntu-22.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
 | ubuntu-22.04 | 3.8.19 | 2024.1.4 | None | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 | None | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.4 | None | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.2.1 | None | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2023.2.3 | None | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.1.4 | 2023.2.0 | ✅ |
@@ -301,17 +230,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | ubuntu-24.04 | 3.10.14 | 2024.2.1 | 2023.2.0 | ✅ |
 | ubuntu-24.04 | 3.10.14 | 2024.2.1 | None | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2023.2.3 | None | ✅ |
 | ubuntu-24.04 | 3.8.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.1.4 | None | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.2.1 | None | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | None | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.4 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.4 | None | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.2.1 | 2023.2.0 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.2.1 | None | ✅ |
 <!-- END INSTALLATION_RESULTS -->
 
 ## Built Python and wxPython Versions Available for Download
