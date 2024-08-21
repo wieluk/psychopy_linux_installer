@@ -34,7 +34,6 @@ jobs:
         os: [ubuntu-24.04 , ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
         psychopy_version: ['latest', '2023.2.3', '2024.1.4']
-        bids_version: ['None', 'latest']
       fail-fast: false
     steps:
       - name: Determine versions
@@ -53,18 +52,9 @@ jobs:
           else
             PSYCHOPY_VERSION_CLEAN=$(echo "${{ matrix.psychopy_version }}" | tr -d ',;')
           fi
-            
-          # Determine BIDS version
-          if [ "${{ matrix.bids_version }}" == "latest" ]; then
-            latest_bids_version=$(get_latest_pypi_version "psychopy_bids")
-            BIDS_VERSION_CLEAN=$(echo "${latest_bids_version}" | tr -d ',;')
-          else
-            BIDS_VERSION_CLEAN=$(echo "${{ matrix.bids_version }}" | tr -d ',;')
-          fi
-      
+        
           # Set environment variables and outputs
           echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
-          echo "BIDS_VERSION_CLEAN=$BIDS_VERSION_CLEAN" >> $GITHUB_ENV
       
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -84,7 +74,7 @@ jobs:
         id: run-installer
         continue-on-error: true
         run: |
-          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=${{ matrix.bids_version }} --install_dir=/tmp_dir --force"
+          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --install_dir=/tmp_dir --force"
           $GITHUB_WORKSPACE/psychopy_linux_installer.sh $ARGS | tee /tmp_dir/psychopy_install_output.log
         shell: bash
 
@@ -171,7 +161,6 @@ jobs:
           echo "All tests passed successfully."
 
       - name: Verify BIDS installation simple
-        if: matrix.bids_version != 'None'
         id: verify-bids
         continue-on-error: true
         run: |
@@ -186,7 +175,6 @@ jobs:
           fi
       
       - name: Verify BIDS installation exp_handler
-        if: matrix.bids_version != 'None'
         id: verify-bids-handler
         continue-on-error: true
         run: |
@@ -215,18 +203,16 @@ jobs:
           fi
       
           PSYCHOPY_VERSION_CLEAN=${{ env.PSYCHOPY_VERSION_CLEAN }}
-          BIDS_VERSION_CLEAN=${{ env.BIDS_VERSION_CLEAN }}
-          
       
-          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${PSYCHOPY_VERSION_CLEAN}-${BIDS_VERSION_CLEAN}.md"
-          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $PSYCHOPY_VERSION_CLEAN | $BIDS_VERSION_CLEAN | $STATUS |" >> $RESULT_FILE
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${PSYCHOPY_VERSION_CLEAN}.md"
+          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $PSYCHOPY_VERSION_CLEAN | $STATUS |" >> $RESULT_FILE
           cat $RESULT_FILE
       
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}-${{ env.BIDS_VERSION_CLEAN }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}-${{ env.BIDS_VERSION_CLEAN }}.md
+          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md
       
       - name: cleanup paths
         run: |
@@ -266,16 +252,16 @@ jobs:
           echo "### Report generated on $current_date" > results.md
           echo "### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> results.md
           echo "" >> results.md
-          echo "| OS | Python Version | PsychoPy Version | BIDS Version | Status |" >> results.md
+          echo "| OS | Python Version | PsychoPy Version | Status |" >> results.md
           echo "|---|---|---|---|---|" >> results.md
           for file in ./artifacts/*.md; do
             cat "$file" >> results.md
           done
 
-          # Sort the results by OS, Python Version, PsychoPy Version, BIDS Version, and Status
+          # Sort the results by OS, Python Version, PsychoPy Version, and Status
           {
             head -n 4 results.md
-            tail -n +5 results.md | sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 -k6,6
+            tail -n +5 results.md | sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5
           } > sorted_results.md
 
           mv sorted_results.md results.md
