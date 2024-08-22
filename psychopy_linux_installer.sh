@@ -46,7 +46,7 @@ for arg in "$@"; do
         --python_version=*)
             python_version="${arg#*=}"
             if [[ ! $python_version =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
-                echo "Error: Invalid Python version specified. Only versions 3.8.*, 3.9.*, or 3.10.* are allowed."
+                echo "Error: Invalid Python version specified. Only versions 3.8.x, 3.9.x, or 3.10.x are allowed."
                 exit 1
             fi
             ;;
@@ -163,7 +163,7 @@ update_package_manager() {
         apt) log sudo apt-get update -qq ;;
         yum) log sudo yum update -y -q ;;
         dnf) log sudo dnf update -y -q ;;
-        pacman) log sudo pacman -Syu --noconfirm ;;
+        pacman) log sudo pacman -Sy --noconfirm ;;
         *) echo "No compatible package manager found."; exit 1 ;;
     esac
 }
@@ -517,7 +517,7 @@ log source "${psychopy_dir}/bin/activate"
 log_message "Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
 log pip install -U pip distro sip six psychtoolbox attrdict
 
-# Install numpy if PsychoPy version is less than 2024.2.0
+# Install numpy<2 if PsychoPy version is less than 2024.2.0
 if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
     log_message "PsychoPy version < 2024.2.0, installing numpy<2"
     log pip install "numpy<2"
@@ -533,7 +533,7 @@ else
 fi
 
 if [ "$wxpython_version" = "git" ]; then
-log pip install git+https://github.com/wxWidgets/Phoenix
+    log pip install git+https://github.com/wxWidgets/Phoenix
 elif [ "$build_wx" = true ]; then
     attempt_build_wxpython
 else
