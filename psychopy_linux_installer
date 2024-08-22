@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==============================================================================
-#  Title:         install_psychopy.sh
+#  Title:         install_psychopy
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional PsychoPy-BIDS integration.
 #  Author:        Lukas Wiertz
@@ -12,7 +12,7 @@
 # Function to show help message
 show_help() {
     cat << EOF
-Usage: ./install_psychopy.sh [options]
+Usage: ./install_psychopy [options]
 Options:
   --python_version=VERSION    Specify the Python version to install (default: 3.8.19); Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
