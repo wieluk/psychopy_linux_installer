@@ -14,7 +14,7 @@ show_help() {
     cat << EOF
 Usage: ./install_psychopy.sh [options]
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.8.19)
+  --python_version=VERSION    Specify the Python version to install (default: 3.8.19); Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --wxpython_version=VERSION  Specify the wxPython version to install (default: latest)
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
@@ -45,6 +45,10 @@ for arg in "$@"; do
     case $arg in
         --python_version=*)
             python_version="${arg#*=}"
+            if [[ ! $python_version =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
+                echo "Error: Invalid Python version specified. Only versions 3.8.*, 3.9.*, or 3.10.* are allowed."
+                exit 1
+            fi
             ;;
         --psychopy_version=*)
             psychopy_version="${arg#*=}"

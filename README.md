@@ -10,14 +10,13 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - CentOS 9
 
 Additional distributions may be working.
-
-
 **Note:**
+
 Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
 
 ## Important Information
 
-- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10. 
+- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
 - The specified/default(3.8.19) Python version is installed as `altinstall` if not present.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
@@ -57,7 +56,7 @@ Execute script; see options below for more information.
 
 ## Options
 
-- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`).
+- `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
 - `--wxpython_version=VERSION` : Specify the [wxPython version](https://pypi.org/project/wxPython/#history) to install (default: `latest`)
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
@@ -94,23 +93,21 @@ The script performs the following steps:
 - Installs PsychoPy.
 - Adds the current user to a `psychopy` group and sets security limits.
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
-- Creates a desktop shortcut by default. 
+- Creates a desktop shortcut by default.
 
 ## Post-Installation
+
 After installation, desktop icons for PsychoPy will be created automatically, and the application will be added to your system's PATH as:
 
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
 Refreshing your system's PATH may be necessary.
 
-
-
 You can also launch PsychoPy directly using the absolute path:
 
 `${PSYCHOPY_DIR}/bin/psychopy`
 
-
-**Note:** 
+**Note:**
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
 
 ## To-Do
@@ -127,7 +124,6 @@ All commands, along with the installed versions and set paths, as well as the co
 - Consider splitting package installations for each distribution.
 - Test on Pacman-based distributions.
 
-
 ## Links
 
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
@@ -136,101 +132,104 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
 
 <!-- BEGIN INSTALLATION_RESULTS -->
+
 ### Report generated on 2024-08-21
+
 ### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10485242549)
 
-| OS | Python Version | PsychoPy Version | Status |
-|---|---|---|---|
-| centos-9 | 3.10.14 | 2023.2.3 | ✅ |
-| centos-9 | 3.10.14 | 2024.1.4 | ✅ |
-| centos-9 | 3.10.14 | 2024.2.1 | ✅ |
-| centos-9 | 3.8.19 | 2023.2.3 | ✅ |
-| centos-9 | 3.8.19 | 2024.1.4 | ✅ |
-| centos-9 | 3.8.19 | 2024.2.1 | ✅ |
-| centos-9 | 3.9.19 | 2023.2.3 | ✅ |
-| centos-9 | 3.9.19 | 2024.1.4 | ✅ |
-| centos-9 | 3.9.19 | 2024.2.1 | ✅ |
-| debian-11 | 3.10.14 | 2023.2.3 | ✅ |
-| debian-11 | 3.10.14 | 2024.1.4 | ✅ |
-| debian-11 | 3.10.14 | 2024.2.1 | ✅ |
-| debian-11 | 3.8.19 | 2023.2.3 | ✅ |
-| debian-11 | 3.8.19 | 2024.1.4 | ✅ |
-| debian-11 | 3.8.19 | 2024.2.1 | ✅ |
-| debian-11 | 3.9.19 | 2023.2.3 | ✅ |
-| debian-11 | 3.9.19 | 2024.1.4 | ✅ |
-| debian-11 | 3.9.19 | 2024.2.1 | ✅ |
-| debian-12 | 3.10.14 | 2023.2.3 | ✅ |
-| debian-12 | 3.10.14 | 2024.1.4 | ✅ |
-| debian-12 | 3.10.14 | 2024.2.1 | ✅ |
-| debian-12 | 3.8.19 | 2023.2.3 | ✅ |
-| debian-12 | 3.8.19 | 2024.1.4 | ✅ |
-| debian-12 | 3.8.19 | 2024.2.1 | ✅ |
-| debian-12 | 3.9.19 | 2023.2.3 | ✅ |
-| debian-12 | 3.9.19 | 2024.1.4 | ✅ |
-| debian-12 | 3.9.19 | 2024.2.1 | ✅ |
-| fedora-39 | 3.10.14 | 2023.2.3 | ✅ |
-| fedora-39 | 3.10.14 | 2024.1.4 | ✅ |
-| fedora-39 | 3.10.14 | 2024.2.1 | ✅ |
-| fedora-39 | 3.8.19 | 2023.2.3 | ✅ |
-| fedora-39 | 3.8.19 | 2024.1.4 | ✅ |
-| fedora-39 | 3.8.19 | 2024.2.1 | ✅ |
-| fedora-39 | 3.9.19 | 2023.2.3 | ✅ |
-| fedora-39 | 3.9.19 | 2024.1.4 | ✅ |
-| fedora-39 | 3.9.19 | 2024.2.1 | ✅ |
-| fedora-40 | 3.10.14 | 2023.2.3 | ❌ |
-| fedora-40 | 3.10.14 | 2024.1.4 | ❌ |
-| fedora-40 | 3.10.14 | 2024.2.1 | ❌ |
-| fedora-40 | 3.8.19 | 2023.2.3 | ✅ |
-| fedora-40 | 3.8.19 | 2024.1.4 | ✅ |
-| fedora-40 | 3.8.19 | 2024.2.1 | ✅ |
-| fedora-40 | 3.9.19 | 2023.2.3 | ✅ |
-| fedora-40 | 3.9.19 | 2024.1.4 | ✅ |
-| fedora-40 | 3.9.19 | 2024.2.1 | ✅ |
-| pop-22.04 | 3.10.14 | 2023.2.3 | ✅ |
-| pop-22.04 | 3.10.14 | 2024.1.4 | ✅ |
-| pop-22.04 | 3.10.14 | 2024.2.1 | ✅ |
-| pop-22.04 | 3.8.19 | 2023.2.3 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.1.4 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.2.1 | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | ✅ |
-| pop-22.04 | 3.9.19 | 2024.1.4 | ✅ |
-| pop-22.04 | 3.9.19 | 2024.2.1 | ✅ |
-| rocky-9.4 | 3.10.14 | 2023.2.3 | ✅ |
-| rocky-9.4 | 3.10.14 | 2024.1.4 | ✅ |
-| rocky-9.4 | 3.10.14 | 2024.2.1 | ✅ |
-| rocky-9.4 | 3.8.19 | 2023.2.3 | ✅ |
-| rocky-9.4 | 3.8.19 | 2024.1.4 | ✅ |
-| rocky-9.4 | 3.8.19 | 2024.2.1 | ✅ |
-| rocky-9.4 | 3.9.19 | 2023.2.3 | ✅ |
-| rocky-9.4 | 3.9.19 | 2024.1.4 | ✅ |
-| rocky-9.4 | 3.9.19 | 2024.2.1 | ✅ |
-| ubuntu-20.04 | 3.10.14 | 2023.2.3 | ✅ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.10.14 | 2024.2.1 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2023.2.3 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2024.2.1 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2023.2.3 | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2023.2.3 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2024.1.4 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.4 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.2.1 | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2023.2.3 | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2024.2.1 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2023.2.3 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.1.4 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.2.1 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.4 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.2.1 | ✅ |
+| OS           | Python Version | PsychoPy Version | Status |
+| ------------ | -------------- | ---------------- | ------ |
+| centos-9     | 3.10.14        | 2023.2.3         | ✅     |
+| centos-9     | 3.10.14        | 2024.1.4         | ✅     |
+| centos-9     | 3.10.14        | 2024.2.1         | ✅     |
+| centos-9     | 3.8.19         | 2023.2.3         | ✅     |
+| centos-9     | 3.8.19         | 2024.1.4         | ✅     |
+| centos-9     | 3.8.19         | 2024.2.1         | ✅     |
+| centos-9     | 3.9.19         | 2023.2.3         | ✅     |
+| centos-9     | 3.9.19         | 2024.1.4         | ✅     |
+| centos-9     | 3.9.19         | 2024.2.1         | ✅     |
+| debian-11    | 3.10.14        | 2023.2.3         | ✅     |
+| debian-11    | 3.10.14        | 2024.1.4         | ✅     |
+| debian-11    | 3.10.14        | 2024.2.1         | ✅     |
+| debian-11    | 3.8.19         | 2023.2.3         | ✅     |
+| debian-11    | 3.8.19         | 2024.1.4         | ✅     |
+| debian-11    | 3.8.19         | 2024.2.1         | ✅     |
+| debian-11    | 3.9.19         | 2023.2.3         | ✅     |
+| debian-11    | 3.9.19         | 2024.1.4         | ✅     |
+| debian-11    | 3.9.19         | 2024.2.1         | ✅     |
+| debian-12    | 3.10.14        | 2023.2.3         | ✅     |
+| debian-12    | 3.10.14        | 2024.1.4         | ✅     |
+| debian-12    | 3.10.14        | 2024.2.1         | ✅     |
+| debian-12    | 3.8.19         | 2023.2.3         | ✅     |
+| debian-12    | 3.8.19         | 2024.1.4         | ✅     |
+| debian-12    | 3.8.19         | 2024.2.1         | ✅     |
+| debian-12    | 3.9.19         | 2023.2.3         | ✅     |
+| debian-12    | 3.9.19         | 2024.1.4         | ✅     |
+| debian-12    | 3.9.19         | 2024.2.1         | ✅     |
+| fedora-39    | 3.10.14        | 2023.2.3         | ✅     |
+| fedora-39    | 3.10.14        | 2024.1.4         | ✅     |
+| fedora-39    | 3.10.14        | 2024.2.1         | ✅     |
+| fedora-39    | 3.8.19         | 2023.2.3         | ✅     |
+| fedora-39    | 3.8.19         | 2024.1.4         | ✅     |
+| fedora-39    | 3.8.19         | 2024.2.1         | ✅     |
+| fedora-39    | 3.9.19         | 2023.2.3         | ✅     |
+| fedora-39    | 3.9.19         | 2024.1.4         | ✅     |
+| fedora-39    | 3.9.19         | 2024.2.1         | ✅     |
+| fedora-40    | 3.10.14        | 2023.2.3         | ❌     |
+| fedora-40    | 3.10.14        | 2024.1.4         | ❌     |
+| fedora-40    | 3.10.14        | 2024.2.1         | ❌     |
+| fedora-40    | 3.8.19         | 2023.2.3         | ✅     |
+| fedora-40    | 3.8.19         | 2024.1.4         | ✅     |
+| fedora-40    | 3.8.19         | 2024.2.1         | ✅     |
+| fedora-40    | 3.9.19         | 2023.2.3         | ✅     |
+| fedora-40    | 3.9.19         | 2024.1.4         | ✅     |
+| fedora-40    | 3.9.19         | 2024.2.1         | ✅     |
+| pop-22.04    | 3.10.14        | 2023.2.3         | ✅     |
+| pop-22.04    | 3.10.14        | 2024.1.4         | ✅     |
+| pop-22.04    | 3.10.14        | 2024.2.1         | ✅     |
+| pop-22.04    | 3.8.19         | 2023.2.3         | ✅     |
+| pop-22.04    | 3.8.19         | 2024.1.4         | ✅     |
+| pop-22.04    | 3.8.19         | 2024.2.1         | ✅     |
+| pop-22.04    | 3.9.19         | 2023.2.3         | ✅     |
+| pop-22.04    | 3.9.19         | 2024.1.4         | ✅     |
+| pop-22.04    | 3.9.19         | 2024.2.1         | ✅     |
+| rocky-9.4    | 3.10.14        | 2023.2.3         | ✅     |
+| rocky-9.4    | 3.10.14        | 2024.1.4         | ✅     |
+| rocky-9.4    | 3.10.14        | 2024.2.1         | ✅     |
+| rocky-9.4    | 3.8.19         | 2023.2.3         | ✅     |
+| rocky-9.4    | 3.8.19         | 2024.1.4         | ✅     |
+| rocky-9.4    | 3.8.19         | 2024.2.1         | ✅     |
+| rocky-9.4    | 3.9.19         | 2023.2.3         | ✅     |
+| rocky-9.4    | 3.9.19         | 2024.1.4         | ✅     |
+| rocky-9.4    | 3.9.19         | 2024.2.1         | ✅     |
+| ubuntu-20.04 | 3.10.14        | 2023.2.3         | ✅     |
+| ubuntu-20.04 | 3.10.14        | 2024.1.4         | ✅     |
+| ubuntu-20.04 | 3.10.14        | 2024.2.1         | ✅     |
+| ubuntu-20.04 | 3.8.19         | 2023.2.3         | ✅     |
+| ubuntu-20.04 | 3.8.19         | 2024.1.4         | ✅     |
+| ubuntu-20.04 | 3.8.19         | 2024.2.1         | ✅     |
+| ubuntu-20.04 | 3.9.19         | 2023.2.3         | ✅     |
+| ubuntu-20.04 | 3.9.19         | 2024.1.4         | ✅     |
+| ubuntu-20.04 | 3.9.19         | 2024.2.1         | ✅     |
+| ubuntu-22.04 | 3.10.14        | 2023.2.3         | ✅     |
+| ubuntu-22.04 | 3.10.14        | 2024.1.4         | ✅     |
+| ubuntu-22.04 | 3.10.14        | 2024.2.1         | ✅     |
+| ubuntu-22.04 | 3.8.19         | 2023.2.3         | ✅     |
+| ubuntu-22.04 | 3.8.19         | 2024.1.4         | ✅     |
+| ubuntu-22.04 | 3.8.19         | 2024.2.1         | ✅     |
+| ubuntu-22.04 | 3.9.19         | 2023.2.3         | ✅     |
+| ubuntu-22.04 | 3.9.19         | 2024.1.4         | ✅     |
+| ubuntu-22.04 | 3.9.19         | 2024.2.1         | ✅     |
+| ubuntu-24.04 | 3.10.14        | 2023.2.3         | ✅     |
+| ubuntu-24.04 | 3.10.14        | 2024.1.4         | ✅     |
+| ubuntu-24.04 | 3.10.14        | 2024.2.1         | ✅     |
+| ubuntu-24.04 | 3.8.19         | 2023.2.3         | ✅     |
+| ubuntu-24.04 | 3.8.19         | 2024.1.4         | ✅     |
+| ubuntu-24.04 | 3.8.19         | 2024.2.1         | ✅     |
+| ubuntu-24.04 | 3.9.19         | 2023.2.3         | ✅     |
+| ubuntu-24.04 | 3.9.19         | 2024.1.4         | ✅     |
+| ubuntu-24.04 | 3.9.19         | 2024.2.1         | ✅     |
+
 <!-- END INSTALLATION_RESULTS -->
 
 ## Built Python and wxPython Versions Available for Download
@@ -238,39 +237,42 @@ All commands, along with the installed versions and set paths, as well as the co
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
 
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
+
 <!-- BEGIN PRECOMPILED_VERSIONS -->
+
 ### Report generated on 2024-08-21
 
-| OS | Python Version | WxPython Version |
-|---|---|---|
-| centos-9 | 3.10.14 | 4.2.1 |
-| centos-9 | 3.8.19 | 4.2.1 |
-| centos-9 | 3.9.19 | 4.2.1 |
-| debian-11 | 3.10.14 | 4.2.1 |
-| debian-11 | 3.8.19 | 4.2.1 |
-| debian-11 | 3.9.19 | 4.2.1 |
-| debian-12 | 3.10.14 | 4.2.1 |
-| debian-12 | 3.8.19 | 4.2.1 |
-| debian-12 | 3.9.19 | 4.2.1 |
-| fedora-39 | 3.10.14 | 4.2.1 |
-| fedora-39 | 3.8.19 | 4.2.1 |
-| fedora-39 | 3.9.19 | 4.2.1 |
-| fedora-40 | 3.10.14 | ❌ |
-| fedora-40 | 3.8.19 | 4.1.1 |
-| fedora-40 | 3.9.19 | 4.1.1 |
-| pop-22.04 | 3.10.14 | 4.2.1 |
-| pop-22.04 | 3.8.19 | 4.2.1 |
-| pop-22.04 | 3.9.19 | 4.2.1 |
-| rocky-9.4 | 3.10.14 | 4.2.1 |
-| rocky-9.4 | 3.8.19 | 4.2.1 |
-| rocky-9.4 | 3.9.19 | 4.2.1 |
-| ubuntu-20.04 | 3.10.14 | 4.2.1 |
-| ubuntu-20.04 | 3.8.19 | 4.2.1 |
-| ubuntu-20.04 | 3.9.19 | 4.2.1 |
-| ubuntu-22.04 | 3.10.14 | 4.2.1 |
-| ubuntu-22.04 | 3.8.19 | 4.2.1 |
-| ubuntu-22.04 | 3.9.19 | 4.2.1 |
-| ubuntu-24.04 | 3.10.14 | 4.2.1 |
-| ubuntu-24.04 | 3.8.19 | 4.2.1 |
-| ubuntu-24.04 | 3.9.19 | 4.2.1 |
+| OS           | Python Version | WxPython Version |
+| ------------ | -------------- | ---------------- |
+| centos-9     | 3.10.14        | 4.2.1            |
+| centos-9     | 3.8.19         | 4.2.1            |
+| centos-9     | 3.9.19         | 4.2.1            |
+| debian-11    | 3.10.14        | 4.2.1            |
+| debian-11    | 3.8.19         | 4.2.1            |
+| debian-11    | 3.9.19         | 4.2.1            |
+| debian-12    | 3.10.14        | 4.2.1            |
+| debian-12    | 3.8.19         | 4.2.1            |
+| debian-12    | 3.9.19         | 4.2.1            |
+| fedora-39    | 3.10.14        | 4.2.1            |
+| fedora-39    | 3.8.19         | 4.2.1            |
+| fedora-39    | 3.9.19         | 4.2.1            |
+| fedora-40    | 3.10.14        | ❌               |
+| fedora-40    | 3.8.19         | 4.1.1            |
+| fedora-40    | 3.9.19         | 4.1.1            |
+| pop-22.04    | 3.10.14        | 4.2.1            |
+| pop-22.04    | 3.8.19         | 4.2.1            |
+| pop-22.04    | 3.9.19         | 4.2.1            |
+| rocky-9.4    | 3.10.14        | 4.2.1            |
+| rocky-9.4    | 3.8.19         | 4.2.1            |
+| rocky-9.4    | 3.9.19         | 4.2.1            |
+| ubuntu-20.04 | 3.10.14        | 4.2.1            |
+| ubuntu-20.04 | 3.8.19         | 4.2.1            |
+| ubuntu-20.04 | 3.9.19         | 4.2.1            |
+| ubuntu-22.04 | 3.10.14        | 4.2.1            |
+| ubuntu-22.04 | 3.8.19         | 4.2.1            |
+| ubuntu-22.04 | 3.9.19         | 4.2.1            |
+| ubuntu-24.04 | 3.10.14        | 4.2.1            |
+| ubuntu-24.04 | 3.8.19         | 4.2.1            |
+| ubuntu-24.04 | 3.9.19         | 4.2.1            |
+
 <!-- END PRECOMPILED_VERSIONS -->
