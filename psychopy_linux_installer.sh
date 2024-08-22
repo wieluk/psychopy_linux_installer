@@ -18,7 +18,7 @@ Options:
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --wxpython_version=VERSION  Specify the wxPython version to install (default: latest)
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
-  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: latest); use None to skip bids installation
+  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None); use latest for pypi version
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
   -f, --force                 Force overwrite of existing installation directory
   -v, --verbose               Enable verbose output
@@ -33,7 +33,7 @@ psychopy_version="2024.1.4"
 wxpython_version="latest"
 wxpython_version_set_by_user=false
 install_dir="$HOME"
-bids_version="latest"
+bids_version="None"
 force_overwrite=false
 verbose=false
 build_python=false
@@ -428,7 +428,7 @@ if [ -d "${psychopy_dir}" ]; then
         rm -rf "${psychopy_dir}"
         mkdir -p "${psychopy_dir}"
     else
-        log_message "Directory ${psychopy_dir} already exists. Exiting."
+        log_message "Directory ${psychopy_dir} already exists. Use the --force flag to overwrite. Exiting."
         exit 1
     fi
 else
@@ -532,7 +532,9 @@ else
     wxpython_latest=false
 fi
 
-if [ "$build_wx" = true ]; then
+if [ "$wxpython_version" = "git" ]; then
+log pip install git+https://github.com/wxWidgets/Phoenix
+elif [ "$build_wx" = true ]; then
     attempt_build_wxpython
 else
     if wheel_url=$(get_wxpython_wheel "$wxpython_latest" "$wxpython_version"); then
@@ -615,8 +617,6 @@ if [ "$bids_version" != "None" ]; then
     if ! pip show psychopy_bids &> /dev/null; then
         log "Warning: psychopy_bids is not installed successfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
     fi
-else
-    log_message "Skipping PsychoPy-BIDS installation."
 fi
 
 # Deactivate virtual environment

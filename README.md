@@ -10,8 +10,8 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - CentOS 9
 
 Additional distributions may be working.
-**Note:**
 
+**Note:**
 Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
 
 ## Important Information
@@ -22,7 +22,7 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
 - For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source. If latest wxpython version fails building, it will fallback to version 4.1.1 if no `--wxpython_version` is set. (fixes fedora-40)
-- Building Python and wxPython may take 1-2 hours.
+- If the downloads fail building Python and wxPython may take 1-2 hours.
 - The script provides minimal output by default. Use the --verbose option for detailed logging.
 
 ## Usage
@@ -53,23 +53,25 @@ Execute script; see options below for more information.
 ```bash
 ./psychopy_linux_installer.sh
 ```
+I would recommend using default values if you do not need specific versions.
 
 ## Options
 
 - `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
-- `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`); use `latest` for the latest pypi version; use `git` for the latest GitHub version.
+- `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`)
 - `--wxpython_version=VERSION` : Specify the [wxPython version](https://pypi.org/project/wxPython/#history) to install (default: `latest`)
 - `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
-- `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: latest);  use None to skip bids installation
+- `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: None)
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
 - `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
 - `-h`, `--help` : Show help message.
 
-**Note:**
-The default version for `--psychopy_version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
 
+**Note:**
+- The default version for `--psychopy_version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
+- `--psychopy_version`, `--wxpython_version` and `--bids_version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
 ## Examples
 
 - `./psychopy_linux_installer.sh` (all default)
@@ -82,18 +84,14 @@ The script performs the following steps:
 - Detects the package manager (supports apt, yum, dnf, and pacman).
 - Installs necessary dependencies.
 - Creates a directory in the specified location for PsychoPy.
-- Checks if the specified Python version exists and downloads it if necessary.
-- Downloads and installs the specified Python version as `altinstall`.
+- Checks if the specified Python version exists if necessary downloads and install it as `altinstall`.
 - Creates and activates a virtual environment for PsychoPy.
-- Determines the PsychoPy version to install:
-- If latest, it fetches the latest version from PyPI.
-- If git, it installs PsychoPy from the latest GitHub repository.
-- Upgrades pip and some pip packages, and
 - Installs/builds wxPython.
-- Installs PsychoPy.
+- Upgrades pip and some pip packages.
+- Install specified PsychoPy version.
 - Adds the current user to a `psychopy` group and sets security limits.
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
-- Creates a desktop shortcut by default.
+- Creates a desktop shortcut.
 
 ## Post-Installation
 
@@ -101,7 +99,7 @@ After installation, desktop icons for PsychoPy will be created automatically, an
 
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
-Refreshing your system's PATH may be necessary.
+Refreshing your system's PATH is necessary.
 
 You can also launch PsychoPy directly using the absolute path:
 
@@ -111,17 +109,9 @@ You can also launch PsychoPy directly using the absolute path:
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
 
 ## To-Do
-
-### Main
-
-- Refactor bash script, actions and testscripts
+- Refactor actions and testscripts
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
-
-### Dependencies
-
-- Identify and remove unnecessary packages for specific platforms.
-- Consider splitting package installations for each distribution.
 - Test on Pacman-based distributions.
 
 ## Links
@@ -235,7 +225,6 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Built Python and wxPython Versions Available for Download
 
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
-
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
 
 <!-- BEGIN PRECOMPILED_VERSIONS -->
