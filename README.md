@@ -45,13 +45,13 @@ Clone the repository and allow execution:
 ```bash
 git clone https://github.com/wieluk/psychopy_linux_installer.git
 cd psychopy_linux_installer
-chmod +x psychopy_linux_installer.sh
+chmod +x psychopy_linux_installer
 ```
 
 Execute script; see options below for more information.
 
 ```bash
-./psychopy_linux_installer.sh
+./psychopy_linux_installer
 ```
 I would recommend using default values if you do not need specific versions.
 
@@ -74,8 +74,8 @@ I would recommend using default values if you do not need specific versions.
 - `--psychopy_version`, `--wxpython_version` and `--bids_version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
 ## Examples
 
-- `./psychopy_linux_installer.sh` (all default)
-- `./psychopy_linux_installer.sh --psychopy_version=2024.1.4 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
+- `./psychopy_linux_installer` (all default)
+- `./psychopy_linux_installer --psychopy_version=2024.1.4 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
 
 ## Script Details
 
