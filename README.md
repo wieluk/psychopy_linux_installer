@@ -2,7 +2,7 @@
 
 This script facilitates the installation of [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
 
-- Ubuntu 24.04, 22.04, 20.04, 18.04
+- Ubuntu 24.04, 22.04, 20.04, (18.04)
 - Pop!_OS 22.04
 - Debian 12, 11
 - Fedora 40, 39
@@ -11,6 +11,9 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 
 Additional distributions may be working.
 
+
+**Note:**
+Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
 
 ## Important Information
 
