@@ -60,7 +60,9 @@ I would recommend using default values if you do not need specific versions.
 - `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`)
 - `--wxpython_version=VERSION` : Specify the [wxPython version](https://pypi.org/project/wxPython/#history) to install (default: `latest`)
-- `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
+- `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths 
+without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
+- `no-versioned-install-dir` : Installs directly into the specified `install_dir` without creating a versioned subdirectory. Requires `--install_dir`.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: None)
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 - `-f`, `--force` : Force overwrite of the existing installation directory.
