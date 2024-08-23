@@ -454,7 +454,7 @@ fi
 if [ -d "${psychopy_dir}" ]; then
     if [ "$force_overwrite" = true ]; then
         log_message "Directory ${psychopy_dir} already exists. Overwriting ..."
-        rm -rf "${psychopy_dir}"
+        sudo_wrapper rm -rf "${psychopy_dir}"
         sudo_wrapper mkdir -p "${psychopy_dir}"
     else
         log_message "Directory ${psychopy_dir} already exists. Use the --force flag to overwrite. Exiting."
