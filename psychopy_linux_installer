@@ -94,6 +94,8 @@ for arg in "$@"; do
                     show_help
                     exit 1
                     ;;
+            esac
+            ;;
         --disable-shortcut)
             disable_shortcut=true
             ;;
@@ -109,8 +111,6 @@ for arg in "$@"; do
         -h|--help)
             show_help
             exit 0
-            ;;
-            esac
             ;;
         *)
             echo "Unknown option: $arg"
