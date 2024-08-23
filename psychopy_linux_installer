@@ -15,15 +15,17 @@ show_help() {
 Usage: ./install_psychopy [options]
 Options:
   --python_version=VERSION    Specify the Python version to install (default: 3.8.19); Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
-  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
-  --wxpython_version=VERSION  Specify the wxPython version to install (default: latest)
-  --install_dir=DIR           Specify the installation directory (default: "$HOME")
-  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None); use latest for pypi version
-  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
-  -f, --force                 Force overwrite of existing installation directory
-  -v, --verbose               Enable verbose output
-  -d, --disable-shortcut      Disable desktop shortcut creation
-  -h, --help                  Show this help message
+  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4).
+  --wxpython_version=VERSION  Specify the wxPython version to install (default: latest).
+  --install_dir=DIR           Specify the installation directory (default: "$HOME").
+  --no-versioned-install-dir  Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
+  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None).
+  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading.
+  --disable-shortcut      Disable desktop shortcut creation.
+  --no-sudo                   Do not use sudo in the script. The script will fail if you do not run as root.
+  -f, --force                 Force overwrite of existing installation directory.
+  -v, --verbose               Enable verbose output.
+  -h, --help                  Show this help message.
 EOF
 }
 
@@ -33,14 +35,15 @@ psychopy_version="2024.1.4"
 wxpython_version="latest"
 wxpython_version_set_by_user=false
 install_dir="$HOME"
+no_versioned_install_dir=false
+install_dir_set_by_user=false
 bids_version="None"
-force_overwrite=false
-verbose=false
 build_python=false
 build_wx=false
 disable_shortcut=false
-no_versioned_install_dir=false
-install_dir_set_by_user=false
+no_sudo=false
+force_overwrite=false
+verbose=false
 
 # Parse command line arguments
 for arg in "$@"; do
@@ -73,19 +76,6 @@ for arg in "$@"; do
         --bids_version=*)
             bids_version="${arg#*=}"
             ;;
-        -f|--force)
-            force_overwrite=true
-            ;;
-        -v|--verbose)
-            verbose=true
-            ;;
-        -d|--disable-shortcut)
-            disable_shortcut=true
-            ;;
-        -h|--help)
-            show_help
-            exit 0
-            ;;
         --build=*)
             build_arg="${arg#*=}"
             case $build_arg in
@@ -104,6 +94,22 @@ for arg in "$@"; do
                     show_help
                     exit 1
                     ;;
+        --disable-shortcut)
+            disable_shortcut=true
+            ;;
+        --no-sudo)
+            no_sudo=true
+            ;;
+        -f|--force)
+            force_overwrite=true
+            ;;
+        -v|--verbose)
+            verbose=true
+            ;;
+        -h|--help)
+            show_help
+            exit 0
+            ;;
             esac
             ;;
         *)
@@ -120,6 +126,14 @@ log() {
         "$@"
     else
         "$@" > /dev/null 2>&1
+    fi
+}
+
+sudo_wrapper() {
+    if [ "$no_sudo" = true ]; then
+        "$@"
+    else
+        sudo_wrapper "$@"
     fi
 }
 
@@ -170,10 +184,10 @@ detect_package_manager() {
 update_package_manager() {
     local pkg_manager=$1
     case $pkg_manager in
-        apt) log sudo apt-get update -qq ;;
-        yum) log sudo yum update -y -q ;;
-        dnf) log sudo dnf update -y -q ;;
-        pacman) log sudo pacman -Sy --noconfirm ;;
+        apt) log sudo_wrapper apt-get update -qq ;;
+        yum) log sudo_wrapper yum update -y -q ;;
+        dnf) log sudo_wrapper dnf update -y -q ;;
+        pacman) log sudo_wrapper pacman -Sy --noconfirm ;;
         *) echo "No compatible package manager found."; exit 1 ;;
     esac
 }
@@ -186,10 +200,10 @@ install_packages() {
     
     for package in "${packages[@]}"; do
         case $pkg_manager in
-            apt) log sudo apt-get install -y -qq "$package" || echo "Package $package not found, skipping." ;;
-            yum) log sudo yum install -y -q "$package" || echo "Package $package not found, skipping." ;;
-            dnf) log sudo dnf install -y -q "$package" || echo "Package $package not found, skipping." ;;
-            pacman) log sudo pacman -S --noconfirm "$package" || echo "Package $package not found, skipping." ;;
+            apt) log sudo_wrapper apt-get install -y -qq "$package" || echo "Package $package not found, skipping." ;;
+            yum) log sudo_wrapper yum install -y -q "$package" || echo "Package $package not found, skipping." ;;
+            dnf) log sudo_wrapper dnf install -y -q "$package" || echo "Package $package not found, skipping." ;;
+            pacman) log sudo_wrapper pacman -S --noconfirm "$package" || echo "Package $package not found, skipping." ;;
             *) echo "No compatible package manager found."; exit 1 ;;
         esac
     done
@@ -477,9 +491,9 @@ else
             cd "${temp_dir}/Python-${python_version}" || exit
             log ./configure --enable-optimizations --with-ensurepip=install
             log make -j "$(nproc)"
-            log sudo make altinstall
+            log sudo_wrapper make altinstall
         )
-        log sudo rm -rf "${temp_dir}" "${temp_file}"
+        log sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
     else
         # Attempt to download pre-built Python version
         nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
@@ -493,9 +507,9 @@ else
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
                 cd "${temp_dir}" || exit
-                log sudo make altinstall
+                log sudo_wrapper make altinstall
             )
-            log sudo rm -rf "${temp_dir}" "${temp_file}"
+            log sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
         else
             # If download fails, build from source
             log_message "Failed to download from Nextcloud. Building from official Python source. This might take a while ..."
@@ -510,9 +524,9 @@ else
                 cd "${temp_dir}/Python-${python_version}" || exit
                 log ./configure --enable-optimizations --with-ensurepip=install
                 log make -j "$(nproc)"
-                log sudo make altinstall
+                log sudo_wrapper make altinstall
             )
-            log sudo rm -rf "${temp_dir}" "${temp_file}"
+            log sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
         fi
     fi
 fi
@@ -639,9 +653,9 @@ deactivate
 
 # Add user to the 'psychopy' group and set security limits
 log_message "Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
-log sudo groupadd --force psychopy
-log sudo usermod -a -G psychopy "$USER"
-sudo sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+log sudo_wrapper groupadd --force psychopy
+log sudo_wrapper usermod -a -G psychopy "$USER"
+sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
 # Create desktop shortcut if not disabled
 if [ "$disable_shortcut" = false ]; then
