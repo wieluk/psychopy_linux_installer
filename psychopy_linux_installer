@@ -133,7 +133,7 @@ sudo_wrapper() {
     if [ "$no_sudo" = true ]; then
         "$@"
     else
-        sudo_wrapper "$@"
+        sudo "$@"
     fi
 }
 
