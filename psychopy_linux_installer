@@ -307,9 +307,10 @@ install_wxpython() {
 
 # Function to attempt building wxPython from source
 attempt_build_wxpython() {
-    log_message "Building wxPython $wxpython_version from source. This might take a while ..."
+    log_message "Installing wxpython build dependencies. This might take a while ..."
     install_dependencies "$pkg_manager" wxpython_deps
 
+    log_message "Building wxPython $wxpython_version from source. This might take a while ..."
     if install_wxpython "$wxpython_version"; then
         return 0
     else
@@ -577,10 +578,19 @@ else
         wx_python_nextcloud_url_fallback="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback}"
         wx_python_nextcloud_url_fallback2="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback2}"
         
-        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
-
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
-        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wx_python_file"; then
+
+        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
+            wx_python_file="$wheel_name"
+        elif log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wheel_name_fallback"; then
+            wx_python_file="$wheel_name_fallback"
+        elif log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wheel_name_fallback2"; then
+            wx_python_file="$wheel_name_fallback2"
+        fi
+
+        # If a download was successful, attempt to install it
+        if [ -n "$wx_python_file" ]; then
+            wx_python_file="${wx_python_file%-"${os_version}".whl}.whl"
             log_message "Download successful. Installing wxPython from $wx_python_file"
             if log pip install "$wx_python_file"; then
                 log rm "$wx_python_file"
@@ -589,7 +599,6 @@ else
                 attempt_build_wxpython
             fi
         else
-            log_message "Failed to download wxPython wheel. Attempting to build wxPython from source."
             attempt_build_wxpython
         fi
     fi
