@@ -171,8 +171,8 @@ update_package_manager() {
     local pkg_manager=$1
     case $pkg_manager in
         apt) log sudo apt-get update -qq ;;
-        yum) log sudo yum update -y -q ;;
-        dnf) log sudo dnf update -y -q ;;
+        yum) log sudo yum check-update -q ;;
+        dnf) log sudo dnf check-update -q ;;
         pacman) log sudo pacman -Sy --noconfirm ;;
         *) echo "No compatible package manager found."; exit 1 ;;
     esac
