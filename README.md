@@ -124,8 +124,8 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
 
 <!-- BEGIN INSTALLATION_RESULTS -->
-### Report generated on 2024-08-22
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10503909811)
+### Report generated on 2024-08-23
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10522159400)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
@@ -167,6 +167,7 @@ All commands, along with the installed versions and set paths, as well as the co
 | fedora-39 | 3.9.19 | 2024.2.1 | ✅ |
 | fedora-40 | 3.10.14 | 2023.2.3 | ❌ |
 | fedora-40 | 3.10.14 | 2024.1.4 | ❌ |
+| fedora-40 | 3.10.14 | 2024.2.1 | ❌ |
 | fedora-40 | 3.8.19 | 2023.2.3 | ✅ |
 | fedora-40 | 3.8.19 | 2024.1.4 | ✅ |
 | fedora-40 | 3.8.19 | 2024.2.1 | ✅ |
@@ -191,9 +192,9 @@ All commands, along with the installed versions and set paths, as well as the co
 | rocky-9.4 | 3.9.19 | 2023.2.3 | ✅ |
 | rocky-9.4 | 3.9.19 | 2024.1.4 | ✅ |
 | rocky-9.4 | 3.9.19 | 2024.2.1 | ✅ |
+| ubuntu-20.04 | 3.10.14 |  | ✅ |
 | ubuntu-20.04 | 3.10.14 | 2023.2.3 | ✅ |
 | ubuntu-20.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.10.14 | 2024.2.1 | ✅ |
 | ubuntu-20.04 | 3.8.19 | 2023.2.3 | ✅ |
 | ubuntu-20.04 | 3.8.19 | 2024.1.4 | ✅ |
 | ubuntu-20.04 | 3.8.19 | 2024.2.1 | ✅ |
