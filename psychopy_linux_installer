@@ -39,6 +39,8 @@ verbose=false
 build_python=false
 build_wx=false
 disable_shortcut=false
+no_versioned_install_dir=false
+install_dir_set_by_user=false
 
 # Parse command line arguments
 for arg in "$@"; do
@@ -59,6 +61,14 @@ for arg in "$@"; do
             ;;
         --install_dir=*)
             install_dir="${arg#*=}"
+            install_dir_set_by_user=true
+            ;;
+        --no-versioned-install-dir)
+            if [ "$install_dir_set_by_user" = false ]; then
+                echo "Error: --no-versioned-install-dir cannot be used without setting --install_dir."
+                exit 1
+            fi
+            no_versioned_install_dir=true
             ;;
         --bids_version=*)
             bids_version="${arg#*=}"
@@ -421,7 +431,12 @@ python_version_clean=$(echo "${python_version}" | tr -d ',;')
 check_python_version "${python_version_clean}"
 
 # Set up PsychoPy installation directory
-psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+if [ "$no_versioned_install_dir" = true ]; then
+    psychopy_dir="${install_dir}/psychopy"
+else
+    psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+fi
+
 if [ -d "${psychopy_dir}" ]; then
     if [ "$force_overwrite" = true ]; then
         log_message "Directory ${psychopy_dir} already exists. Overwriting ..."
