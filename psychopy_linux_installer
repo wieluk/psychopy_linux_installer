@@ -543,7 +543,6 @@ fi
 if [ "$wxpython_version" = "latest" ]; then
     wxpython_version=$(get_latest_pypi_version "wxPython")
     wxpython_latest=true
-    log_message "Latest wxPython version detected: $wxpython_version"
 else
     wxpython_latest=false
 fi
