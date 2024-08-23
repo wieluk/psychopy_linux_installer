@@ -548,6 +548,9 @@ else
 fi
 
 if [ "$wxpython_version" = "git" ]; then
+    log_message "Installing wxpython build dependencies. This might take a while ..."
+    install_dependencies "$pkg_manager" wxpython_deps
+    log_message "Building wxPython from git. This might take a while ..."
     log pip install git+https://github.com/wxWidgets/Phoenix
 elif [ "$build_wx" = true ]; then
     attempt_build_wxpython
