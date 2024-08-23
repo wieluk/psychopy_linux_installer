@@ -581,23 +581,25 @@ else
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
 
         if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
-            wx_python_file="$wheel_name"
+            wx_python_file_download="$wheel_name"
         elif log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wheel_name_fallback"; then
-            wx_python_file="$wheel_name_fallback"
+            wx_python_file_download="$wheel_name_fallback"
         elif log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wheel_name_fallback2"; then
-            wx_python_file="$wheel_name_fallback2"
+            wx_python_file_download="$wheel_name_fallback2"
         fi
 
         # If a download was successful, attempt to install it
-        if [ -n "$wx_python_file" ]; then
-            wx_python_file="${wx_python_file%-"${os_version}".whl}.whl"
+        if [ -n "$wx_python_file_download" ]; then
+            wx_python_file="${wx_python_file_download%-"${os_version}".whl}.whl"
+            mv "$wx_python_file_download" "$wx_python_file"
             log_message "Download successful. Installing wxPython from $wx_python_file"
             if log pip install "$wx_python_file"; then
-                log rm "$wx_python_file"
+                log_message "Installed wxpython successfully."
             else
-                log_message "Error: Installing wxPython from $wx_python_file failed. Attempting to build from source."
+                log_message "Error: Installing wxPython failed. Attempting to build from source."
                 attempt_build_wxpython
             fi
+            log rm "$wx_python_file"
         else
             attempt_build_wxpython
         fi
