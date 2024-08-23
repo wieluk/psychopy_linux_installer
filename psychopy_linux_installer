@@ -455,14 +455,14 @@ if [ -d "${psychopy_dir}" ]; then
     if [ "$force_overwrite" = true ]; then
         log_message "Directory ${psychopy_dir} already exists. Overwriting ..."
         rm -rf "${psychopy_dir}"
-        mkdir -p "${psychopy_dir}"
+        sudo_wrapper mkdir -p "${psychopy_dir}"
     else
         log_message "Directory ${psychopy_dir} already exists. Use the --force flag to overwrite. Exiting."
         exit 1
     fi
 else
     log_message "Creating PsychoPy directory at ${psychopy_dir} ..."
-    mkdir -p "${psychopy_dir}"
+    sudo_wrapper mkdir -p "${psychopy_dir}"
 fi
 cd "${psychopy_dir}" || { log_message "Failed to change directory to ${psychopy_dir}. Exiting."; exit 1; }
 
@@ -485,7 +485,7 @@ else
         temp_dir="Python-${python_version}_temp"
 
         log curl -O "${official_url}"
-        mkdir -p "${temp_dir}"
+        sudo_wrapper mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
         (
             cd "${temp_dir}/Python-${python_version}" || exit
@@ -503,7 +503,7 @@ else
         log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
         if log curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
             log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
-            mkdir -p "${temp_dir}"
+            sudo_wrapper mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
                 cd "${temp_dir}" || exit
@@ -518,7 +518,7 @@ else
             temp_dir="Python-${python_version}_temp"
 
             log curl -O "${official_url}"
-            mkdir -p "${temp_dir}"
+            sudo_wrapper mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
                 cd "${temp_dir}/Python-${python_version}" || exit
@@ -699,7 +699,7 @@ fi
 
 # Add PsychoPy to PATH
 shell_name=$(basename "$SHELL")
-mkdir -p "${psychopy_dir}/.bin"
+sudo_wrapper mkdir -p "${psychopy_dir}/.bin"
 ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
 # Update shell configuration to include PsychoPy in PATH
