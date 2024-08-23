@@ -432,7 +432,7 @@ check_python_version "${python_version_clean}"
 
 # Set up PsychoPy installation directory
 if [ "$no_versioned_install_dir" = true ]; then
-    psychopy_dir="${install_dir}/psychopy"
+    psychopy_dir="${install_dir}"
 else
     psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 fi
