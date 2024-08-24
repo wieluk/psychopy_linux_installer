@@ -125,7 +125,7 @@ log() {
     if [ "$verbose" = true ]; then
         "$@"
     else
-        "$@" > /dev/null 2>&1
+        "$@" 2>&1 > /dev/null 
     fi
 }
 
@@ -137,9 +137,11 @@ sudo_wrapper() {
             exit_code=$?
             if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
                 log_message "$error_output"  
-                read -p "Command failed due to permission denied. Would you like to retry with sudo? [y/N] " response
+                read -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
                 if [[ "$response" =~ ^[Yy]$ ]]; then
                     sudo "$@"
+                else 
+                    exit 1
                 fi
             else
                 log_message "$error_output" 
