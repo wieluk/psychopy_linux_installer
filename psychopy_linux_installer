@@ -21,8 +21,8 @@ Options:
   --no-versioned-install-dir  Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None).
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading.
-  --disable-shortcut      Disable desktop shortcut creation.
-  --no-sudo                   Do not use sudo in the script. The script will fail if you do not run as root.
+  --sudo_mode                 What to do when the script needs to run a command with sudo : ask for confirmation (default), error, or run without confirmation.
+  --disable-shortcut          Disable desktop shortcut creation.
   -f, --force                 Force overwrite of existing installation directory.
   -v, --verbose               Enable verbose output.
   -h, --help                  Show this help message.
@@ -40,8 +40,8 @@ install_dir_set_by_user=false
 bids_version="None"
 build_python=false
 build_wx=false
+sudo_mode="ask"
 disable_shortcut=false
-no_sudo=false
 force_overwrite=false
 verbose=false
 
@@ -96,11 +96,11 @@ for arg in "$@"; do
                     ;;
             esac
             ;;
+        --sudo_mode=*)
+            sudo_mode="${arg#*=}"
+            ;;
         --disable-shortcut)
             disable_shortcut=true
-            ;;
-        --no-sudo)
-            no_sudo=true
             ;;
         -f|--force)
             force_overwrite=true
@@ -130,11 +130,40 @@ log() {
 }
 
 sudo_wrapper() {
-    if [ "$no_sudo" = true ]; then
-        "$@"
-    else
-        sudo "$@"
-    fi
+    case "$sudo_mode" in
+        ask)
+            # Try without sudo first
+            error_output=$("$@" 2>&1)
+            exit_code=$?
+            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
+                log_message "$error_output"  
+                read -p "Command failed due to permission denied. Would you like to retry with sudo? [y/N] " response
+                if [[ "$response" =~ ^[Yy]$ ]]; then
+                    sudo "$@"
+                fi
+            else
+                log_message "$error_output" 
+            fi
+            ;;
+        error)
+            # Try without sudo, exit if permission denied
+            error_output=$("$@" 2>&1)
+            exit_code=$?
+            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
+                log_message "Error: Command failed due to permission denied. Sudo is required, but mode is set to 'error'."
+                exit 1  
+            else
+                log_message "$error_output"  
+            fi
+            ;;
+        ok)
+            sudo "$@"
+            ;;
+        *)
+            log_message "Error: Invalid sudo_mode specified. Please use 'ask', 'error', or 'ok'."
+            exit 1
+            ;;
+    esac
 }
 
 # Function to print log messages with timestamp
