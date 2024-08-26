@@ -41,6 +41,7 @@ bids_version="None"
 build_python=false
 build_wx=false
 sudo_mode="ask"
+pkg_manager_permission=false
 disable_shortcut=false
 force_overwrite=false
 verbose=false
@@ -130,40 +131,54 @@ log() {
 }
 
 sudo_wrapper() {
+    error_output=$("$@" 2>&1)
+    exit_code=$?
     case "$sudo_mode" in
         ask)
-            # Try without sudo first
-            error_output=$("$@" 2>&1)
-            exit_code=$?
-            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
-                log_message "$error_output"  
-                read -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
-                if [[ "$response" =~ ^[Yy]$ ]]; then
-                    sudo "$@"
-                else 
-                    exit 1
-                fi
+            # Determine if the command is a package manager command
+            if [[ "$1" == "$pkg_manager" ]]; then
+                is_pkg_manager_command=true
             else
-                log_message "$error_output" 
+                is_pkg_manager_command=false
+            fi
+
+            # Handle package manager commands
+            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
+                if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
+                    sudo "$@"
+                else
+                    if $is_pkg_manager_command; then
+                        read -p "Command '$*' failed due to permission denied. Would you like to retry with sudo for this and all future $pkg_manager package manager commands? [y/N] " response
+                        if [[ "$response" =~ ^[Yy]$ ]]; then
+                            pkg_manager_permission=true
+                            sudo "$@"
+                        else
+                            exit 1
+                        fi
+                    else
+                        read -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
+                        if [[ "$response" =~ ^[Yy]$ ]]; then
+                            sudo "$@"
+                        else
+                            exit 1
+                        fi
+                    fi
+                fi
             fi
             ;;
         error)
             # Try without sudo, exit if permission denied
-            error_output=$("$@" 2>&1)
-            exit_code=$?
             if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
-                log_message "Error: Command failed due to permission denied. Sudo is required, but mode is set to 'error'."
+                log log_message "Error: Command '$*' failed due to permission denied. Sudo is required, but mode is set to 'error'."
                 exit 1  
-            else
-                log_message "$error_output"  
             fi
             ;;
         ok)
-            sudo "$@"
-            ;;
-        *)
-            log_message "Error: Invalid sudo_mode specified. Please use 'ask', 'error', or 'ok'."
-            exit 1
+            # Try without sudo, sudo if permission denied
+            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
+                log log_message "Warning: Command '$*' failed due to permission denied. Using Sudo."
+                sudo "$@" 
+            fi
             ;;
     esac
 }
@@ -199,7 +214,7 @@ detect_os_version() {
 # Function to detect the package manager for the OS
 detect_package_manager() {
     if command -v apt-get > /dev/null 2>&1; then
-        echo "apt"
+        echo "apt-get"
     elif command -v yum > /dev/null 2>&1; then
         echo "yum"
     elif command -v dnf > /dev/null 2>&1; then
@@ -215,9 +230,9 @@ detect_package_manager() {
 update_package_manager() {
     local pkg_manager=$1
     case $pkg_manager in
-        apt) log sudo_wrapper apt-get update -qq ;;
-        yum) log sudo_wrapper yum update -y -q ;;
-        dnf) log sudo_wrapper dnf update -y -q ;;
+        apt-get) log sudo_wrapper apt-get update -qq ;;
+        yum) log sudo_wrapper yum check-update -q ;;
+        dnf) log sudo_wrapper dnf check-update -q ;;
         pacman) log sudo_wrapper pacman -Sy --noconfirm ;;
         *) echo "No compatible package manager found."; exit 1 ;;
     esac
@@ -231,10 +246,10 @@ install_packages() {
     
     for package in "${packages[@]}"; do
         case $pkg_manager in
-            apt) log sudo_wrapper apt-get install -y -qq "$package" || echo "Package $package not found, skipping." ;;
+            apt-get) log sudo_wrapper apt-get install -y -qq "$package" || echo "Package $package not found, skipping." ;;
             yum) log sudo_wrapper yum install -y -q "$package" || echo "Package $package not found, skipping." ;;
             dnf) log sudo_wrapper dnf install -y -q "$package" || echo "Package $package not found, skipping." ;;
-            pacman) log sudo_wrapper pacman -S --noconfirm "$package" || echo "Package $package not found, skipping." ;;
+            pacman) log sudo_wrapper pacman -Sy --noconfirm "$package" || echo "Package $package not found, skipping." ;;
             *) echo "No compatible package manager found."; exit 1 ;;
         esac
     done
@@ -248,7 +263,7 @@ install_dependencies() {
 
     # Define dependencies for different package managers
     case $pkg_manager in
-        apt)
+        apt-get)
             script_deps=(
                 git curl jq
             )
