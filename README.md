@@ -65,7 +65,7 @@ I would recommend using default values if you do not need specific versions.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: None).
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours.
 - `--disable-shortcut` : Disable desktop shortcut creation.
-- `--no-sudo` : Do not use sudo in the script. The script will fail if you do not run as root. Updating/upgrading packages, installing python and some file operations require elevated privileges.
+- `--sudo_mode=[ask|ok|error]` : Controls how the script handles commands requiring `sudo`. Default is `ask` (prompt for confirmation). Use `ok` to run without prompts, or `error` to abort if `sudo` is needed. The script attempts to run commands without `sudo` by default.
 - `-f`, `--force` : Force overwrite of the existing installation directory.
 - `-v`, `--verbose` : Enable verbose output.
 - `-h`, `--help` : Show help message.

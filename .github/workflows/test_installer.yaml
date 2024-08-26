@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - basic-sudo-wrapper
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
@@ -74,7 +75,7 @@ jobs:
         id: run-installer
         continue-on-error: true
         run: |
-          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=latest --install_dir=/tmp_dir --force"
+          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=latest --install_dir=/tmp_dir --force --sudo_mode=ok"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS | tee /tmp_dir/psychopy_install_output.log
         shell: bash
 

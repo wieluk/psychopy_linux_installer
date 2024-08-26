@@ -21,7 +21,7 @@ Options:
   --no-versioned-install-dir  Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None).
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading.
-  --sudo_mode                 What to do when the script needs to run a command with sudo : ask for confirmation (default), error, or run without confirmation.
+  --sudo_mode=[ask|error|ok]  Controls sudo use. Default is ask (prompt). Use ok to skip prompts, error to abort if sudo is required.
   --disable-shortcut          Disable desktop shortcut creation.
   -f, --force                 Force overwrite of existing installation directory.
   -v, --verbose               Enable verbose output.
@@ -99,6 +99,10 @@ for arg in "$@"; do
             ;;
         --sudo_mode=*)
             sudo_mode="${arg#*=}"
+            if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "error" && "$sudo_mode" != "ok" ]]; then
+                echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'error', or 'ok'."
+                exit 1
+            fi
             ;;
         --disable-shortcut)
             disable_shortcut=true
@@ -126,7 +130,7 @@ log() {
     if [ "$verbose" = true ]; then
         "$@"
     else
-        "$@" 2>&1 > /dev/null 
+        "$@" > /dev/null 2>&1
     fi
 }
 
@@ -148,7 +152,7 @@ sudo_wrapper() {
                     sudo "$@"
                 else
                     if $is_pkg_manager_command; then
-                        read -p "Command '$*' failed due to permission denied. Would you like to retry with sudo for this and all future $pkg_manager package manager commands? [y/N] " response
+                        read -r -p "Command '$*' failed due to permission denied. Would you like to retry with sudo for this and all future $pkg_manager package manager commands? [y/N] " response
                         if [[ "$response" =~ ^[Yy]$ ]]; then
                             pkg_manager_permission=true
                             sudo "$@"
@@ -156,7 +160,7 @@ sudo_wrapper() {
                             exit 1
                         fi
                     else
-                        read -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
+                        read -r -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
                         if [[ "$response" =~ ^[Yy]$ ]]; then
                             sudo "$@"
                         else
@@ -448,10 +452,10 @@ create_desktop_file() {
         echo "Terminal=false"
         echo "Type=Application"
         echo "Categories=Education;Science;"
-    } > "$desktop_file"
+    } | sudo_wrapper tee "$desktop_file" > /dev/null
     
-    chmod +x "$desktop_file"
-    gio set "$desktop_file" metadata::trusted true
+    sudo_wrapper chmod +x "$desktop_file"
+    sudo_wrapper gio set "$desktop_file" metadata::trusted true
     echo "$desktop_file"
 }
 
@@ -530,7 +534,7 @@ else
         temp_file="Python-${python_version}.tgz"
         temp_dir="Python-${python_version}_temp"
 
-        log curl -O "${official_url}"
+        log curl -s -O "${official_url}"
         sudo_wrapper mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
         (
@@ -547,7 +551,7 @@ else
         temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
 
         log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
-        if log curl -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
+        if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
             log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
             sudo_wrapper mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
@@ -563,7 +567,7 @@ else
             temp_file="Python-${python_version}.tgz"
             temp_dir="Python-${python_version}_temp"
 
-            log curl -O "${official_url}"
+            log curl -s -O "${official_url}"
             sudo_wrapper mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
@@ -585,7 +589,7 @@ fi
 
 # Create and activate virtual environment
 log_message "Creating and activating virtual environment..."
-log python"${python_version%.*}" -m venv "${psychopy_dir}"
+log sudo_wrapper python"${python_version%.*}" -m venv "${psychopy_dir}"
 log source "${psychopy_dir}/bin/activate"
 
 # Upgrade pip and install required Python packages
@@ -615,11 +619,11 @@ else
     if wheel_url=$(get_wxpython_wheel "$wxpython_latest" "$wxpython_version"); then
         wheel_file=$(basename "$wheel_url")
         log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
-        log curl -O "$wheel_url"
+        log curl -s -O "$wheel_url"
         log_message "Download successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Installed wxPython from $wheel_file"
-            log rm "$wheel_file"
+            log sudo_wrapper rm "$wheel_file"
         else
             log_message "Error: Installing wxPython from $wheel_file failed. Attempting to build from source."
             attempt_build_wxpython
@@ -640,10 +644,10 @@ else
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
 
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
-        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file" || log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wx_python_file"; then
+        if log curl -s -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -s -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file" || log curl -s -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wx_python_file"; then
             log_message "Download successful. Installing wxPython from $wx_python_file"
             if log pip install "$wx_python_file"; then
-                log rm "$wx_python_file"
+                log sudo_wrapper rm "$wx_python_file"
             else
                 log_message "Error: Installing wxPython from $wx_python_file failed. Attempting to build from source."
                 attempt_build_wxpython
@@ -701,7 +705,7 @@ deactivate
 log_message "Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
 log sudo_wrapper groupadd --force psychopy
 log sudo_wrapper usermod -a -G psychopy "$USER"
-sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+log sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
 # Create desktop shortcut if not disabled
 if [ "$disable_shortcut" = false ]; then
@@ -713,7 +717,7 @@ if [ "$disable_shortcut" = false ]; then
         icon_file="${psychopy_dir}/psychopy.png"
 
         if curl --output /dev/null --silent --head --fail "$icon_url"; then
-            log curl -o "$icon_file" "$icon_url"
+            log curl -s -o "$icon_file" "$icon_url"
         fi
 
         if [ ! -f "$icon_file" ]; then
@@ -730,9 +734,9 @@ if [ "$disable_shortcut" = false ]; then
         file_builder=$(create_desktop_file "--builder" "$pretty_name_builder")
 
         if [ -d "$desktop_dir" ]; then
-            ln -sf "$file_no_args" "${desktop_dir}${pretty_name_no_args}.desktop"
-            ln -sf "$file_coder" "${desktop_dir}${pretty_name_coder}.desktop"
-            ln -sf "$file_builder" "${desktop_dir}${pretty_name_builder}.desktop"
+            sudo_wrapper ln -sf "$file_no_args" "${desktop_dir}${pretty_name_no_args}.desktop"
+            sudo_wrapper ln -sf "$file_coder" "${desktop_dir}${pretty_name_coder}.desktop"
+            sudo_wrapper ln -sf "$file_builder" "${desktop_dir}${pretty_name_builder}.desktop"
         else
             log_message "Applications directory $desktop_dir does not exist. Skipping application menu shortcut creation."
         fi
@@ -746,25 +750,25 @@ fi
 # Add PsychoPy to PATH
 shell_name=$(basename "$SHELL")
 sudo_wrapper mkdir -p "${psychopy_dir}/.bin"
-ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+sudo_wrapper ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
 # Update shell configuration to include PsychoPy in PATH
 case $shell_name in
     bash)
         config_file="$HOME/.bashrc"
-        echo "export PATH=\"${psychopy_dir}/.bin:\$PATH\"" >> "$config_file"
+        sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
         ;;
     zsh)
         config_file="$HOME/.zshrc"
-        echo "export PATH=\"${psychopy_dir}/.bin:\$PATH\"" >> "$config_file"
+        sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
         ;;
     fish)
         config_file="$HOME/.config/fish/config.fish"
-        echo "set -gx PATH \"${psychopy_dir}/.bin\" \$PATH" >> "$config_file"
+        sudo_wrapper sh -c "echo 'set -gx PATH \"${psychopy_dir}/.bin\" \$PATH' >> \"$config_file\""
         ;;
     csh|tcsh)
         config_file="$HOME/.${shell_name}rc"
-        echo "setenv PATH ${psychopy_dir}/.bin:\$PATH" >> "$config_file"
+        sudo_wrapper sh -c "echo 'setenv PATH ${psychopy_dir}/.bin:\$PATH' >> \"$config_file\""
         ;;
     *)
         log_message "Unsupported shell: $shell_name"
