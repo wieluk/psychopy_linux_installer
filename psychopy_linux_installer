@@ -157,21 +157,25 @@ sudo_wrapper() {
                         log sudo "$@"
                     else
                         if $is_pkg_manager_command; then
-                            read -r -p "Command '$*' failed due to permission denied. Would you like to retry with sudo for this and all future $pkg_manager package manager commands? [y/N] " response
-                            if [[ "$response" =~ ^[Yy]$ ]]; then
-                                pkg_manager_permission=true
-                                log sudo "$@"
-                            else
-                                exit 1
-                            fi
+                            read -r -p "Command '$*' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
                         else
-                            read -r -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
-                            if [[ "$response" =~ ^[Yy]$ ]]; then
-                                log sudo "$@"
-                            else
-                                exit 1
-                            fi
+                            read -r -p "Command '$*' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
                         fi
+
+                        case "$response" in
+                            [Rr])
+                                if $is_pkg_manager_command; then
+                                    pkg_manager_permission=true
+                                fi
+                                log sudo "$@"
+                                ;;
+                            [Cc])
+                                ;;
+                            *)
+                                log_message "Exiting."
+                                exit 1
+                                ;;
+                        esac
                     fi
                 fi
                 ;;
