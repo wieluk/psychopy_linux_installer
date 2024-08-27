@@ -725,7 +725,7 @@ if [ "$disable_path" = false ]; then
             echo "setenv PATH ${psychopy_dir}/.bin:\$PATH" >> "$config_file"
             ;;
         *)
-            log_message "Unsupported shell: $shell_name"
+            log_message "Unsupported shell: $shell_name; PsychoPy not added to path"
             echo
             log_message "PsychoPy installation complete!"
             echo
@@ -749,5 +749,7 @@ if [ "$disable_path" = false ]; then
 else
     echo
     log_message "PsychoPy installation complete!"
+    echo
+    echo "To start PsychoPy from terminal, use:"
     echo "${psychopy_dir}/bin/psychopy"
 fi
