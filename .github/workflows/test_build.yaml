@@ -53,7 +53,7 @@ jobs:
       - name: Run PsychoPy Linux Installer
         id: run-installer
         run: |
-          ARGS="--python_version=${{ matrix.python_version }} --psychopy_version=${{ matrix.psychopy_version }} --bids_version=latest --install_dir=/tmp_dir --force --verbose --build=both --sudo_mode=ok"
+          ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --bids-version=latest --install-dir=/tmp_dir --force --verbose --build=both --sudo-mode=ok"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS | tee /tmp_dir/psychopy_install_output.log
         shell: bash
 
