@@ -53,6 +53,7 @@ Execute script; see options below for more information.
 ```bash
 ./psychopy_linux_installer
 ```
+
 I would recommend using default values if you do not need specific versions.
 
 ## Options
@@ -60,9 +61,9 @@ I would recommend using default values if you do not need specific versions.
 - `--python_version=VERSION` : Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
 - `--psychopy_version=VERSION` : Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`)
 - `--wxpython_version=VERSION` : Specify the [wxPython version](https://pypi.org/project/wxPython/#history) to install (default: `latest`)
-- `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths 
+- `--install_dir=DIR` : Specify the installation directory (default: `$HOME`); use absolute paths.
 without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
-- `no-versioned-install-dir` : Installs directly into the specified `install_dir` without creating a versioned subdirectory. Requires `--install_dir`.
+- `--no-versioned-install-dir` : Installs directly into the specified `install_dir` without creating a versioned subdirectory. Requires `--install_dir`.
 - `--bids_version=VERSION` : Specify the [PsychoPy_BIDS version](https://pypi.org/project/psychopy_bids/#history) to install (default: None)
 - `--build` : Build Python and wxPython from source instead of downloading wheel/binaries; Options are: `[python|wxpython|both]`. Use `both` if something does not work. It might take 1-2 hours."
 - `-f`, `--force` : Force overwrite of the existing installation directory.
@@ -70,10 +71,11 @@ without a trailing `/`. Do not use `~/`; use `/home/{user}` instead.
 - `-d`, `--disable-shortcut` : Disable desktop shortcut creation.
 - `-h`, `--help` : Show help message.
 
-
 **Note:**
+
 - The default version for `--psychopy_version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
 - `--psychopy_version`, `--wxpython_version` and `--bids_version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
+
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
@@ -111,6 +113,7 @@ You can also launch PsychoPy directly using the absolute path:
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
 
 ## To-Do
+
 - Refactor actions and testscripts
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
@@ -125,6 +128,7 @@ All commands, along with the installed versions and set paths, as well as the co
 
 <!-- BEGIN INSTALLATION_RESULTS -->
 ### Report generated on 2024-08-23
+
 ### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10522159400)
 
 | OS | Python Version | PsychoPy Version | Status |
@@ -224,6 +228,7 @@ All commands, along with the installed versions and set paths, as well as the co
 ## Built Python and wxPython Versions Available for Download
 
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
+
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
 
 <!-- BEGIN PRECOMPILED_VERSIONS -->
