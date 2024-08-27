@@ -135,7 +135,7 @@ log() {
 }
 
 sudo_wrapper() {
-    error_output=$("$@" > /dev/null 2>&1)
+    error_output=$("$@" 2>&1)
     exit_code=$?
 
     case "$sudo_mode" in
