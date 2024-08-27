@@ -14,21 +14,20 @@ show_help() {
     cat << EOF
 Usage: ./install_psychopy [options]
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.8.19); Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
-  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4).
-  --wxpython_version=VERSION  Specify the wxPython version to install (default: latest).
-  --install_dir=DIR           Specify the installation directory (default: "$HOME").
-  --no-versioned-install-dir  Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
-  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None).
-  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading.
+  --python-version=VERSION              Specify Python version (default: 3.8.19). Only 3.8.x, 3.9.x, or 3.10.x allowed.
+  --psychopy-version=VERSION            Specify PsychoPy version (default: 2024.1.4).
+  --wxpython-version=VERSION            Specify wxPython version (default: latest).
+  --install-dir=DIR                     Specify installation directory (default: "$HOME").
+  --no-versioned-install-dir            Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
+  --bids-version=VERSION                Specify PsychoPy-BIDS version (default: None).
+  --build=[python|wxpython|both]        Build Python and/or wxPython from source instead of downloading.
   --sudo-mode=[ask|auto|error|force]    Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly.
-  --disable-shortcut          Disable desktop shortcut creation.
-  -f, --force                 Force overwrite of existing installation directory.
-  -v, --verbose               Enable verbose output.
-  -h, --help                  Show this help message.
+  --disable-shortcut                    Disable desktop shortcut creation.
+  -f, --force                           Force overwrite of existing installation directory.
+  -v, --verbose                         Enable verbose output.
+  -h, --help                            Show this help message.
 EOF
 }
-
 # Set default values for variables
 python_version="3.8.19"
 psychopy_version="2024.1.4"
@@ -49,21 +48,21 @@ verbose=false
 # Parse command line arguments
 for arg in "$@"; do
     case $arg in
-        --python_version=*)
+        --python-version=*)
             python_version="${arg#*=}"
             if [[ ! $python_version =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
                 echo "Error: Invalid Python version specified. Only versions 3.8.x, 3.9.x, or 3.10.x are allowed."
                 exit 1
             fi
             ;;
-        --psychopy_version=*)
+        --psychopy-version=*)
             psychopy_version="${arg#*=}"
             ;;
-        --wxpython_version=*)
+        --wxpython-version=*)
             wxpython_version="${arg#*=}"
             wxpython_version_set_by_user=true
             ;;
-        --install_dir=*)
+        --install-dir=*)
             install_dir="${arg#*=}"
             install_dir_set_by_user=true
             ;;
@@ -74,7 +73,7 @@ for arg in "$@"; do
             fi
             no_versioned_install_dir=true
             ;;
-        --bids_version=*)
+        --bids-version=*)
             bids_version="${arg#*=}"
             ;;
         --build=*)
@@ -380,9 +379,10 @@ install_wxpython() {
 
 # Function to attempt building wxPython from source
 attempt_build_wxpython() {
-    log_message "Building wxPython $wxpython_version from source. This might take a while ..."
+    log_message "Installing wxpython build dependencies. This might take a while ..."
     install_dependencies "$pkg_manager" wxpython_deps
 
+    log_message "Building wxPython $wxpython_version from source. This might take a while ..."
     if install_wxpython "$wxpython_version"; then
         return 0
     else
@@ -615,12 +615,14 @@ fi
 if [ "$wxpython_version" = "latest" ]; then
     wxpython_version=$(get_latest_pypi_version "wxPython")
     wxpython_latest=true
-    log_message "Latest wxPython version detected: $wxpython_version"
 else
     wxpython_latest=false
 fi
 
 if [ "$wxpython_version" = "git" ]; then
+    log_message "Installing wxpython build dependencies. This might take a while ..."
+    install_dependencies "$pkg_manager" wxpython_deps
+    log_message "Building wxPython from git. This might take a while ..."
     log pip install git+https://github.com/wxWidgets/Phoenix
 elif [ "$build_wx" = true ]; then
     attempt_build_wxpython
@@ -650,19 +652,29 @@ else
         wx_python_nextcloud_url_fallback="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback}"
         wx_python_nextcloud_url_fallback2="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback2}"
         
-        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
-
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
-        if log curl -s -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -s -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file" || log curl -s -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wx_python_file"; then
+
+        if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
+            wx_python_file_download="$wheel_name"
+        elif log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wheel_name_fallback"; then
+            wx_python_file_download="$wheel_name_fallback"
+        elif log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wheel_name_fallback2"; then
+            wx_python_file_download="$wheel_name_fallback2"
+        fi
+
+        # If a download was successful, attempt to install it
+        if [ -n "$wx_python_file_download" ]; then
+            wx_python_file="${wx_python_file_download%-"${os_version}".whl}.whl"
+            mv "$wx_python_file_download" "$wx_python_file"
             log_message "Download successful. Installing wxPython from $wx_python_file"
             if log pip install "$wx_python_file"; then
                 sudo_wrapper rm "$wx_python_file"
             else
-                log_message "Error: Installing wxPython from $wx_python_file failed. Attempting to build from source."
+                log_message "Error: Installing wxPython failed. Attempting to build from source."
                 attempt_build_wxpython
             fi
+            log rm "$wx_python_file"
         else
-            log_message "Failed to download wxPython wheel. Attempting to build wxPython from source."
             attempt_build_wxpython
         fi
     fi
