@@ -18,6 +18,7 @@ Options:
   --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
   --wxpython_version=VERSION  Specify the wxPython version to install (default: latest)
   --install_dir=DIR           Specify the installation directory (default: "$HOME")
+  --no-versioned-install-dir    Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None); use latest for pypi version
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
   -f, --force                 Force overwrite of existing installation directory
