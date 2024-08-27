@@ -21,7 +21,7 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
-- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source. If latest wxpython version fails building, it will fallback to version 4.1.1 if no `--wxpython_version` is set. (fixes fedora-40)
+- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source. If latest wxpython version fails building, it will fallback to version 4.1.1 if no `--wxpython-version` is set. (fixes fedora-40)
 - If the downloads fail building Python and wxPython may take 1-2 hours.
 - The script provides minimal output by default. Use the --verbose option for detailed logging.
 
@@ -60,12 +60,12 @@ I would recommend using default values if you do not need specific versions.
 
 | Option| Description|
 |---|---|
-| `--python_version=VERSION`          | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
-| `--psychopy_version=VERSION`        | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
-| `--wxpython_version=VERSION`        | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `latest`). |
-| `--install_dir=DIR`                 | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
-| `--no-versioned-install-dir`        | Installs directly into the specified `install_dir` without creating a versioned subdirectory. Requires `--install_dir`. |
-| `--bids_version=VERSION`            | Specify the [PsychoPy_BIDS Version](https://pypi.org/project/psychopy_bids/#history) to install (default: None). |
+| `--python-version=VERSION`          | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
+| `--psychopy-version=VERSION`        | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
+| `--wxpython-version=VERSION`        | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `latest`). |
+| `--install-dir=DIR`                 | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
+| `--no-versioned-install-dir`        | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
+| `--bids-version=VERSION`            | Specify the [PsychoPy_BIDS Version](https://pypi.org/project/psychopy_bids/#history) to install (default: None). |
 | `--build=[python\|wxpython\|both]`  | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
 | `-f`, `--force`                     | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose`                   | Enable verbose output. |
@@ -74,13 +74,13 @@ I would recommend using default values if you do not need specific versions.
 
 **Note:**
 
-- The default version for `--psychopy_version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
-- `--psychopy_version`, `--wxpython_version` and `--bids_version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
+- The default version for `--psychopy-version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
+- `--psychopy-version`, `--wxpython-version` and `--bids-version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
 
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
-- `./psychopy_linux_installer --psychopy_version=2024.1.4 --install_dir=/home/user1 --bids_version=git --build=python -v -f`
+- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --bids-version=git --build=python -v -f`
 
 ## Script Details
 
