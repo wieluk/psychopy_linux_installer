@@ -135,8 +135,9 @@ log() {
 }
 
 sudo_wrapper() {
-    error_output=$("$@" 2>&1)
+    error_output=$("$@" > /dev/null 2>&1)
     exit_code=$?
+
     case "$sudo_mode" in
         ask)
             # Determine if the command is a package manager command
@@ -147,22 +148,24 @@ sudo_wrapper() {
             fi
 
             # Handle package manager commands
-            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
+            if [ $exit_code -eq 126 ] || [ $exit_code -eq 100 ] || 
+               ([ $exit_code -ne 0 ] && log_message "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with"); then
+                
                 if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
-                    sudo "$@"
+                    log sudo "$@"
                 else
                     if $is_pkg_manager_command; then
                         read -r -p "Command '$*' failed due to permission denied. Would you like to retry with sudo for this and all future $pkg_manager package manager commands? [y/N] " response
                         if [[ "$response" =~ ^[Yy]$ ]]; then
                             pkg_manager_permission=true
-                            sudo "$@"
+                            log sudo "$@"
                         else
                             exit 1
                         fi
                     else
                         read -r -p "Command '$*' failed due to permission denied. Would you like to retry with sudo? [y/N] " response
                         if [[ "$response" =~ ^[Yy]$ ]]; then
-                            sudo "$@"
+                            log sudo "$@"
                         else
                             exit 1
                         fi
@@ -172,16 +175,18 @@ sudo_wrapper() {
             ;;
         error)
             # Try without sudo, exit if permission denied
-            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
+            if [ $exit_code -eq 126 ] || [ $exit_code -eq 100 ] || 
+               ([ $exit_code -ne 0 ] && log_message "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with"); then
                 log log_message "Error: Command '$*' failed due to permission denied. Sudo is required, but mode is set to 'error'."
                 exit 1  
             fi
             ;;
         ok)
             # Try without sudo, sudo if permission denied
-            if [ $exit_code -ne 0 ] && log_message "$error_output" | grep -qi "permission denied"; then
-                log log_message "Warning: Command '$*' failed due to permission denied. Using Sudo."
-                sudo "$@" 
+            if [ $exit_code -eq 126 ] || [ $exit_code -eq 100 ] || 
+               ([ $exit_code -ne 0 ] && log_message "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with"); then
+                log log_message "Warning: Command '$*' failed due to permission denied. Using sudo..."
+                log sudo "$@" 
             fi
             ;;
     esac
@@ -234,11 +239,11 @@ detect_package_manager() {
 update_package_manager() {
     local pkg_manager=$1
     case $pkg_manager in
-        apt-get) log sudo_wrapper apt-get update -qq ;;
-        yum) log sudo_wrapper yum check-update -q ;;
-        dnf) log sudo_wrapper dnf check-update -q ;;
-        pacman) log sudo_wrapper pacman -Sy --noconfirm ;;
-        *) echo "No compatible package manager found."; exit 1 ;;
+        apt-get) sudo_wrapper apt-get update -qq ;;
+        yum) sudo_wrapper yum check-update -q ;;
+        dnf) sudo_wrapper dnf check-update -q ;;
+        pacman) sudo_wrapper pacman -Sy --noconfirm ;;
+        *) log_message "No compatible package manager found."; exit 1 ;;
     esac
 }
 
@@ -250,11 +255,11 @@ install_packages() {
     
     for package in "${packages[@]}"; do
         case $pkg_manager in
-            apt-get) log sudo_wrapper apt-get install -y -qq "$package" || echo "Package $package not found, skipping." ;;
-            yum) log sudo_wrapper yum install -y -q "$package" || echo "Package $package not found, skipping." ;;
-            dnf) log sudo_wrapper dnf install -y -q "$package" || echo "Package $package not found, skipping." ;;
-            pacman) log sudo_wrapper pacman -Sy --noconfirm "$package" || echo "Package $package not found, skipping." ;;
-            *) echo "No compatible package manager found."; exit 1 ;;
+            apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Package $package not found, skipping." ;;
+            yum) sudo_wrapper yum install -y -q "$package" || log_message "Package $package not found, skipping." ;;
+            dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Package $package not found, skipping." ;;
+            pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Package $package not found, skipping." ;;
+            *) log_message "No compatible package manager found."; exit 1 ;;
         esac
     done
 }
@@ -310,7 +315,7 @@ install_dependencies() {
             )
             ;;
         *)
-            echo "No compatible package manager found."; exit 1 ;;
+            log_message "No compatible package manager found."; exit 1 ;;
     esac
     
     # Set the list of dependencies based on the type requested
@@ -319,7 +324,7 @@ install_dependencies() {
         python_build_deps) dependencies=("${python_build_deps[@]}") ;;
         psychopy_deps) dependencies=("${psychopy_deps[@]}") ;;
         wxpython_deps) dependencies=("${wxpython_deps[@]}") ;;
-        *) echo "Invalid dependency type specified."; exit 1 ;;
+        *) log_message "Invalid dependency type specified."; exit 1 ;;
     esac
 
     # Install the dependencies
@@ -330,7 +335,7 @@ install_dependencies() {
 check_python_version() {
     local version=$1
     if ! curl -s --head --fail "https://www.python.org/ftp/python/${version}/Python-${version}.tgz" > /dev/null; then
-        echo "Python version ${version} does not exist. Exiting."
+        log_message "Python version ${version} does not exist. Exiting."
         exit 1
     fi
 }
@@ -341,7 +346,7 @@ get_latest_pypi_version() {
     local latest_version
     latest_version=$(curl -s "https://pypi.org/pypi/${package_name}/json" | jq -r .info.version)
     if [ -z "$latest_version" ]; then
-        echo "Unable to fetch the latest version for package ${package_name}. Exiting."
+        log_message "Unable to fetch the latest version for package ${package_name}. Exiting."
         exit 1
     fi
     echo "$latest_version"
@@ -352,7 +357,7 @@ check_pypi_for_version() {
     local package=$1
     local version=$2
     if ! curl -s "https://pypi.org/pypi/${package}/${version}/json" | jq -e .info.version > /dev/null; then
-        echo "${package} version ${version} does not exist. Exiting."
+        log_message "${package} version ${version} does not exist. Exiting."
         exit 1
     fi
 }
@@ -416,7 +421,7 @@ get_wxpython_wheel() {
     fi
 
     if [ -z "$wheels" ]; then
-        echo "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure}."
+        log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure}."
         return 1
     fi
 
@@ -541,9 +546,9 @@ else
             cd "${temp_dir}/Python-${python_version}" || exit
             log ./configure --enable-optimizations --with-ensurepip=install
             log make -j "$(nproc)"
-            log sudo_wrapper make altinstall
+            sudo_wrapper make altinstall
         )
-        log sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+        sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
     else
         # Attempt to download pre-built Python version
         nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
@@ -557,9 +562,9 @@ else
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
                 cd "${temp_dir}" || exit
-                log sudo_wrapper make altinstall
+                sudo_wrapper make altinstall
             )
-            log sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+            sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
         else
             # If download fails, build from source
             log_message "Failed to download from Nextcloud. Building from official Python source. This might take a while ..."
@@ -574,9 +579,9 @@ else
                 cd "${temp_dir}/Python-${python_version}" || exit
                 log ./configure --enable-optimizations --with-ensurepip=install
                 log make -j "$(nproc)"
-                log sudo_wrapper make altinstall
+                sudo_wrapper make altinstall
             )
-            log sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+            sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
         fi
     fi
 fi
@@ -589,7 +594,7 @@ fi
 
 # Create and activate virtual environment
 log_message "Creating and activating virtual environment..."
-log sudo_wrapper python"${python_version%.*}" -m venv "${psychopy_dir}"
+sudo_wrapper python"${python_version%.*}" -m venv "${psychopy_dir}"
 log source "${psychopy_dir}/bin/activate"
 
 # Upgrade pip and install required Python packages
@@ -623,7 +628,7 @@ else
         log_message "Download successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Installed wxPython from $wheel_file"
-            log sudo_wrapper rm "$wheel_file"
+            sudo_wrapper rm "$wheel_file"
         else
             log_message "Error: Installing wxPython from $wheel_file failed. Attempting to build from source."
             attempt_build_wxpython
@@ -647,7 +652,7 @@ else
         if log curl -s -f -X GET "$wx_python_nextcloud_url" --output "$wx_python_file" || log curl -s -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wx_python_file" || log curl -s -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wx_python_file"; then
             log_message "Download successful. Installing wxPython from $wx_python_file"
             if log pip install "$wx_python_file"; then
-                log sudo_wrapper rm "$wx_python_file"
+                sudo_wrapper rm "$wx_python_file"
             else
                 log_message "Error: Installing wxPython from $wx_python_file failed. Attempting to build from source."
                 attempt_build_wxpython
@@ -703,9 +708,9 @@ deactivate
 
 # Add user to the 'psychopy' group and set security limits
 log_message "Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
-log sudo_wrapper groupadd --force psychopy
-log sudo_wrapper usermod -a -G psychopy "$USER"
-log sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+sudo_wrapper groupadd --force psychopy
+sudo_wrapper usermod -a -G psychopy "$USER"
+sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
 # Create desktop shortcut if not disabled
 if [ "$disable_shortcut" = false ]; then
