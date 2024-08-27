@@ -276,7 +276,7 @@ jobs:
 
   update-readme:
     needs: build
-    if: ${{ always() }}
+    if: ${{ failure() || success() }}
     runs-on: [self-hosted, ubuntu-24.04]
     steps:
       - name: Checkout repository
@@ -333,6 +333,6 @@ jobs:
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
           else
-            git commit -m "Update installation results"
+            git commit -m "Update build results"
             git push --force
           fi
