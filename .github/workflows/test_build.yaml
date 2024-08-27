@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - basic-sudo-wrapper
     paths-ignore:
       - 'README.md'
       - 'LICENSE'

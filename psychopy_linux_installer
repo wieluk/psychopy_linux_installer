@@ -21,7 +21,7 @@ Options:
   --no-versioned-install-dir  Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
   --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None).
   --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading.
-  --sudo_mode=[ask|error|ok]  Controls sudo use. Default is ask (prompt). Use ok to skip prompts, error to abort if sudo is required.
+  --sudo-mode=[ask|auto|error|force]    Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly.
   --disable-shortcut          Disable desktop shortcut creation.
   -f, --force                 Force overwrite of existing installation directory.
   -v, --verbose               Enable verbose output.
@@ -97,7 +97,7 @@ for arg in "$@"; do
                     ;;
             esac
             ;;
-        --sudo_mode=*)
+        --sudo-mode=*)
             sudo_mode="${arg#*=}"
             if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
                 echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'auto', 'error' or 'force'."
