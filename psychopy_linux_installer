@@ -22,6 +22,7 @@ Options:
   --bids-version=VERSION                Specify PsychoPy-BIDS version (default: None).
   --build=[python|wxpython|both]        Build Python and/or wxPython from source instead of downloading.
   --disable-shortcut                    Disable desktop shortcut creation.
+  --disable-path                        Disable adding psychopy to system path.
   -f, --force                           Force overwrite of existing installation directory.
   -v, --verbose                         Enable verbose output.
   -h, --help                            Show this help message.
@@ -41,6 +42,7 @@ build_wx=false
 force_overwrite=false
 verbose=false
 disable_shortcut=false
+disable_path=false
 
 # Parse command line arguments
 for arg in "$@"; do
@@ -79,8 +81,11 @@ for arg in "$@"; do
         -v|--verbose)
             verbose=true
             ;;
-        -d|--disable-shortcut)
+        --disable-shortcut)
             disable_shortcut=true
+            ;;
+        --disable-path)
+            disable_path=true
             ;;
         -h|--help)
             show_help
@@ -696,50 +701,53 @@ else
     log_message "Desktop shortcut creation disabled by user."
 fi
 
-# Add PsychoPy to PATH
-shell_name=$(basename "$SHELL")
-mkdir -p "${psychopy_dir}/.bin"
-ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+# Add PsychoPy to PATH if not disabled
+if [ "$disable_path" = false ]; then
+    shell_name=$(basename "$SHELL")
+    mkdir -p "${psychopy_dir}/.bin"
+    ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
-# Update shell configuration to include PsychoPy in PATH
-case $shell_name in
-    bash)
-        config_file="$HOME/.bashrc"
-        echo "export PATH=\"${psychopy_dir}/.bin:\$PATH\"" >> "$config_file"
-        ;;
-    zsh)
-        config_file="$HOME/.zshrc"
-        echo "export PATH=\"${psychopy_dir}/.bin:\$PATH\"" >> "$config_file"
-        ;;
-    fish)
-        config_file="$HOME/.config/fish/config.fish"
-        echo "set -gx PATH \"${psychopy_dir}/.bin\" \$PATH" >> "$config_file"
-        ;;
-    csh|tcsh)
-        config_file="$HOME/.${shell_name}rc"
-        echo "setenv PATH ${psychopy_dir}/.bin:\$PATH" >> "$config_file"
-        ;;
-    *)
-        log_message "Unsupported shell: $shell_name"
-        echo
-        log_message "PsychoPy installation complete!"
-        echo
-        echo "To start PsychoPy, use:"
-        echo "${psychopy_dir}/bin/psychopy"
-        exit 0
-        ;;
-esac
+    case $shell_name in
+        bash)
+            config_file="$HOME/.bashrc"
+            echo "export PATH=\"${psychopy_dir}/.bin:\$PATH\"" >> "$config_file"
+            ;;
+        zsh)
+            config_file="$HOME/.zshrc"
+            echo "export PATH=\"${psychopy_dir}/.bin:\$PATH\"" >> "$config_file"
+            ;;
+        fish)
+            config_file="$HOME/.config/fish/config.fish"
+            echo "set -gx PATH \"${psychopy_dir}/.bin\" \$PATH" >> "$config_file"
+            ;;
+        csh|tcsh)
+            config_file="$HOME/.${shell_name}rc"
+            echo "setenv PATH ${psychopy_dir}/.bin:\$PATH" >> "$config_file"
+            ;;
+        *)
+            log_message "Unsupported shell: $shell_name"
+            echo
+            log_message "PsychoPy installation complete!"
+            echo
+            echo "To start PsychoPy, use:"
+            echo "${psychopy_dir}/bin/psychopy"
+            exit 0
+            ;;
+    esac
 
-# Print completion message with instructions
-echo
-log_message "PsychoPy installation complete!"
-echo
-echo "To update your path, run:"
-echo "source $config_file"
-echo
-echo "To start PsychoPy from terminal, use:"
-echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
-echo
-echo "You can also use your desktop-icons if they are created successfully."
-echo "If the above command or desktop-icons are not working, use:"
-echo "${psychopy_dir}/bin/psychopy"
+    echo
+    log_message "PsychoPy installation complete!"
+    echo
+    echo "To update your path, run:"
+    echo "source $config_file"
+    echo
+    echo "To start PsychoPy from terminal, use:"
+    echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    echo
+    echo "You can also use the absolute path:"
+    echo "${psychopy_dir}/bin/psychopy"
+else
+    echo
+    log_message "PsychoPy installation complete!"
+    echo "${psychopy_dir}/bin/psychopy"
+fi
