@@ -13,18 +13,19 @@
 show_help() {
     cat << EOF
 Usage: ./install_psychopy [options]
+
 Options:
-  --python_version=VERSION    Specify the Python version to install (default: 3.8.19); Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
-  --psychopy_version=VERSION  Specify the PsychoPy version to install (default: 2024.1.4); use git for latest github version
-  --wxpython_version=VERSION  Specify the wxPython version to install (default: latest)
-  --install_dir=DIR           Specify the installation directory (default: "$HOME")
-  --no-versioned-install-dir    Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
-  --bids_version=VERSION      Specify the PsychoPy-BIDS version to install (default: None); use latest for pypi version
-  --build=[python|wxpython|both] Build Python and/or wxPython from source instead of downloading
-  -f, --force                 Force overwrite of existing installation directory
-  -v, --verbose               Enable verbose output
-  -d, --disable-shortcut      Disable desktop shortcut creation
-  -h, --help                  Show this help message
+  --python_version=VERSION        Specify the Python version to install (default: 3.8.19); Only versions 3.8.x, 3.9.x, or 3.10.x are allowed.
+  --psychopy_version=VERSION      Specify the PsychoPy version to install (default: 2024.1.4); use git for latest GitHub version.
+  --wxpython_version=VERSION      Specify the wxPython version to install (default: latest).
+  --install_dir=DIR               Specify the installation directory (default: "$HOME").
+  --no-versioned-install-dir      Installs directly into the specified install_dir without creating a versioned subdirectory. Requires --install_dir.
+  --bids_version=VERSION          Specify the PsychoPy-BIDS version to install (default: None); use latest for PyPI version.
+  --build=[python|wxpython|both]  Build Python and/or wxPython from source instead of downloading.
+  -f, --force                     Force overwrite of existing installation directory.
+  -v, --verbose                   Enable verbose output.
+  -d, --disable-shortcut          Disable desktop shortcut creation.
+  -h, --help                      Show this help message.
 EOF
 }
 
@@ -34,14 +35,14 @@ psychopy_version="2024.1.4"
 wxpython_version="latest"
 wxpython_version_set_by_user=false
 install_dir="$HOME"
+install_dir_set_by_user=false
+no_versioned_install_dir=false
 bids_version="None"
-force_overwrite=false
-verbose=false
 build_python=false
 build_wx=false
+force_overwrite=false
+verbose=false
 disable_shortcut=false
-no_versioned_install_dir=false
-install_dir_set_by_user=false
 
 # Parse command line arguments
 for arg in "$@"; do
