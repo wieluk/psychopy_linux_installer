@@ -527,7 +527,24 @@ else
     log_message "Creating PsychoPy directory at ${psychopy_dir} ..."
     sudo_wrapper mkdir -p "${psychopy_dir}"
 fi
-cd "${psychopy_dir}" || { log_message "Failed to change directory to ${psychopy_dir}. Exiting."; exit 1; }
+
+#Check if psychopy_dir is writeable else change ownership 
+[ -w "${psychopy_dir}" ] || sudo_wrapper chown "$USER" "${psychopy_dir}"
+
+#Exit script if writing or cd to psychopy_dir is not possible
+if [ -w "${psychopy_dir}" ]; then
+    if cd "${psychopy_dir}"; then
+        # Continue with your script here
+        :
+    else
+        log_message "Failed to change directory to ${psychopy_dir}. Exiting."
+        exit 1
+    fi
+else
+    log_message "Cannot write to ${psychopy_dir}. Exiting."
+    exit 1
+fi
+
 
 # Install PsychoPy dependencies
 log_message "Installing PsychoPy dependencies. This might take a while ..."
@@ -548,7 +565,7 @@ else
         temp_dir="Python-${python_version}_temp"
 
         log curl -s -O "${official_url}"
-        sudo_wrapper mkdir -p "${temp_dir}"
+        mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
         (
             cd "${temp_dir}/Python-${python_version}" || exit
@@ -566,7 +583,7 @@ else
         log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
         if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
             log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
-            sudo_wrapper mkdir -p "${temp_dir}"
+            mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
                 cd "${temp_dir}" || exit
@@ -581,7 +598,7 @@ else
             temp_dir="Python-${python_version}_temp"
 
             log curl -s -O "${official_url}"
-            sudo_wrapper mkdir -p "${temp_dir}"
+            mkdir -p "${temp_dir}"
             tar -xf "${temp_file}" -C "${temp_dir}"
             (
                 cd "${temp_dir}/Python-${python_version}" || exit
@@ -602,7 +619,8 @@ fi
 
 # Create and activate virtual environment
 log_message "Creating and activating virtual environment..."
-sudo_wrapper python"${python_version%.*}" -m venv "${psychopy_dir}"
+python"${python_version%.*}" -m venv "${psychopy_dir}"
+
 log source "${psychopy_dir}/bin/activate"
 
 # Upgrade pip and install required Python packages
@@ -774,8 +792,8 @@ fi
 
 # Add PsychoPy to PATH
 shell_name=$(basename "$SHELL")
-sudo_wrapper mkdir -p "${psychopy_dir}/.bin"
-sudo_wrapper ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+mkdir -p "${psychopy_dir}/.bin"
+ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
 # Update shell configuration to include PsychoPy in PATH
 case $shell_name in
