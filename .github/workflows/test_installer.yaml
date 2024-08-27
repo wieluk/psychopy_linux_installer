@@ -266,11 +266,10 @@ jobs:
 
           mv sorted_results.md results.md
 
-      - name: Update README.md with results if not empty
+      - name: Save results 
         run: |
           if [ -s results.md ]; then
-            sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/,/<!-- END INSTALLATION_RESULTS -->/{//!d}' README.md
-            sed -i '/<!-- BEGIN INSTALLATION_RESULTS -->/r results.md' README.md
+            cp results.md .github/installation_results.md
           else
             echo "results.md is empty; skipping."
             exit 0
@@ -278,15 +277,16 @@ jobs:
       
       - name: Commit and push changes
         run: |
-          git add README.md
+          git add .github/installation_results.md
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
           else
-            git commit -m "Update README.md with PsychoPy installation results"
+            git commit -m "Update installation results"
             git push --force
           fi
   
-      - name: Check for any failed statuses
+  
+      - name: Check for failed statuses
         run: |
           if grep -q "❌" results.md && ! grep -q "✅" results.md; then
             echo "All entries failed or no successful entries found. Failing the job."
