@@ -206,12 +206,28 @@ jobs:
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
 
-      - name: Record results
+      - name: Create and Record Result Table
+        if: env.skip_process == 'false'
         run: |
-          PYTHON_STATUS="${{ steps.build-python.outcome }}" == "success" && echo "${{ matrix.python_version }}" || echo "❌"
-          WXPYTHON_STATUS="${{ steps.build-wxpython.outcome }}" == "success" && echo "${{ env.WXPYTHON_VERSION }}" || echo "❌"
+          # Default to failure indicators
+          PYTHON_STATUS="❌"
+          WXPYTHON_STATUS="❌"
+          
+          # Check if the relevant steps succeeded and update status accordingly
+          if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
+            PYTHON_STATUS="${{ matrix.python_version }}"
+          fi
+          
+          if [[ "${{ steps.build-wxpython.outcome }}" == "success" ]]; then
+            WXPYTHON_STATUS="${{ env.WXPYTHON_VERSION }}"
+          fi
+          
+          # Output the result to a file
           RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md"
           echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
+          
+          # Display the content of the result file
+          cat $RESULT_FILE
 
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
@@ -222,7 +238,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp/* /tmp_dir
+          sudo rm -rf /tmp/* /tmp_dir ~/.cache
 
   update-readme:
     needs: build
