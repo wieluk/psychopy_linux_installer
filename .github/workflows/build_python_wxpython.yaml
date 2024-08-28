@@ -1,8 +1,10 @@
 name: Build Python/wxPython and upload to cloud
+
 on:
   push:
     branches:
       - main
+      - action-refactor
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
 
@@ -11,15 +13,16 @@ jobs:
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
-        os: [ubuntu-24.04 , ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
         python_version: ['3.8.19', '3.9.19', '3.10.14']
       fail-fast: false
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Install curl and python-pip
+      - uses: actions/checkout@v4
+      
+      - name: Setup environment and install dependencies
         run: |
+          sudo rm -rf /tmp_dir && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$USER /tmp_dir
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
             sudo apt-get install -y curl python3-pip
@@ -36,15 +39,8 @@ jobs:
             echo "Unsupported package manager"
             exit 1
           fi
-                  
-      - name: create tmp
-        run: |
-          sudo rm -rf /tmp_dir
-          sudo mkdir /tmp_dir
-          sudo chmod -R 777 /tmp_dir
-          sudo chown -R $USER:$USER /tmp_dir
 
-      - name: Check if Python and wxPython files already exist
+      - name: Check existing files and set variables
         id: check-files
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -54,9 +50,7 @@ jobs:
           PYTHON_MINOR="${PYTHON_MINOR%%.*}"
           PROCESSOR_STRUCTURE=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)")
 
-          if ! command -v pip &> /dev/null; then
-            python -m ensurepip --upgrade
-          fi
+          command -v pip &> /dev/null || python -m ensurepip --upgrade
           cd /tmp_dir
           pip download wxPython
           tarball=$(ls wxPython-*.tar.gz)
@@ -75,9 +69,7 @@ jobs:
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
 
-          if curl -f -X GET "${NEXTCLOUD_URL}" --output /dev/null; then
-            PYTHON_EXISTS=true
-          fi
+          curl -f -X GET "${NEXTCLOUD_URL}" --output /dev/null && PYTHON_EXISTS=true
 
           if curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
             WXPYTHON_EXISTS=true
@@ -88,13 +80,10 @@ jobs:
           fi
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
-            echo "Both files exist. Skipping the process."
             echo "skip_process=true" >> $GITHUB_ENV
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WX_PYTHON_VERSION}.md"
             echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WX_PYTHON_VERSION |" >> $RESULT_FILE
-            cat $RESULT_FILE   
           else
-            echo "One or both files do not exist. Continuing with the process."
             echo "skip_process=false" >> $GITHUB_ENV
           fi
 
@@ -173,12 +162,11 @@ jobs:
 
           FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
-          echo "uploading $FILE_PATH to Nextcloud."
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
 
-      - name: Download, build and upload wxPython
-        id: build-wxpython
+      - name: Build and upload wxPython
         if: env.skip_process == 'false'
+        id: build-wxpython
         continue-on-error: true
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
@@ -186,12 +174,9 @@ jobs:
           PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
           $PYTHON_BIN -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
-          pip install --upgrade pip
-          pip install wheel
-          mkdir /tmp_dir/wxpython
-          cd /tmp_dir/wxpython
+          pip install --upgrade pip wheel
+          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           
-          # Download wxPython
           pip download wxPython
           tarball=$(ls wxPython-*.tar.gz)
           tar -xzf "$tarball"
@@ -200,66 +185,33 @@ jobs:
           cd "$wxPython_dir"
           pip install -U pip distro sip six
           
-          if pip wheel .; then
-              echo "Successfully built wxPython version $wxpython_version."
-          else
-              cd /tmp
-              rm -rf  /tmp_dir/wxpython*
-              mkdir /tmp_dir/wxpython
-              cd /tmp_dir/wxpython
-              
-              echo "Error: Building wxPython version $wxpython_version failed. Attempting to use a fallback version ${{ env.FALLBACK_WXPYTHON_VERSION}}."
+          if ! pip wheel .; then
+              cd /tmp && rm -rf /tmp_dir/wxpython*
+              mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
               wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
-              
               pip download "wxPython==$wxpython_version"
-              
               tarball=$(ls wxPython-*.tar.gz)
               tar -xzf "$tarball"
-                  
               wxPython_dir=$(find . -type d -name "wxPython-*")
               cd "$wxPython_dir"
-              
-              if pip wheel .; then
-                  echo "Successfully built wxPython version $wxpython_version as a fallback."
-              else
-                  echo "Error: Fallback version $wxpython_version also failed to build. Exiting."
-                  exit 1 
-              fi
+              pip wheel . || { echo "Error: Fallback version $wxpython_version also failed to build. Exiting."; exit 1; }
           fi
                     
-          # Rename and upload the wheel file
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
           wheel_file=$(ls wxPython-*.whl)
           identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
-          echo "uploading $identified_wheel_file to Nextcloud."
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
 
-      - name: Create and Record Result Table
-        if: env.skip_process == 'false'
+      - name: Record results
         run: |
-          # Default to failure indicators
-          PYTHON_STATUS="❌"
-          WXPYTHON_STATUS="❌"
-          
-          # Check if the relevant steps succeeded and update status accordingly
-          if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
-            PYTHON_STATUS="${{ matrix.python_version }}"
-          fi
-          
-          if [[ "${{ steps.build-wxpython.outcome }}" == "success" ]]; then
-            WXPYTHON_STATUS="${{ env.WXPYTHON_VERSION }}"
-          fi
-          
-          # Output the result to a file
+          PYTHON_STATUS="${{ steps.build-python.outcome }}" == "success" && echo "${{ matrix.python_version }}" || echo "❌"
+          WXPYTHON_STATUS="${{ steps.build-wxpython.outcome }}" == "success" && echo "${{ env.WXPYTHON_VERSION }}" || echo "❌"
           RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md"
           echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
-          
-          # Display the content of the result file
-          cat $RESULT_FILE
 
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
@@ -267,72 +219,46 @@ jobs:
           name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}
           path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md
 
-      - name: clean up
+      - name: Cleanup
+        if: always()
         run: |
-          sudo rm -rf /tmp_dir
-          rm -rf ~/.cache
-          sudo rm -rf /tmp/*
-          
+          sudo rm -rf /tmp/* /tmp_dir
 
   update-readme:
     needs: build
     if: ${{ failure() || success() }}
     runs-on: [self-hosted, ubuntu-24.04]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Configure Git
+      - uses: actions/checkout@v4
+      - name: Configure Git and download artifacts
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name 'github-actions[bot]' && git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch origin && git reset --hard origin/${{ github.ref_name }}
 
-      - name: Pull changes from remote
-        run: |
-          git fetch origin
-          git reset --hard origin/${{ github.ref_name }}
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: ./artifacts
           merge-multiple: true
 
-      - name: Create result table
+      - name: Create and save result table
         run: |
-          current_date=$(date '+%Y-%m-%d')
-          echo "### Report generated on $current_date" > results.md
-          echo "### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> results.md
-          echo "" >> results.md
-          echo "| OS | Python Version | WxPython Version |" >> results.md
-          echo "|---|---|---|" >> results.md
-          for file in ./artifacts/*.md; do
-            cat "$file" >> results.md
-          done
+          cat << EOF > results.md
+          ### Report generated on $(date '+%Y-%m-%d')
+          ### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-          # Sort the results by OS, Python Version, PsychoPy Version, BIDS Version, and Status
-          {
-            head -n 4 results.md
-            tail -n +5 results.md | sort -t'|' -k2,2 -k3,3 -k4,4
-          } > sorted_results.md
+          | OS | Python Version | PsychoPy Version | Status |
+          |---|---|---|---|
+          EOF
 
-          mv sorted_results.md results.md
+          cat ./artifacts/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 >> results.md
 
-      - name: Save results 
-        run: |
           if [ -s results.md ]; then
             cp results.md .github/build_results.md
           else
-            echo "results.md is empty; skipping."
-            exit 0
+            echo "::warning::results.md is empty; skipping save."
           fi
-      
+
       - name: Commit and push changes
         run: |
           git add .github/build_results.md
-          if git diff-index --quiet HEAD --; then
-            echo "No changes to commit."
-          else
-            git commit -m "Update build results"
-            git push --force
-          fi
+          git diff-index --quiet HEAD || (git commit -m "Update build results" && git push --force)
