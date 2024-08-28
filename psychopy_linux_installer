@@ -28,6 +28,7 @@ Options:
   -h, --help                            Show this help message.
 EOF
 }
+
 # Set default values for variables
 python_version="3.8.19"
 psychopy_version="2024.1.4"
@@ -133,71 +134,81 @@ log() {
     fi
 }
 
+# Wrapper function to handle sudo requests and permissions dynamically
 sudo_wrapper() {
-    if [[ "$sudo_mode" == "force" ]]; then
-        log sudo "$@"
-    else
-        error_output=$("$@" 2>&1)
-        exit_code=$?
+    local command=("$@")
+    local error_output
+    local exit_code
+    local is_pkg_manager_command=false
+
+    # Function to determine if sudo is needed based on exit code and error output
+    needs_sudo() {
+        local exit_code=$1
+        local error_output=$2
+        # Check various conditions that indicate sudo is needed
+        [[ $exit_code -eq 126 ]] || [[ $exit_code -eq 100 ]] || 
+        ([[ $exit_code -ne 0 ]] && echo "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with")
+    }
+
+    # Function to handle sudo requests based on the sudo_mode
+    handle_sudo_request() {
+        local command=("$@")
+        local response
 
         case "$sudo_mode" in
             ask)
-                # Determine if the command is a package manager command
-                if [[ "$1" == "$pkg_manager" ]]; then
-                    is_pkg_manager_command=true
+                if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
+                    log sudo "${command[@]}"
+                    return
+                fi
+
+                if $is_pkg_manager_command; then
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
                 else
-                    is_pkg_manager_command=false
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
                 fi
 
-                # Handle package manager commands
-                if [ $exit_code -eq 126 ] || [ $exit_code -eq 100 ] || 
-                ([ $exit_code -ne 0 ] && log_message "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with"); then
-                    
-                    if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
-                        log sudo "$@"
-                    else
+                case "$response" in
+                    [Rr])
                         if $is_pkg_manager_command; then
-                            read -r -p "Command '$*' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
-                        else
-                            read -r -p "Command '$*' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
+                            pkg_manager_permission=true
                         fi
-
-                        case "$response" in
-                            [Rr])
-                                if $is_pkg_manager_command; then
-                                    pkg_manager_permission=true
-                                fi
-                                log sudo "$@"
-                                ;;
-                            [Cc])
-                                ;;
-                            *)
-                                log_message "Exiting."
-                                exit 1
-                                ;;
-                        esac
-                    fi
-                fi
+                        log sudo "${command[@]}"
+                        ;;
+                    [Cc])
+                        ;;
+                    *)
+                        log_message "Exiting."
+                        exit 1
+                        ;;
+                esac
                 ;;
             auto)
-                # Try without sudo, sudo if permission denied
-                if [ $exit_code -eq 126 ] || [ $exit_code -eq 100 ] || 
-                ([ $exit_code -ne 0 ] && log_message "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with"); then
-                    log log_message "Warning: Command '$*' failed due to permission denied. Using sudo..."
-                    log sudo "$@" 
-                fi
+                log log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
+                log sudo "${command[@]}"
                 ;;
             error)
-                # Try without sudo, exit if permission denied
-                if [ $exit_code -eq 126 ] || [ $exit_code -eq 100 ] || 
-                ([ $exit_code -ne 0 ] && log_message "$error_output" | grep -Eqi "permission denied|requires root|must be root|are not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with"); then
-                    log log_message "Error: Command '$*' failed due to permission denied. Sudo is required, but mode is set to 'error'."
-                    exit 1  
-                fi
+                log_message "Error: Command '${command[*]}' failed due to permission denied. Sudo is required, but mode is set to 'error'."
+                exit 1
                 ;;
         esac
-    fi
     }
+
+    if [[ "$sudo_mode" == "force" ]]; then
+        log sudo "${command[@]}"
+        return
+    fi
+
+    # Execute the command and capture its output and exit code
+    error_output=$("${command[@]}" 2>&1)
+    exit_code=$?
+
+    is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
+
+    if needs_sudo "$exit_code" "$error_output"; then
+        handle_sudo_request "${command[@]}"
+    fi
+}
 
 # Function to print log messages with timestamp
 log_message() {
