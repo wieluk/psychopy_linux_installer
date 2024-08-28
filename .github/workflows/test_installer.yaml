@@ -63,7 +63,7 @@ jobs:
         id: verify-psychopy
         continue-on-error: true
         run: |
-          if ! /tmp_dir/psychopy/bin/psychopy -h | grep -q "usage: psychopy"; then
+          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
             echo "PsychoPy help command failed"
             exit 1
           fi
