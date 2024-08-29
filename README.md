@@ -58,30 +58,30 @@ I would recommend using default values if you do not need specific versions.
 
 ## Options
 
-| Option| Description|
-|---|---|
-| `--python-version=VERSION`              | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
-| `--psychopy-version=VERSION`            | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
-| `--wxpython-version=VERSION`            | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `latest`). |
-| `--install-dir=DIR`                     | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
-| `--no-versioned-install-dir`            | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
-| `--bids-version=VERSION`                | Specify the [PsychoPy_BIDS Version](https://pypi.org/project/psychopy_bids/#history) to install (default: None). |
-| `--build=[python\|wxpython\|both]`      | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
-| `--sudo-mode=[ask\|auto\|error\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly. |
-| `-f`, `--force`                         | Force overwrite of the existing installation directory. |
-| `-v`, `--verbose`                       | Enable verbose output. |
-| `-d`, `--disable-shortcut`              | Disable desktop shortcut creation. |
-| `-h`, `--help`                          | Show help message. |
+| Option | Description |
+|--------|-------------|
+| `--python-version=`<br>`VERSION` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
+| `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
+| `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `latest`). |
+| `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
+| `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
+| `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
+| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
+| `--sudo-mode=`<br>`[ask\|auto\|error\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly. |
+| `-f`, `--force` | Force overwrite of the existing installation directory. |
+| `-v`, `--verbose` | Enable verbose output. |
+| `--disable-shortcut` | Disable desktop shortcut creation. |
+| `--disable-path` | Disable adding psychopy to system path. |
+| `-h`, `--help` | Show help message. |
 
 **Note:**
 
 - The default version for `--psychopy-version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
-- `--psychopy-version`, `--wxpython-version` and `--bids-version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
-
+- `--psychopy-version`, `--wxpython-version` and can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
-- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --bids-version=git --build=python -v -f`
+- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --build=python -v -f`
 
 ## Script Details
 
@@ -126,148 +126,14 @@ All commands, along with the installed versions and set paths, as well as the co
 - [PsychoPy Github](https://github.com/psychopy/psychopy)
 - [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
 
-## Automated Installation and Test Results for OS, Python, and PsychoPy Version Combinations
+## Automated Installation, Test and build Results
 
-<!-- BEGIN INSTALLATION_RESULTS -->
-### Report generated on 2024-08-23
+[View the latest installation test results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/installation_results.md)
 
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10522159400)
+[View the build results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md)
 
-| OS | Python Version | PsychoPy Version | Status |
-|---|---|---|---|
-| centos-9 | 3.10.14 | 2023.2.3 | ✅ |
-| centos-9 | 3.10.14 | 2024.1.4 | ✅ |
-| centos-9 | 3.10.14 | 2024.2.1 | ✅ |
-| centos-9 | 3.8.19 | 2023.2.3 | ✅ |
-| centos-9 | 3.8.19 | 2024.1.4 | ✅ |
-| centos-9 | 3.8.19 | 2024.2.1 | ✅ |
-| centos-9 | 3.9.19 | 2023.2.3 | ✅ |
-| centos-9 | 3.9.19 | 2024.1.4 | ✅ |
-| centos-9 | 3.9.19 | 2024.2.1 | ✅ |
-| debian-11 | 3.10.14 | 2023.2.3 | ✅ |
-| debian-11 | 3.10.14 | 2024.1.4 | ✅ |
-| debian-11 | 3.10.14 | 2024.2.1 | ✅ |
-| debian-11 | 3.8.19 | 2023.2.3 | ✅ |
-| debian-11 | 3.8.19 | 2024.1.4 | ✅ |
-| debian-11 | 3.8.19 | 2024.2.1 | ✅ |
-| debian-11 | 3.9.19 | 2023.2.3 | ✅ |
-| debian-11 | 3.9.19 | 2024.1.4 | ✅ |
-| debian-11 | 3.9.19 | 2024.2.1 | ✅ |
-| debian-12 | 3.10.14 | 2023.2.3 | ✅ |
-| debian-12 | 3.10.14 | 2024.1.4 | ✅ |
-| debian-12 | 3.10.14 | 2024.2.1 | ✅ |
-| debian-12 | 3.8.19 | 2023.2.3 | ✅ |
-| debian-12 | 3.8.19 | 2024.1.4 | ✅ |
-| debian-12 | 3.8.19 | 2024.2.1 | ✅ |
-| debian-12 | 3.9.19 | 2023.2.3 | ✅ |
-| debian-12 | 3.9.19 | 2024.1.4 | ✅ |
-| debian-12 | 3.9.19 | 2024.2.1 | ✅ |
-| fedora-39 | 3.10.14 | 2023.2.3 | ✅ |
-| fedora-39 | 3.10.14 | 2024.1.4 | ✅ |
-| fedora-39 | 3.10.14 | 2024.2.1 | ✅ |
-| fedora-39 | 3.8.19 | 2023.2.3 | ✅ |
-| fedora-39 | 3.8.19 | 2024.1.4 | ✅ |
-| fedora-39 | 3.8.19 | 2024.2.1 | ✅ |
-| fedora-39 | 3.9.19 | 2023.2.3 | ✅ |
-| fedora-39 | 3.9.19 | 2024.1.4 | ✅ |
-| fedora-39 | 3.9.19 | 2024.2.1 | ✅ |
-| fedora-40 | 3.10.14 | 2023.2.3 | ❌ |
-| fedora-40 | 3.10.14 | 2024.1.4 | ❌ |
-| fedora-40 | 3.10.14 | 2024.2.1 | ❌ |
-| fedora-40 | 3.8.19 | 2023.2.3 | ✅ |
-| fedora-40 | 3.8.19 | 2024.1.4 | ✅ |
-| fedora-40 | 3.8.19 | 2024.2.1 | ✅ |
-| fedora-40 | 3.9.19 | 2023.2.3 | ✅ |
-| fedora-40 | 3.9.19 | 2024.1.4 | ✅ |
-| fedora-40 | 3.9.19 | 2024.2.1 | ✅ |
-| pop-22.04 | 3.10.14 | 2023.2.3 | ✅ |
-| pop-22.04 | 3.10.14 | 2024.1.4 | ✅ |
-| pop-22.04 | 3.10.14 | 2024.2.1 | ✅ |
-| pop-22.04 | 3.8.19 | 2023.2.3 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.1.4 | ✅ |
-| pop-22.04 | 3.8.19 | 2024.2.1 | ✅ |
-| pop-22.04 | 3.9.19 | 2023.2.3 | ✅ |
-| pop-22.04 | 3.9.19 | 2024.1.4 | ✅ |
-| pop-22.04 | 3.9.19 | 2024.2.1 | ✅ |
-| rocky-9.4 | 3.10.14 | 2023.2.3 | ✅ |
-| rocky-9.4 | 3.10.14 | 2024.1.4 | ✅ |
-| rocky-9.4 | 3.10.14 | 2024.2.1 | ✅ |
-| rocky-9.4 | 3.8.19 | 2023.2.3 | ✅ |
-| rocky-9.4 | 3.8.19 | 2024.1.4 | ✅ |
-| rocky-9.4 | 3.8.19 | 2024.2.1 | ✅ |
-| rocky-9.4 | 3.9.19 | 2023.2.3 | ✅ |
-| rocky-9.4 | 3.9.19 | 2024.1.4 | ✅ |
-| rocky-9.4 | 3.9.19 | 2024.2.1 | ✅ |
-| ubuntu-20.04 | 3.10.14 |  | ✅ |
-| ubuntu-20.04 | 3.10.14 | 2023.2.3 | ✅ |
-| ubuntu-20.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2023.2.3 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.8.19 | 2024.2.1 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2023.2.3 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.1.4 | ✅ |
-| ubuntu-20.04 | 3.9.19 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2023.2.3 | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-22.04 | 3.10.14 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2023.2.3 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2024.1.4 | ✅ |
-| ubuntu-22.04 | 3.8.19 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2023.2.3 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.1.4 | ✅ |
-| ubuntu-22.04 | 3.9.19 | 2024.2.1 | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2023.2.3 | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2024.1.4 | ✅ |
-| ubuntu-24.04 | 3.10.14 | 2024.2.1 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2023.2.3 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.1.4 | ✅ |
-| ubuntu-24.04 | 3.8.19 | 2024.2.1 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2023.2.3 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.1.4 | ✅ |
-| ubuntu-24.04 | 3.9.19 | 2024.2.1 | ✅ |
-<!-- END INSTALLATION_RESULTS -->
 
-## Built Python and wxPython Versions Available for Download
-
+### Builds
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
 
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
-
-<!-- BEGIN PRECOMPILED_VERSIONS -->
-
-### Report generated on 2024-08-21
-
-| OS           | Python Version | WxPython Version |
-| ------------ | -------------- | ---------------- |
-| centos-9     | 3.10.14        | 4.2.1            |
-| centos-9     | 3.8.19         | 4.2.1            |
-| centos-9     | 3.9.19         | 4.2.1            |
-| debian-11    | 3.10.14        | 4.2.1            |
-| debian-11    | 3.8.19         | 4.2.1            |
-| debian-11    | 3.9.19         | 4.2.1            |
-| debian-12    | 3.10.14        | 4.2.1            |
-| debian-12    | 3.8.19         | 4.2.1            |
-| debian-12    | 3.9.19         | 4.2.1            |
-| fedora-39    | 3.10.14        | 4.2.1            |
-| fedora-39    | 3.8.19         | 4.2.1            |
-| fedora-39    | 3.9.19         | 4.2.1            |
-| fedora-40    | 3.10.14        | ❌               |
-| fedora-40    | 3.8.19         | 4.1.1            |
-| fedora-40    | 3.9.19         | 4.1.1            |
-| pop-22.04    | 3.10.14        | 4.2.1            |
-| pop-22.04    | 3.8.19         | 4.2.1            |
-| pop-22.04    | 3.9.19         | 4.2.1            |
-| rocky-9.4    | 3.10.14        | 4.2.1            |
-| rocky-9.4    | 3.8.19         | 4.2.1            |
-| rocky-9.4    | 3.9.19         | 4.2.1            |
-| ubuntu-20.04 | 3.10.14        | 4.2.1            |
-| ubuntu-20.04 | 3.8.19         | 4.2.1            |
-| ubuntu-20.04 | 3.9.19         | 4.2.1            |
-| ubuntu-22.04 | 3.10.14        | 4.2.1            |
-| ubuntu-22.04 | 3.8.19         | 4.2.1            |
-| ubuntu-22.04 | 3.9.19         | 4.2.1            |
-| ubuntu-24.04 | 3.10.14        | 4.2.1            |
-| ubuntu-24.04 | 3.8.19         | 4.2.1            |
-| ubuntu-24.04 | 3.9.19         | 4.2.1            |
-
-<!-- END PRECOMPILED_VERSIONS -->

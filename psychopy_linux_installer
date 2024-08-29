@@ -19,10 +19,11 @@ Options:
   --wxpython-version=VERSION            Specify wxPython version (default: latest).
   --install-dir=DIR                     Specify installation directory (default: "$HOME").
   --no-versioned-install-dir            Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
-  --bids-version=VERSION                Specify PsychoPy-BIDS version (default: None).
+  --additional-packages=PACKAGES        Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --build=[python|wxpython|both]        Build Python and/or wxPython from source instead of downloading.
   --sudo-mode=[ask|auto|error|force]    Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly.
   --disable-shortcut                    Disable desktop shortcut creation.
+  --disable-path                        Disable adding psychopy to system path.
   -f, --force                           Force overwrite of existing installation directory.
   -v, --verbose                         Enable verbose output.
   -h, --help                            Show this help message.
@@ -37,7 +38,7 @@ wxpython_version_set_by_user=false
 install_dir="$HOME"
 no_versioned_install_dir=false
 install_dir_set_by_user=false
-bids_version="None"
+additional_packages=""
 build_python=false
 build_wx=false
 sudo_mode="ask"
@@ -45,6 +46,8 @@ pkg_manager_permission=false
 disable_shortcut=false
 force_overwrite=false
 verbose=false
+disable_shortcut=false
+disable_path=false
 
 # Parse command line arguments
 for arg in "$@"; do
@@ -74,8 +77,24 @@ for arg in "$@"; do
             fi
             no_versioned_install_dir=true
             ;;
-        --bids-version=*)
-            bids_version="${arg#*=}"
+        --additional-packages=*)
+            additional_packages="${arg#*=}"
+            ;;
+        -f|--force)
+            force_overwrite=true
+            ;;
+        -v|--verbose)
+            verbose=true
+            ;;
+        --disable-shortcut)
+            disable_shortcut=true
+            ;;
+        --disable-path)
+            disable_path=true
+            ;;
+        -h|--help)
+            show_help
+            exit 0
             ;;
         --build=*)
             build_arg="${arg#*=}"
@@ -733,23 +752,20 @@ if ! pip show psychopy &> /dev/null; then
     exit 1
 fi
 
-# Install PsychoPy-BIDS if specified
-if [ "$bids_version" != "None" ]; then
-    log_message "Installing PsychoPy-BIDS version ${bids_version}..."
-    if [ "$bids_version" == "latest" ]; then
-        bids_version=$(get_latest_pypi_version "psychopy_bids")
-    fi
-    if [ "$bids_version" == "git" ]; then
-        log pip install git+https://gitlab.com/psygraz/psychopy-bids
-    else
-        check_pypi_for_version psychopy_bids "${bids_version}"
-        log pip install psychopy_bids=="${bids_version}"
-    fi
-    log pip install seedir
 
-    if ! pip show psychopy_bids &> /dev/null; then
-        log "Warning: psychopy_bids is not installed successfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
-    fi
+# Install additional packages if specified
+if [ -n "$additional_packages" ]; then
+    log_message "Installing additional packages..."
+    IFS=',' read -ra PACKAGES <<< "$additional_packages"
+    for package in "${PACKAGES[@]}"; do
+        log_message "Installing $package..."
+        if log pip install "$package"; then
+            installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+            log_message "${package%%=*} version $installed_version installed successfully."
+        else
+            log_message "Warning: Failed to install $package. Skipping."
+        fi
+    done
 fi
 
 # Deactivate virtual environment
@@ -801,50 +817,55 @@ else
     log_message "Desktop shortcut creation disabled by user."
 fi
 
-# Add PsychoPy to PATH
-shell_name=$(basename "$SHELL")
-mkdir -p "${psychopy_dir}/.bin"
-ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+# Add PsychoPy to PATH if not disabled
+if [ "$disable_path" = false ]; then
+    shell_name=$(basename "$SHELL")
+    mkdir -p "${psychopy_dir}/.bin"
+    ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
-# Update shell configuration to include PsychoPy in PATH
-case $shell_name in
-    bash)
-        config_file="$HOME/.bashrc"
-        sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
-        ;;
-    zsh)
-        config_file="$HOME/.zshrc"
-        sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
-        ;;
-    fish)
-        config_file="$HOME/.config/fish/config.fish"
-        sudo_wrapper sh -c "echo 'set -gx PATH \"${psychopy_dir}/.bin\" \$PATH' >> \"$config_file\""
-        ;;
-    csh|tcsh)
-        config_file="$HOME/.${shell_name}rc"
-        sudo_wrapper sh -c "echo 'setenv PATH ${psychopy_dir}/.bin:\$PATH' >> \"$config_file\""
-        ;;
-    *)
-        log_message "Unsupported shell: $shell_name"
-        echo
-        log_message "PsychoPy installation complete!"
-        echo
-        echo "To start PsychoPy, use:"
-        echo "${psychopy_dir}/bin/psychopy"
-        exit 0
-        ;;
-esac
+    case $shell_name in
+        bash)
+            config_file="$HOME/.bashrc"
+            sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
+            ;;
+        zsh)
+            config_file="$HOME/.zshrc"
+            sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
+            ;;
+        fish)
+            config_file="$HOME/.config/fish/config.fish"
+            sudo_wrapper sh -c "echo 'set -gx PATH \"${psychopy_dir}/.bin\" \$PATH' >> \"$config_file\""
+            ;;
+        csh|tcsh)
+            config_file="$HOME/.${shell_name}rc"
+            sudo_wrapper sh -c "echo 'setenv PATH ${psychopy_dir}/.bin:\$PATH' >> \"$config_file\""
+            ;;
+        *)
+            log_message "Unsupported shell: $shell_name; PsychoPy not added to path"
+            echo
+            log_message "PsychoPy installation complete!"
+            echo
+            echo "To start PsychoPy, use:"
+            echo "${psychopy_dir}/bin/psychopy"
+            exit 0
+            ;;
+    esac
 
-# Print completion message with instructions
-echo
-log_message "PsychoPy installation complete!"
-echo
-echo "To update your path, run:"
-echo "source $config_file"
-echo
-echo "To start PsychoPy from terminal, use:"
-echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
-echo
-echo "You can also use your desktop-icons if they are created successfully."
-echo "If the above command or desktop-icons are not working, use:"
-echo "${psychopy_dir}/bin/psychopy"
+    echo
+    log_message "PsychoPy installation complete!"
+    echo
+    echo "To update your path, run:"
+    echo "source $config_file"
+    echo
+    echo "To start PsychoPy from terminal, use:"
+    echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    echo
+    echo "You can also use the absolute path:"
+    echo "${psychopy_dir}/bin/psychopy"
+else
+    echo
+    log_message "PsychoPy installation complete!"
+    echo
+    echo "To start PsychoPy from terminal, use:"
+    echo "${psychopy_dir}/bin/psychopy"
+fi
