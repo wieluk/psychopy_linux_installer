@@ -58,7 +58,7 @@ jobs:
         id: run-installer
         continue-on-error: true
         run: |
-          ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --bids-version=latest --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force"
+          ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --additional-packages=psychopy_bids --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
       - name: Verify PsychoPy installation and version
         id: verify-psychopy
@@ -127,8 +127,8 @@ jobs:
                 "${{ steps.verify.outcome }}" == "success" && 
                 "${{ steps.psychopy-test.outcome }}" == "success" && 
                 "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
-                ( "${{ matrix.bids_version }}" == "None" || "${{ steps.verify-bids.outcome }}" == "success" ) && 
-                ( "${{ matrix.bids_version }}" == "None" || "${{ steps.verify-bids-handler.outcome }}" == "success" ) ]]; then
+                "${{ steps.verify-bids.outcome }}" == "success" && 
+                "${{ steps.verify-bids-handler.outcome }}" == "success"  ]]; then
             STATUS="✅"
           fi
       
