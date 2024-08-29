@@ -19,7 +19,7 @@ Options:
   --wxpython-version=VERSION            Specify wxPython version (default: latest).
   --install-dir=DIR                     Specify installation directory (default: "$HOME").
   --no-versioned-install-dir            Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
-  --bids-version=VERSION                Specify PsychoPy-BIDS version (default: None).
+  --additional-packages=PACKAGES        Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --build=[python|wxpython|both]        Build Python and/or wxPython from source instead of downloading.
   --disable-shortcut                    Disable desktop shortcut creation.
   --disable-path                        Disable adding psychopy to system path.
@@ -28,6 +28,7 @@ Options:
   -h, --help                            Show this help message.
 EOF
 }
+
 # Set default values for variables
 python_version="3.8.19"
 psychopy_version="2024.1.4"
@@ -36,7 +37,7 @@ wxpython_version_set_by_user=false
 install_dir="$HOME"
 install_dir_set_by_user=false
 no_versioned_install_dir=false
-bids_version="None"
+additional_packages=""
 build_python=false
 build_wx=false
 force_overwrite=false
@@ -72,8 +73,8 @@ for arg in "$@"; do
             fi
             no_versioned_install_dir=true
             ;;
-        --bids-version=*)
-            bids_version="${arg#*=}"
+        --additional-packages=*)
+            additional_packages="${arg#*=}"
             ;;
         -f|--force)
             force_overwrite=true
@@ -633,23 +634,20 @@ if ! pip show psychopy &> /dev/null; then
     exit 1
 fi
 
-# Install PsychoPy-BIDS if specified
-if [ "$bids_version" != "None" ]; then
-    log_message "Installing PsychoPy-BIDS version ${bids_version}..."
-    if [ "$bids_version" == "latest" ]; then
-        bids_version=$(get_latest_pypi_version "psychopy_bids")
-    fi
-    if [ "$bids_version" == "git" ]; then
-        log pip install git+https://gitlab.com/psygraz/psychopy-bids
-    else
-        check_pypi_for_version psychopy_bids "${bids_version}"
-        log pip install psychopy_bids=="${bids_version}"
-    fi
-    log pip install seedir
 
-    if ! pip show psychopy_bids &> /dev/null; then
-        log "Warning: psychopy_bids is not installed successfully. Something went wrong during the installation. Use --verbose flag. Script will continue."
-    fi
+# Install additional packages if specified
+if [ -n "$additional_packages" ]; then
+    log_message "Installing additional packages..."
+    IFS=',' read -ra PACKAGES <<< "$additional_packages"
+    for package in "${PACKAGES[@]}"; do
+        log_message "Installing $package..."
+        if log pip install "$package"; then
+            installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+            log_message "${package%%=*} version $installed_version installed successfully."
+        else
+            log_message "Warning: Failed to install $package. Skipping."
+        fi
+    done
 fi
 
 # Deactivate virtual environment
