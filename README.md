@@ -58,20 +58,20 @@ I would recommend using default values if you do not need specific versions.
 
 ## Options
 
-| Option| Description|
-|-----|----------|
-| `--python-version=VERSION`          | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
-| `--psychopy-version=VERSION`        | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
-| `--wxpython-version=VERSION`        | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `latest`). |
-| `--install-dir=DIR`                 | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
-| `--no-versioned-install-dir`        | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
-| `--additional-packages=PACKAGES`    | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
-| `--build=[python\|wxpython\|both]`  | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
-| `-f`, `--force`                     | Force overwrite of the existing installation directory. |
-| `-v`, `--verbose`                   | Enable verbose output. |
-| `--disable-shortcut`                | Disable desktop shortcut creation. |
-|  `--disable-path`                   |   Disable adding psychopy to system path. |
-| `-h`, `--help`                      | Show help message. |
+| Option | Description |
+|--------|-------------|
+| `--python-version=`<br>`VERSION` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.8.19`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
+| `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
+| `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `latest`). |
+| `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
+| `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
+| `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
+| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
+| `-f`, `--force` | Force overwrite of the existing installation directory. |
+| `-v`, `--verbose` | Enable verbose output. |
+| `--disable-shortcut` | Disable desktop shortcut creation. |
+| `--disable-path` | Disable adding psychopy to system path. |
+| `-h`, `--help` | Show help message. |
 
 **Note:**
 
