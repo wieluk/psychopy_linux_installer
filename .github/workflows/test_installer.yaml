@@ -8,6 +8,7 @@ on:
     paths:
       - psychopy_linux_installer
       - .github/workflows/test_installer.yaml
+  workflow_dispatch:
 
 jobs:
   syntax-check:
@@ -200,7 +201,7 @@ jobs:
   
       - name: Check for failed statuses
         run: |
-          if grep -q "❌" results.md && ! grep -q "✅" results.md; then
+          if grep -q "❌" .github/installation_results.md && ! grep -q "✅" .github/installation_results.md; then
             echo "All entries failed or no successful entries found. Failing the job."
             exit 1
           fi

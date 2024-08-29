@@ -7,6 +7,7 @@ on:
       - action-refactor
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -262,11 +263,11 @@ jobs:
           ### Report generated on $(date '+%Y-%m-%d')
           ### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-          | OS | Python Version | PsychoPy Version | Status |
-          |---|---|---|---|
+          | OS | Python Version | WxPython Version |
+          |---|---|---|
           EOF
 
-          cat ./artifacts/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 >> results.md
+          cat ./artifacts/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
 
           if [ -s results.md ]; then
             cp results.md .github/build_results.md
