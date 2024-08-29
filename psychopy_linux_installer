@@ -80,22 +80,6 @@ for arg in "$@"; do
         --additional-packages=*)
             additional_packages="${arg#*=}"
             ;;
-        -f|--force)
-            force_overwrite=true
-            ;;
-        -v|--verbose)
-            verbose=true
-            ;;
-        --disable-shortcut)
-            disable_shortcut=true
-            ;;
-        --disable-path)
-            disable_path=true
-            ;;
-        -h|--help)
-            show_help
-            exit 0
-            ;;
         --build=*)
             build_arg="${arg#*=}"
             case $build_arg in
@@ -125,6 +109,9 @@ for arg in "$@"; do
             ;;
         --disable-shortcut)
             disable_shortcut=true
+            ;;
+        --disable-path)
+            disable_path=true
             ;;
         -f|--force)
             force_overwrite=true
