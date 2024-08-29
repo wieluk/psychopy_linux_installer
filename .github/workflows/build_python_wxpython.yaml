@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - action-refactor
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
   workflow_dispatch:

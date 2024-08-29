@@ -115,7 +115,7 @@ All commands, along with the installed versions and set paths, as well as the co
 
 ## To-Do
 
-- Refactor actions and testscripts
+- Refactor testscripts.
 - Conduct tests on a physical machine.
 - Test with connected hardware components.
 - Test on Pacman-based distributions.
