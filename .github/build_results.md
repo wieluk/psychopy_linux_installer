@@ -1,8 +1,8 @@
-### Report generated on 2024-08-28
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10604291367)
+### Report generated on 2024-08-29
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/10610936473)
 
-| OS | Python Version | PsychoPy Version | Status |
-|---|---|---|---|
+| OS | Python Version | WxPython Version |
+|---|---|---|
 | centos-9 | 3.10.14 | 4.2.1 |
 | centos-9 | 3.8.19 | 4.2.1 |
 | centos-9 | 3.9.19 | 4.2.1 |
