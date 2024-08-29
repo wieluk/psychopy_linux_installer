@@ -80,7 +80,7 @@ I would recommend using default values if you do not need specific versions.
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
-- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,psychopy-crs==0.0.2 --build=python -v -f`
+- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --build=python -v -f`
 
 ## Script Details
 
