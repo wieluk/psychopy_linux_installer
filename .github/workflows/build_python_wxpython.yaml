@@ -117,6 +117,7 @@ jobs:
                 if ! sudo apt-get install -y libwebkit2gtk-4.0-dev; then
                   echo "Error: Failed to install libwebkit2gtk-4.0-dev"
                   exit 1
+                fi
               else
                 echo "libwebkit2gtk-4.0-dev is already installed."
               fi
