@@ -67,7 +67,7 @@ I would recommend using default values if you do not need specific versions.
 | `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
 | `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
 | `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
-| `--sudo-mode=`<br>`[ask\|auto\|error\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly. |
+| `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. |
 | `-f`, `--force` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output. |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
@@ -81,7 +81,7 @@ I would recommend using default values if you do not need specific versions.
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
-- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --build=python -v -f`
+- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python -v -f`
 
 ## Script Details
 

@@ -14,19 +14,19 @@ show_help() {
     cat << EOF
 Usage: ./install_psychopy [options]
 Options:
-  --python-version=VERSION              Specify Python version (default: 3.8.19). Only 3.8.x, 3.9.x, or 3.10.x allowed.
-  --psychopy-version=VERSION            Specify PsychoPy version (default: 2024.1.4).
-  --wxpython-version=VERSION            Specify wxPython version (default: latest).
-  --install-dir=DIR                     Specify installation directory (default: "$HOME").
-  --no-versioned-install-dir            Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
-  --additional-packages=PACKAGES        Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
-  --build=[python|wxpython|both]        Build Python and/or wxPython from source instead of downloading.
-  --sudo-mode=[ask|auto|error|force]    Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, force: use sudo directly.
-  --disable-shortcut                    Disable desktop shortcut creation.
-  --disable-path                        Disable adding psychopy to system path.
-  -f, --force                           Force overwrite of existing installation directory.
-  -v, --verbose                         Enable verbose output.
-  -h, --help                            Show this help message.
+  --python-version=VERSION                      Specify Python version (default: 3.8.19). Only 3.8.x, 3.9.x, or 3.10.x allowed.
+  --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
+  --wxpython-version=VERSION                    Specify wxPython version (default: latest).
+  --install-dir=DIR                             Specify installation directory (default: "$HOME").
+  --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
+  --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
+  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
+  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly.
+  --disable-shortcut                            Disable desktop shortcut creation.
+  --disable-path                                Disable adding psychopy to system path.
+  -f, --force                                   Force overwrite of existing installation directory.
+  -v, --verbose                                 Enable verbose output.
+  -h, --help                                    Show this help message.
 EOF
 }
 
@@ -118,7 +118,7 @@ for arg in "$@"; do
             ;;
         --sudo-mode=*)
             sudo_mode="${arg#*=}"
-            if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
+            if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "continue" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
                 echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'auto', 'error' or 'force'."
                 exit 1
             fi
@@ -205,6 +205,9 @@ sudo_wrapper() {
             auto)
                 log log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
                 log sudo "${command[@]}"
+                ;;
+            continue)
+                log_message "Warning: Command '${command[*]}' failed due to permission denied. Continuing without sudo..."
                 ;;
             error)
                 log_message "Error: Command '${command[*]}' failed due to permission denied. Sudo is required, but mode is set to 'error'."
