@@ -76,8 +76,7 @@ I would recommend using default values if you do not need specific versions.
 **Note:**
 
 - The default version for `--psychopy-version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
-- `--psychopy-version`, `--wxpython-version` and `--bids-version` can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
-
+- `--psychopy-version`, `--wxpython-version` and can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
