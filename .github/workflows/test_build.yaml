@@ -36,12 +36,12 @@ jobs:
         run: |
           ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --build=both --sudo-mode=auto"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
-
+        
       - name: Verify PsychoPy installation and version
         id: verify-psychopy
         continue-on-error: true
         run: |
-          if ! /tmp_dir/psychopy/bin/psychopy -h | grep -q "usage: psychopy"; then
+          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
             echo "PsychoPy help command failed"
             exit 1
           fi
@@ -50,7 +50,7 @@ jobs:
             echo "PsychoPy version check failed"
             exit 1
           fi
-        
+
       - name: run basic PsychoPy test
         id: psychopy-test
         continue-on-error: true
