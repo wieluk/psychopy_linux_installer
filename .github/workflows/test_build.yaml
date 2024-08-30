@@ -9,7 +9,7 @@ on:
 
 jobs:
   run-installer:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
