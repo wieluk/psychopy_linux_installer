@@ -124,7 +124,7 @@ jobs:
         run: |
           STATUS="❌"
           if [[ "${{ steps.run-installer.outcome }}" == "success" && 
-                "${{ steps.verify.outcome }}" == "success" && 
+                "${{ steps.verify-psychopy.outcome }}" == "success" && 
                 "${{ steps.psychopy-test.outcome }}" == "success" && 
                 "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
                 "${{ steps.verify-bids.outcome }}" == "success" && 
