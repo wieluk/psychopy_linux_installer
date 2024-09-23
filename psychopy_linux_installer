@@ -179,6 +179,7 @@ sudo_wrapper() {
                         if $is_pkg_manager_command; then
                             pkg_manager_permission=true
                         fi
+                        log_message "Retrying ${command[*]} with sudo ..."
                         log sudo "${command[@]}"
                         ;;
                     [Cc])

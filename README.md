@@ -55,6 +55,7 @@ Execute script; see options below for more information.
 ```
 
 I would recommend using default values if you do not need specific versions.
+If you do not want prompts throughout the script use `--sudo-mode=auto`.
 
 ## Options
 
@@ -77,7 +78,9 @@ I would recommend using default values if you do not need specific versions.
 **Note:**
 
 - The default version for `--psychopy-version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
-- `--psychopy-version`, `--wxpython-version` and can take a actual pypi version,`latest` or `git` as argument. Git versions are not recommended because they can be unstable.
+- `--psychopy-version` and `--wxpython-version` can take a pypi version, `latest` or `git` as argument. Git versions are not recommended because they can be unstable.
+- A faster install is possible for OS, Python-version and wxpython-version combination with these [pre-compiled versions](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md).
+
 ## Examples
 
 - `./psychopy_linux_installer` (all default)
@@ -132,8 +135,8 @@ All commands, along with the installed versions and set paths, as well as the co
 
 [View the build results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md)
 
-
 ### Builds
+
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
 
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
