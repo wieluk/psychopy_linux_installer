@@ -1,8 +1,8 @@
 #!/bin/bash
 # ==============================================================================
-#  Title:         install_psychopy
+#  Title:         psychopy_linux_installer
 #  Description:   This script installs PsychoPy with specified versions of
-#                 Python, wxPython, and optional PsychoPy-BIDS integration.
+#                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-08-20
 #  Version:       1.0
@@ -12,7 +12,7 @@
 # Function to show help message
 show_help() {
     cat << EOF
-Usage: ./install_psychopy [options]
+Usage: ./psychopy_linux_installer [options]
 Options:
   --python-version=VERSION                      Specify Python version (default: 3.8.19). Only 3.8.x, 3.9.x, or 3.10.x allowed.
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
@@ -103,7 +103,7 @@ for arg in "$@"; do
         --sudo-mode=*)
             sudo_mode="${arg#*=}"
             if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "continue" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
-                echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'auto', 'error' or 'force'."
+                echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                 exit 1
             fi
             ;;
@@ -287,10 +287,10 @@ install_packages() {
                 if ! sudo_wrapper apt-get install -y -qq "$package"; then
                     # libwebkit2gtk-4.0-dev is not available on ubuntu-24.04 and neccesary for Pavlovia
                     if [ "$package" = "libwebkit2gtk-4.0-dev" ] && [ "$os_version" = "ubuntu-24.04" ]; then
-                        log_message "$package not found. Attempting to add focal repository and install."
-                        sudo_wrapper add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ focal main universe"
-                        sudo_wrapper apt-get install -y -qq "$package" || log_message "Failed to install $package from focal repository."
-                        sudo_wrapper add-apt-repository -y -r "deb http://archive.ubuntu.com/ubuntu/ focal main universe"
+                        log_message "$package not found. Attempting to add jammy repository and install."
+                        sudo_wrapper add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
+                        sudo_wrapper apt-get install -y -qq "$package" || log_message "Failed to install $package from jammy repository."
+                        sudo_wrapper add-apt-repository -y -r "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
                     else
                         log_message "Warning: Package $package not found, skipping. (Pavlovia might not work)"
                     fi
