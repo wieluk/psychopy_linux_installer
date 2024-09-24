@@ -285,12 +285,18 @@ install_packages() {
         case $pkg_manager in
             apt-get)
                 if ! sudo_wrapper apt-get install -y -qq "$package"; then
-                    # libwebkit2gtk-4.0-dev is not available on ubuntu-24.04 and neccesary for Pavlovia
+                    # libwebkit2gtk-4.0-dev is not available on ubuntu-24.04 and necessary for Pavlovia
                     if [ "$package" = "libwebkit2gtk-4.0-dev" ] && [ "$os_version" = "ubuntu-24.04" ]; then
-                        log_message "$package not found. Attempting to add jammy repository and install."
-                        sudo_wrapper add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
-                        sudo_wrapper apt-get install -y -qq "$package" || log_message "Failed to install $package from jammy repository."
-                        sudo_wrapper add-apt-repository -y -r "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
+                        # Check if the package is already installed
+                        if dpkg -s "$package" >/dev/null 2>&1; then
+                            log_message "$package is already installed. Skipping installation."
+                        else
+                            log_message "$package not found. Attempting to add jammy repository and install."
+                            sudo_wrapper add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
+                            sudo_wrapper apt-get update -qq
+                            sudo_wrapper apt-get install -y -qq "$package" || log_message "Failed to install $package from jammy repository."
+                            sudo_wrapper add-apt-repository -y -r "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
+                        fi
                     else
                         log_message "Warning: Package $package not found, skipping. (Pavlovia might not work)"
                     fi
