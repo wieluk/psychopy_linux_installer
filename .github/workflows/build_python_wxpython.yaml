@@ -173,8 +173,9 @@ jobs:
           PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
           $PYTHON_BIN -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
-          pip install --upgrade pip wheel
+          
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+          pip install -U pip distro sip six
           
           pip download wxPython
           tarball=$(ls wxPython-*.tar.gz)
@@ -182,12 +183,11 @@ jobs:
           wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
-          pip install -U pip distro sip six
-          
+          pip wheel . -w /tmp_dir/wxpython
                     
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
-          wheel_file=$(ls wxPython-*.whl)
+          wheel_file=$(ls /tmp_dir/wxpython/*.whl)
           identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
           deactivate
