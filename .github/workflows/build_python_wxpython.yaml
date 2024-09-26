@@ -183,13 +183,14 @@ jobs:
           wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
-          pip wheel . -w /tmp_dir/wxpython
+          pip wheel .
                     
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
-          wheel_file=$(ls /tmp_dir/wxpython/*.whl)
+          wheel_file=$(ls wxPython-*.whl)
           identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
+          
           deactivate
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
