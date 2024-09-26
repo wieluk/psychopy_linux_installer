@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - test-wx-4.2.2-remove-fallbacks
     paths:
       - psychopy_linux_installer
       - .github/workflows/test_installer.yaml
@@ -28,7 +29,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-24.04 , ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
-        python_version: ['3.8.19', '3.9.19', '3.10.14']
+        python_version: ['3.8.20', '3.9.20', '3.10.15']
         psychopy_version: ['latest', '2023.2.3', '2024.1.4']
       fail-fast: false
     steps:

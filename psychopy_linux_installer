@@ -283,19 +283,7 @@ install_packages() {
     
     for package in "${packages[@]}"; do
         case $pkg_manager in
-            apt-get)
-                if ! sudo_wrapper apt-get install -y -qq "$package"; then
-                    # libwebkit2gtk-4.0-dev is not available on ubuntu-24.04 and neccesary for Pavlovia
-                    if [ "$package" = "libwebkit2gtk-4.0-dev" ] && [ "$os_version" = "ubuntu-24.04" ]; then
-                        log_message "$package not found. Attempting to add jammy repository and install."
-                        sudo_wrapper add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
-                        sudo_wrapper apt-get install -y -qq "$package" || log_message "Failed to install $package from jammy repository."
-                        sudo_wrapper add-apt-repository -y -r "deb http://archive.ubuntu.com/ubuntu/ jammy main universe"
-                    else
-                        log_message "Warning: Package $package not found, skipping. (Pavlovia might not work)"
-                    fi
-                fi
-                ;;
+            apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Package $package not found, skipping." ;;
             yum) sudo_wrapper yum install -y -q "$package" || log_message "Package $package not found, skipping." ;;
             dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Package $package not found, skipping." ;;
             pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Package $package not found, skipping." ;;
@@ -317,7 +305,7 @@ install_dependencies() {
                 git curl jq
             )
             psychopy_deps=(
-                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev
+                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev
             )
             python_build_deps=(
                 build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils
@@ -404,8 +392,8 @@ check_pypi_for_version() {
 
 # Function to install wxPython
 install_wxpython() {
-    version=$1
-    if log pip install "wxpython==$version"; then
+    local version=$1
+    if log pip install --no-binary=:all: "wxpython==$wxpython_version"; then
         log_message "Successfully installed wxPython version $version."
         return 0
     else
@@ -422,27 +410,12 @@ attempt_build_wxpython() {
     log_message "Building wxPython $wxpython_version from source. This might take a while ..."
     if install_wxpython "$wxpython_version"; then
         return 0
-    else
-        if [ "$wxpython_version_set_by_user" = false ]; then
-            fallback_version="4.1.1"
-            log_message "Attempting to build fallback wxpython $fallback_version."
-            if install_wxpython "$fallback_version"; then
-                return 0
-            else
-                log_message "Error: Fallback version $fallback_version also failed to install. Please open a github issue without your system info."
-                exit 1
-            fi
-        else
-            log_message "No fallback will be attempted because a specific version was set by the user."
-            exit 1
-        fi
     fi
 }
 
 # Function to get the URL for the wxPython wheel
 get_wxpython_wheel() {
-    local wxpython_latest="$1"
-    local wxpython_version="$2"
+    local wxpython_version=$1
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
     local wheel_dir
     local python_version_short
@@ -455,11 +428,7 @@ get_wxpython_wheel() {
     python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
     html=$(curl -s "$wheel_dir")
 
-    if [ "$wxpython_latest" = "true" ]; then
-        wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
-    else
-        wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
-    fi
+    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
 
     if [ -z "$wheels" ]; then
         log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure}."
@@ -669,9 +638,6 @@ fi
 # Determine wxPython version and install it
 if [ "$wxpython_version" = "latest" ]; then
     wxpython_version=$(get_latest_pypi_version "wxPython")
-    wxpython_latest=true
-else
-    wxpython_latest=false
 fi
 
 if [ "$wxpython_version" = "git" ]; then
@@ -682,7 +648,9 @@ if [ "$wxpython_version" = "git" ]; then
 elif [ "$build_wx" = true ]; then
     attempt_build_wxpython
 else
-    if wheel_url=$(get_wxpython_wheel "$wxpython_latest" "$wxpython_version"); then
+    if log pip install --only-binary=:all: "wxpython==$wxpython_version"; then
+        log_message "Successfully installed wxPython version $wxpython_version using a pip wheel."
+    elif wheel_url=$(get_wxpython_wheel "$wxpython_version"); then
         wheel_file=$(basename "$wheel_url")
         log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
         log curl -s -O "$wheel_url"
@@ -701,11 +669,9 @@ else
 
         wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
         wheel_name_fallback="wxPython-4.2.1-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
-        wheel_name_fallback2="wxPython-4.1.1-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
         
         wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
         wx_python_nextcloud_url_fallback="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback}"
-        wx_python_nextcloud_url_fallback2="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name_fallback2}"
         
         log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
 
@@ -713,8 +679,6 @@ else
             wx_python_file_download="$wheel_name"
         elif [ "$wxpython_version_set_by_user" != true ] && log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wheel_name_fallback"; then
             wx_python_file_download="$wheel_name_fallback"
-        elif [ "$wxpython_version_set_by_user" != true ] && log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wheel_name_fallback2"; then
-            wx_python_file_download="$wheel_name_fallback2"
         fi
 
         # If a download was successful, attempt to install it
