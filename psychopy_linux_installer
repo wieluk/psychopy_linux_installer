@@ -711,9 +711,9 @@ else
 
         if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
             wx_python_file_download="$wheel_name"
-        elif log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wheel_name_fallback"; then
+        elif [ "$wxpython_version_set_by_user" != true ] && log curl -f -X GET "$wx_python_nextcloud_url_fallback" --output "$wheel_name_fallback"; then
             wx_python_file_download="$wheel_name_fallback"
-        elif log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wheel_name_fallback2"; then
+        elif [ "$wxpython_version_set_by_user" != true ] && log curl -f -X GET "$wx_python_nextcloud_url_fallback2" --output "$wheel_name_fallback2"; then
             wx_python_file_download="$wheel_name_fallback2"
         fi
 
