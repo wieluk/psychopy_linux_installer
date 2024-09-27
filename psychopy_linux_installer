@@ -14,7 +14,7 @@ show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --python-version=VERSION                      Specify Python version (default: 3.8.19). Only 3.8.x, 3.9.x, or 3.10.x allowed.
+  --python-version=VERSION                      Specify Python version (default: 3.10.15). Only 3.8.x, 3.9.x, or 3.10.x allowed.
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
   --wxpython-version=VERSION                    Specify wxPython version (default: latest).
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
@@ -31,7 +31,8 @@ EOF
 }
 
 # Set default values for variables
-python_version="3.8.19"
+python_version="3.10.15"
+python_version_set_by_user=false
 psychopy_version="2024.1.4"
 wxpython_version="latest"
 wxpython_version_set_by_user=false
@@ -58,6 +59,7 @@ for arg in "$@"; do
                 echo "Error: Invalid Python version specified. Only versions 3.8.x, 3.9.x, or 3.10.x are allowed."
                 exit 1
             fi
+            python_version_set_by_user=true
             ;;
         --psychopy-version=*)
             psychopy_version="${arg#*=}"
@@ -552,9 +554,13 @@ fi
 log_message "Installing PsychoPy dependencies. This might take a while ..."
 install_dependencies "$pkg_manager" psychopy_deps
 
-# Check if Python is already installed
-if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
-    log_message "Python version ${python_version} is already installed."
+#If no python version is set by user, use system python
+if [ "$python_version_set_by_user" = false ] && system_python_version=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')") && [[ "$system_python_version" =~ ^3\.(8|9|10)$ ]]; then
+    log_message "Using system Python version: $system_python_version"
+    python_version=$system_python_version 
+# Check if required python version is already installed
+elif python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
+    log_message "Python version ${python_version} is already installed. Skipping installation."
 else
     # Install Python build dependencies
     log_message "Installing python build dependencies ..."
