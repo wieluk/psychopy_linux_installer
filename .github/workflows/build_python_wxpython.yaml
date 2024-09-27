@@ -45,11 +45,35 @@ jobs:
         id: check-files
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
-          OS_VERSION="${{ matrix.os }}"
+          
+          # Function to detect the OS version
+          detect_os_version() {
+              if [ -f /etc/os-release ]; then
+                  . /etc/os-release
+                  if [ -n "$VERSION_ID" ]; then
+                      echo "$ID-$VERSION_ID"
+                  else
+                      echo "$ID"
+                  fi
+              elif command -v lsb_release > /dev/null 2>&1; then
+                  echo "$(lsb_release -si)-$(lsb_release -sr)"
+              elif [ -f /etc/lsb-release ]; then
+                  . /etc/lsb-release
+                  echo "${DISTRIB_ID}-${DISTRIB_RELEASE}"
+              elif [ -f /etc/debian_version ]; then
+                  echo "Debian-$(cat /etc/debian_version)"
+              elif [ -f /etc/redhat-release ]; then
+                  cat /etc/redhat-release
+              else
+                  echo "Unknown"
+              fi
+          }
+
+          OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
+          PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
           PYTHON_MAJOR="${PYTHON_VERSION%%.*}"
           PYTHON_MINOR="${PYTHON_VERSION#*.}"
           PYTHON_MINOR="${PYTHON_MINOR%%.*}"
-          PROCESSOR_STRUCTURE=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)")
       
           # Get the latest wxPython version from PyPI
           WXPYTHON_VERSION=$(curl -s "https://pypi.org/pypi/wxPython/json" | jq -r .info.version)
