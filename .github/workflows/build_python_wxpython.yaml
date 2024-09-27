@@ -50,23 +50,35 @@ jobs:
           detect_os_version() {
               if [ -f /etc/os-release ]; then
                   . /etc/os-release
-                  if [ -n "$VERSION_ID" ]; then
-                      echo "$ID-$VERSION_ID"
-                  else
-                      echo "$ID"
+                  # Only return if both $ID and $VERSION_ID exist
+                  if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
+                      echo "$ID-$VERSION_ID" | tr '[:upper:]' '[:lower:]'
+                      return
                   fi
-              elif command -v lsb_release > /dev/null 2>&1; then
-                  echo "$(lsb_release -si)-$(lsb_release -sr)"
-              elif [ -f /etc/lsb-release ]; then
-                  . /etc/lsb-release
-                  echo "${DISTRIB_ID}-${DISTRIB_RELEASE}"
-              elif [ -f /etc/debian_version ]; then
-                  echo "Debian-$(cat /etc/debian_version)"
-              elif [ -f /etc/redhat-release ]; then
-                  cat /etc/redhat-release
-              else
-                  echo "Unknown"
               fi
+
+              if command -v lsb_release > /dev/null 2>&1; then
+                  echo "$(lsb_release -si)-$(lsb_release -sr)" | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              if [ -f /etc/lsb-release ]; then
+                  . /etc/lsb-release
+                  echo "${DISTRIB_ID}-${DISTRIB_RELEASE}" | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              if [ -f /etc/debian_version ]; then
+                  echo "debian-$(cat /etc/debian_version)" | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              if [ -f /etc/redhat-release ]; then
+                  cat /etc/redhat-release | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              exit 1
           }
 
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')

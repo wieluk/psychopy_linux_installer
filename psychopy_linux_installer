@@ -128,25 +128,36 @@ log_message() {
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        if [ -n "$VERSION_ID" ]; then
-            echo "$ID-$VERSION_ID"
-        else
-            echo "$ID"
+        # Only return if both $ID and $VERSION_ID exist
+        if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
+            echo "$ID-$VERSION_ID" | tr '[:upper:]' '[:lower:]'
+            return
         fi
-    elif command -v lsb_release > /dev/null 2>&1; then
-        echo "$(lsb_release -si)-$(lsb_release -sr)"
-    elif [ -f /etc/lsb-release ]; then
-        . /etc/lsb-release
-        echo "${DISTRIB_ID}-${DISTRIB_RELEASE}"
-    elif [ -f /etc/debian_version ]; then
-        echo "Debian-$(cat /etc/debian_version)"
-    elif [ -f /etc/redhat-release ]; then
-        cat /etc/redhat-release
-    else
-        echo "Unknown"
     fi
-}
 
+    if command -v lsb_release > /dev/null 2>&1; then
+        echo "$(lsb_release -si)-$(lsb_release -sr)" | tr '[:upper:]' '[:lower:]'
+        return
+    fi
+
+    if [ -f /etc/lsb-release ]; then
+        . /etc/lsb-release
+        echo "${DISTRIB_ID}-${DISTRIB_RELEASE}" | tr '[:upper:]' '[:lower:]'
+        return
+    fi
+
+    if [ -f /etc/debian_version ]; then
+        echo "debian-$(cat /etc/debian_version)" | tr '[:upper:]' '[:lower:]'
+        return
+    fi
+
+    if [ -f /etc/redhat-release ]; then
+        cat /etc/redhat-release | tr '[:upper:]' '[:lower:]'
+        return
+    fi
+
+    echo "unknown"
+}
 # Function to detect the package manager for the OS
 detect_package_manager() {
     if command -v apt-get > /dev/null 2>&1; then
@@ -157,6 +168,8 @@ detect_package_manager() {
         echo "dnf"
     elif command -v pacman > /dev/null 2>&1; then
         echo "pacman"
+    elif command -v zypper > /dev/null 2>&1; then
+        echo "zypper"
     else
         echo "none"
     fi
@@ -170,6 +183,7 @@ update_package_manager() {
         yum) sudo_wrapper yum check-update -q ;;
         dnf) sudo_wrapper dnf check-update -q ;;
         pacman) sudo_wrapper pacman -Sy --noconfirm ;;
+        zypper) sudo_wrapper zypper refresh ;;
         *) log_message "No compatible package manager found."; exit 1 ;;
     esac
 }
@@ -186,6 +200,7 @@ install_packages() {
             yum) sudo_wrapper yum install -y -q "$package" || log_message "Package $package not found, skipping." ;;
             dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Package $package not found, skipping." ;;
             pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Package $package not found, skipping." ;;
+            zypper) sudo_wrapper zypper install -y "$package" || log_message "Package $package not found, skipping." ;;
             *) log_message "No compatible package manager found."; exit 1 ;;
         esac
     done
@@ -200,46 +215,28 @@ install_dependencies() {
     # Define dependencies for different package managers
     case $pkg_manager in
         apt-get)
-            script_deps=(
-                git curl jq
-            )
-            psychopy_deps=(
-                python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libxcb-cursor0 libxkbcommon-x11-0
-            )
-            python_build_deps=(
-                build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils make
-            )
-            wxpython_deps=(
-                libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libjpeg-dev libpng-dev libtiff-dev libnotify-dev libsm-dev
-            )
+            script_deps=(git curl jq)
+            psychopy_deps=(python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libxcb-cursor0 libxkbcommon-x11-0)
+            python_build_deps=(build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils make)
+            wxpython_deps=(libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libjpeg-dev libpng-dev libtiff-dev libnotify-dev libsm-dev)
             ;;
         yum|dnf)
-            script_deps=(
-                git curl jq
-            )
-            psychopy_deps=(
-                python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel
-            )
-            python_build_deps=(
-                gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel make
-            )
-            wxpython_deps=(
-                libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel
-            )
+            script_deps=(git curl jq)
+            psychopy_deps=(python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel)
+            python_build_deps=(gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel make)
+            wxpython_deps=(libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel)
             ;;
         pacman)
-            script_deps=(
-                git curl jq
-            )
-            psychopy_deps=(
-                python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib
-            )
-            python_build_deps=(
-                base-devel openssl zlib sqlite libffi bzip2 readline xz make
-            )
-            wxpython_deps=(
-                libjpeg libpng libsm mesa gstreamer gstreamer-base freeglut libjpeg libpng libtiff libnotify              
-            )
+            script_deps=(git curl jq)
+            psychopy_deps=(python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib)
+            python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
+            wxpython_deps=(libjpeg libpng libsm mesa gstreamer gstreamer-base freeglut libjpeg libpng libtiff libnotify)
+            ;;
+        zypper)
+            script_deps=(git curl jq)
+            psychopy_deps=(python3-pip python3-devel gtk3-devel libxcb-xinerama0 libSDL2-devel libusb-1_0-devel portaudio-devel alsa-devel)
+            python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel bzip2-devel readline-devel xz-devel make)
+            wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel)
             ;;
         *)
             log_message "No compatible package manager found."; exit 1 ;;
