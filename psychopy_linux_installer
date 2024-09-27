@@ -152,7 +152,7 @@ detect_os_version() {
     fi
 
     if [ -f /etc/redhat-release ]; then
-        cat /etc/redhat-release | tr '[:upper:]' '[:lower:]'
+        tr '[:upper:]' '[:lower:]' < /etc/redhat-release
         return
     fi
 
