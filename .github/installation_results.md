@@ -1,5 +1,5 @@
 ### Report generated on 2024-09-27
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11066487224)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11069513136)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
@@ -15,7 +15,6 @@
 | debian-11 | 3.10.15 | 2023.2.3 | ✅ |
 | debian-11 | 3.10.15 | 2024.1.4 | ✅ |
 | debian-11 | 3.10.15 | 2024.2.1 | ✅ |
-| debian-11 | 3.8.20 | 2023.2.3 | ✅ |
 | debian-11 | 3.8.20 | 2024.1.4 | ✅ |
 | debian-11 | 3.8.20 | 2024.2.1 | ✅ |
 | debian-11 | 3.9.20 | 2023.2.3 | ✅ |
