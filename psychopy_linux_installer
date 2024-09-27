@@ -516,7 +516,7 @@ main() {
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "Initiating PsychoPy installation with Python $python_version on ${os_version} (${processor_structure} architecture)."
+    log_message "Initiating PsychoPy installation on ${os_version} (${processor_structure} architecture)."
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)

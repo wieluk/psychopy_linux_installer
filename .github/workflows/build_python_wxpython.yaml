@@ -50,30 +50,30 @@ jobs:
           PYTHON_MINOR="${PYTHON_VERSION#*.}"
           PYTHON_MINOR="${PYTHON_MINOR%%.*}"
           PROCESSOR_STRUCTURE=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)")
-
-          command -v pip &> /dev/null || python -m ensurepip --upgrade
-          cd /tmp_dir
-          pip download wxPython
-          tarball=$(ls wxPython-*.tar.gz)
-          tar -xzf "$tarball"
-          
-          LATEST_WXPYTHON_VERSION=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
+      
+          # Get the latest wxPython version from PyPI
+          LATEST_WXPYTHON_VERSION=$(curl -s "https://pypi.org/pypi/wxPython/json" | jq -r .info.version)
+          if [ -z "$LATEST_WXPYTHON_VERSION" ]; then
+            echo "Unable to fetch the latest version for wxPython. Exiting." >&2
+            exit 1
+          fi
+      
           NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
-          
           WHEEL_NAME="wxPython-${LATEST_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          
           WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
-          
+      
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
-
-          curl -f -X GET "${NEXTCLOUD_URL}" --output /dev/null && PYTHON_EXISTS=true
-
-          if curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
+      
+          # Check if the Python tarball exists on Nextcloud
+          curl -I -f "${NEXTCLOUD_URL}" --output /dev/null && PYTHON_EXISTS=true
+      
+          # Check if the wxPython wheel exists on Nextcloud
+          if curl -I -f "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
             WXPYTHON_EXISTS=true
             WX_PYTHON_VERSION=$LATEST_WXPYTHON_VERSION
           fi
-
+      
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "skip_process=true" >> $GITHUB_ENV
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WX_PYTHON_VERSION}.md"
@@ -81,7 +81,7 @@ jobs:
           else
             echo "skip_process=false" >> $GITHUB_ENV
           fi
-
+      
           echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
 
