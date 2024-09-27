@@ -544,10 +544,16 @@ main() {
         psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
     fi
 
+    #If no python version is set by user, use system python
+    if [ "$python_version_set_by_user" = false ] && command -v python3 &>/dev/null && system_python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')") && [[ "$system_python_version" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
+        log_message "Using system Python version: $system_python_version"
+        python_version=$system_python_version
+    else
+        check_python_version "${python_version}"
+    fi
+
     # Clean up Python version string
     python_version_clean=$(echo "${python_version}" | tr -d ',;')
-    check_python_version "${python_version_clean}"
-
     # Set up PsychoPy installation directory
     if [ "$no_versioned_install_dir" = true ]; then
         psychopy_dir="${install_dir}"
@@ -590,11 +596,8 @@ main() {
     log_message "Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies "$pkg_manager" psychopy_deps
 
-    #If no python version is set by user, use system python
-    if [ "$python_version_set_by_user" = false ] && command -v python3 &>/dev/null && system_python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')") && [[ "$system_python_version" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
-        log_message "Using system Python version: $system_python_version"
-        python_version=$system_python_version
-    elif python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
+
+    if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
         log_message "Python version ${python_version} is already installed. Skipping installation."
     else
         log_message "Installing python build dependencies ..."
