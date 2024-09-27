@@ -416,7 +416,7 @@ main() {
     python_version="3.10.15"
     python_version_set_by_user=false
     psychopy_version="2024.1.4"
-    wxpython_version="latest"
+    wxpython_version="4.2.2"
     install_dir="$HOME"
     no_versioned_install_dir=false
     install_dir_set_by_user=false
