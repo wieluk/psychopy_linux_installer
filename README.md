@@ -8,6 +8,9 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Fedora 40, 39
 - Rocky Linux 9
 - CentOS 9
+- Linux Mint 22
+- OpenSuse 16
+- Manjaro 22
 
 Additional distributions may be working.
 
@@ -117,13 +120,6 @@ You can also launch PsychoPy directly using the absolute path:
 
 **Note:**
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
-
-## To-Do
-
-- Refactor testscripts.
-- Conduct tests on a physical machine.
-- Test with connected hardware components.
-- Test on Pacman-based distributions.
 
 ## Links
 
