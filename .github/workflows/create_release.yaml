@@ -1,0 +1,26 @@
+name: Auto Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+    branches:
+      - main 
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./psychopy_linux_installer
+            ./README.md
+          generate_release_notes: true  
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
