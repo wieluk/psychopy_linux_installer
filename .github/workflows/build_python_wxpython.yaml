@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - test-wx-4.2.2-remove-fallbacks
+      - dev
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
   workflow_dispatch:

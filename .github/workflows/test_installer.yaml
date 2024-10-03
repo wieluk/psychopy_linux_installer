@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - test-wx-4.2.2-remove-fallbacks
+      - dev
     paths:
       - psychopy_linux_installer
       - .github/workflows/test_installer.yaml
