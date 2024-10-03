@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev
     paths:
       - '.github/workflows/build_python_wxpython.yaml'
   workflow_dispatch:
@@ -13,8 +14,8 @@ jobs:
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9]
-        python_version: ['3.8.19', '3.9.19', '3.10.14']
+        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9, manjarolinux-24.0.5, opensuse-leap-15.6, linuxmint-22]
+        python_version: ['3.8.20', '3.9.20', '3.10.15']
       fail-fast: false
 
     steps:
@@ -44,52 +45,79 @@ jobs:
         id: check-files
         run: |
           PYTHON_VERSION="${{ matrix.python_version }}"
-          OS_VERSION="${{ matrix.os }}"
+          
+          # Function to detect the OS version
+          detect_os_version() {
+              if [ -f /etc/os-release ]; then
+                  . /etc/os-release
+                  # Only return if both $ID and $VERSION_ID exist
+                  if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
+                      echo "$ID-$VERSION_ID" | tr '[:upper:]' '[:lower:]'
+                      return
+                  fi
+              fi
+
+              if command -v lsb_release > /dev/null 2>&1; then
+                  echo "$(lsb_release -si)-$(lsb_release -sr)" | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              if [ -f /etc/lsb-release ]; then
+                  . /etc/lsb-release
+                  echo "${DISTRIB_ID}-${DISTRIB_RELEASE}" | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              if [ -f /etc/debian_version ]; then
+                  echo "debian-$(cat /etc/debian_version)" | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              if [ -f /etc/redhat-release ]; then
+                  cat /etc/redhat-release | tr '[:upper:]' '[:lower:]'
+                  return
+              fi
+
+              exit 1
+          }
+
+          OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
+          PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
           PYTHON_MAJOR="${PYTHON_VERSION%%.*}"
           PYTHON_MINOR="${PYTHON_VERSION#*.}"
           PYTHON_MINOR="${PYTHON_MINOR%%.*}"
-          PROCESSOR_STRUCTURE=$(echo "$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)")
-
-          command -v pip &> /dev/null || python -m ensurepip --upgrade
-          cd /tmp_dir
-          pip download wxPython
-          tarball=$(ls wxPython-*.tar.gz)
-          tar -xzf "$tarball"
-          
-          LATEST_WXPYTHON_VERSION=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
-          FALLBACK_WXPYTHON_VERSION="4.1.1"
+      
+          # Get the latest wxPython version from PyPI
+          WXPYTHON_VERSION=$(curl -s "https://pypi.org/pypi/wxPython/json" | jq -r .info.version)
+          if [ -z "$WXPYTHON_VERSION" ]; then
+            echo "Unable to fetch the latest version for wxPython. Exiting." >&2
+            exit 1
+          fi
+      
           NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
-          
-          WHEEL_NAME="wxPython-${LATEST_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          WHEEL_NAME_FALLBACK="wxPython-${FALLBACK_WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          
+          WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
           WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
-          WX_PYTHON_NEXTCLOUD_URL_FALLBACK="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME_FALLBACK}"
-          
+      
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
-
-          curl -f -X GET "${NEXTCLOUD_URL}" --output /dev/null && PYTHON_EXISTS=true
-
-          if curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null; then
-            WXPYTHON_EXISTS=true
-            WX_PYTHON_VERSION=$LATEST_WXPYTHON_VERSION
-          elif curl -f -X GET "${WX_PYTHON_NEXTCLOUD_URL_FALLBACK}" --output /dev/null; then
-            WXPYTHON_EXISTS=true
-            WX_PYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION
-          fi
-
+      
+          # Check if the Python tarball exists on Nextcloud
+          curl -I -f "${NEXTCLOUD_URL}" --output /dev/null && PYTHON_EXISTS=true
+      
+          # Check if the wxPython wheel exists on Nextcloud
+          curl -I -f "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null && WXPYTHON_EXISTS=true
+   
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "skip_process=true" >> $GITHUB_ENV
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WX_PYTHON_VERSION}.md"
-            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WX_PYTHON_VERSION |" >> $RESULT_FILE
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WXPYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WXPYTHON_VERSION |" >> $RESULT_FILE
           else
             echo "skip_process=false" >> $GITHUB_ENV
           fi
-
+      
           echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
-          echo "WXPYTHON_VERSION=$WX_PYTHON_VERSION" >> $GITHUB_ENV
-          echo "FALLBACK_WXPYTHON_VERSION=$FALLBACK_WXPYTHON_VERSION" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
+
           
       - name: Set up dependencies
         if: env.skip_process == 'false'
@@ -97,7 +125,7 @@ jobs:
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
             packages=(
-              git curl jq python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libxcb-xinerama0 
+              git curl jq python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 
               libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev 
               libasound2-dev build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev 
               libreadline-dev xz-utils libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools 
@@ -107,21 +135,6 @@ jobs:
               sudo apt-get install -y "$pkg" || true
             done
             
-            # Check if libwebkit2gtk-4.0-dev is installed (fixes ubuntu-24.04)
-            if [ "${{ matrix.os }}" = "ubuntu-24.04" ]; then
-              echo "Ubuntu 24.04 detected. Checking for libwebkit2gtk-4.0-dev..."
-              if ! dpkg -s libwebkit2gtk-4.0-dev &> /dev/null; then
-                echo "libwebkit2gtk-4.0-dev not found. Adding focal repository and installing..."
-                sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu/ focal main universe"
-                sudo apt-get update
-                if ! sudo apt-get install -y libwebkit2gtk-4.0-dev; then
-                  echo "Error: Failed to install libwebkit2gtk-4.0-dev"
-                  exit 1
-                fi
-              else
-                echo "libwebkit2gtk-4.0-dev is already installed."
-              fi
-            fi
           elif command -v pacman > /dev/null; then
             sudo pacman -Syu --noconfirm || true
             packages=(
@@ -193,8 +206,9 @@ jobs:
           PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
           $PYTHON_BIN -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
-          pip install --upgrade pip wheel
+          
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+          pip install -U pip distro sip six
           
           pip download wxPython
           tarball=$(ls wxPython-*.tar.gz)
@@ -202,25 +216,14 @@ jobs:
           wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           wxPython_dir=$(find . -type d -name "wxPython-*")
           cd "$wxPython_dir"
-          pip install -U pip distro sip six
-          
-          if ! pip wheel .; then
-              cd /tmp && rm -rf /tmp_dir/wxpython*
-              mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
-              wxpython_version=${{ env.FALLBACK_WXPYTHON_VERSION}}
-              pip download "wxPython==$wxpython_version"
-              tarball=$(ls wxPython-*.tar.gz)
-              tar -xzf "$tarball"
-              wxPython_dir=$(find . -type d -name "wxPython-*")
-              cd "$wxPython_dir"
-              pip wheel . || { echo "Error: Fallback version $wxpython_version also failed to build. Exiting."; exit 1; }
-          fi
+          pip wheel .
                     
           python_major=$(python -c "import sys; print(sys.version_info.major)")
           python_minor=$(python -c "import sys; print(sys.version_info.minor)")
           wheel_file=$(ls wxPython-*.whl)
           identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
           cp "$wheel_file" "$identified_wheel_file"
+          
           deactivate
           curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
