@@ -1,0 +1,50 @@
+name: Auto Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' 
+    branches:
+      - main  
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Generate Changelog
+        id: changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0)  # Get the last tag
+          echo "## Changes" > RELEASE_NOTES.md
+          git log ${LAST_TAG}..HEAD --pretty=format:"- %s" >> RELEASE_NOTES.md  # Generate a list of commit messages
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
+        with:
+          tag_name: ${{ github.ref }}  
+          release_name: Release ${{ github.ref }}  
+          body_path: ./RELEASE_NOTES.md  
+          draft: false  # Publish the release immediately
+          prerelease: false  # Set to true if it’s a pre-release
+
+      - name: Upload Installer
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  
+          asset_path: ./psychopy_linux_installer 
+          asset_name: psychopy_linux_installer  
+          asset_content_type: application/x-sh  
+
+      - name: Upload README file
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}  
+          asset_path: ./README.md  
+          asset_name: README.md  
+          asset_content_type: text/markdown  
