@@ -36,6 +36,9 @@ jobs:
           elif command -v yum > /dev/null; then
             sudo yum check-update || true
             sudo yum install -y curl python3-pip
+          elif command -v zypper > /dev/null; then
+            sudo zypper refresh || true
+            sudo zypper install -y curl python3-pip
           else
             echo "Unsupported package manager"
             exit 1
@@ -173,6 +176,19 @@ jobs:
               sudo yum install -y "$pkg" || true
             done
           
+          elif command -v zypper > /dev/null; then
+            sudo zypper refresh || true
+            packages=(
+              git curl jq python3-pip python3-devel gtk3-devel webkit2gtk3-devel libxcb1 libxcb-xinerama0 
+              Mesa-libEGL-devel SDL2-devel Mesa-libGLU-devel libusb-1_0-devel portaudio-devel alsa-devel 
+              gcc-c++ libopenssl-devel libbz2-devel libffi-devel zlib-devel sqlite3-devel readline-devel 
+              xz-devel libjpeg-devel libpng16-compat-devel libSM-devel gstreamer-plugins-base-devel 
+              gstreamer-devel freeglut-devel libtiff-devel libnotify-devel
+            )
+            for pkg in "${packages[@]}"; do
+              sudo zypper install -y "$pkg" || true
+            done
+
           else
             echo "Unsupported package manager"
             exit 1
