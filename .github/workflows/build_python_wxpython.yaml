@@ -276,7 +276,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp/* /tmp_dir ~/.cache
+          sudo rm -rf /tmp/* /tmp_dir
 
   update-readme:
     needs: build
