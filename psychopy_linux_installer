@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-09-27
-#  Version:       1.1.1
+#  Version:       1.1.2
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -124,40 +124,44 @@ log_message() {
     echo "$(date "+%Y-%m-%d %H:%M:%S") - $1"
 }
 
-# Function to detect the OS version
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         # Only return if both $ID and $VERSION_ID exist
         if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
-            echo "$ID-$VERSION_ID" | tr '[:upper:]' '[:lower:]'
+            echo "$ID-$VERSION_ID"
             return
         fi
     fi
 
     if command -v lsb_release > /dev/null 2>&1; then
-        echo "$(lsb_release -si)-$(lsb_release -sr)" | tr '[:upper:]' '[:lower:]'
+        version=$(lsb_release -sr | cut -d. -f1)
+        echo "$(lsb_release -si)-$version"
         return
     fi
 
     if [ -f /etc/lsb-release ]; then
         . /etc/lsb-release
-        echo "${DISTRIB_ID}-${DISTRIB_RELEASE}" | tr '[:upper:]' '[:lower:]'
+        version=$(echo "$DISTRIB_RELEASE" | cut -d. -f1)
+        echo "${DISTRIB_ID}-$version"
         return
     fi
 
     if [ -f /etc/debian_version ]; then
-        echo "debian-$(cat /etc/debian_version)" | tr '[:upper:]' '[:lower:]'
+        version=$(cat /etc/debian_version | cut -d. -f1)
+        echo "debian-$version"
         return
     fi
 
     if [ -f /etc/redhat-release ]; then
-        tr '[:upper:]' '[:lower:]' < /etc/redhat-release
+        version=$(cat /etc/redhat-release | sed 's/.*release \([0-9]*\).*/\1/')
+        echo "$(cat /etc/redhat-release | sed 's/release [0-9]*.*//')$version"
         return
     fi
 
-    echo "unknown"
+    exit 1
 }
+
 # Function to detect the package manager for the OS
 detect_package_manager() {
     if command -v apt-get > /dev/null 2>&1; then
