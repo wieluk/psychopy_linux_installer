@@ -1,5 +1,5 @@
 ### Report generated on 2024-10-04
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11178489023)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11183615177)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
@@ -102,15 +102,15 @@
 | ubuntu-20.04 | 3.9.20 | 2023.2.3 | ✅ |
 | ubuntu-20.04 | 3.9.20 | 2024.1.4 | ✅ |
 | ubuntu-20.04 | 3.9.20 | 2024.2.1 | ✅ |
-| ubuntu-22.04 | 3.10.15 | 2023.2.3 | ❌ |
-| ubuntu-22.04 | 3.10.15 | 2024.1.4 | ❌ |
-| ubuntu-22.04 | 3.10.15 | 2024.2.1 | ❌ |
-| ubuntu-22.04 | 3.8.20 | 2023.2.3 | ❌ |
-| ubuntu-22.04 | 3.8.20 | 2024.1.4 | ❌ |
-| ubuntu-22.04 | 3.8.20 | 2024.2.1 | ❌ |
-| ubuntu-22.04 | 3.9.20 | 2023.2.3 | ❌ |
-| ubuntu-22.04 | 3.9.20 | 2024.1.4 | ❌ |
-| ubuntu-22.04 | 3.9.20 | 2024.2.1 | ❌ |
+| ubuntu-22.04 | 3.10.15 | 2023.2.3 | ✅ |
+| ubuntu-22.04 | 3.10.15 | 2024.1.4 | ✅ |
+| ubuntu-22.04 | 3.10.15 | 2024.2.1 | ✅ |
+| ubuntu-22.04 | 3.8.20 | 2023.2.3 | ✅ |
+| ubuntu-22.04 | 3.8.20 | 2024.1.4 | ✅ |
+| ubuntu-22.04 | 3.8.20 | 2024.2.1 | ✅ |
+| ubuntu-22.04 | 3.9.20 | 2023.2.3 | ✅ |
+| ubuntu-22.04 | 3.9.20 | 2024.1.4 | ✅ |
+| ubuntu-22.04 | 3.9.20 | 2024.2.1 | ✅ |
 | ubuntu-24.04 | 3.10.15 | 2023.2.3 | ✅ |
 | ubuntu-24.04 | 3.10.15 | 2024.1.4 | ✅ |
 | ubuntu-24.04 | 3.10.15 | 2024.2.1 | ✅ |
