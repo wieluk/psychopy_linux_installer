@@ -73,14 +73,14 @@ jobs:
               fi
 
               if [ -f /etc/debian_version ]; then
-                  version=$(cat /etc/debian_version | cut -d. -f1)
+                  version=$(cut -d. -f1 < /etc/debian_version)
                   echo "debian-$version"
                   return
               fi
 
               if [ -f /etc/redhat-release ]; then
-                  version=$(cat /etc/redhat-release | sed 's/.*release \([0-9]*\).*/\1/')
-                  echo "$(cat /etc/redhat-release | sed 's/release [0-9]*.*//')$version"
+                  version=$(sed 's/.*release \([0-9]*\).*/\1/' < /etc/redhat-release)
+                  echo "$(sed 's/release [0-9]*.*//' < /etc/redhat-release)$version"
                   return
               fi
 
