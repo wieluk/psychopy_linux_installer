@@ -23,7 +23,7 @@ jobs:
       
       - name: Setup environment and install dependencies
         run: |
-          sudo rm -rf /tmp_dir && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$USER /tmp_dir
+          sudo rm -rf /tmp_dir && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
             sudo apt-get install -y curl python3-pip
