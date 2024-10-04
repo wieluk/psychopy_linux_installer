@@ -132,7 +132,7 @@ jobs:
               libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev 
               libasound2-dev build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev 
               libreadline-dev xz-utils libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools 
-              gstreamer1.0-x freeglut3-dev libtiff-dev libnotify-dev libsm-dev
+              gstreamer1.0-x freeglut3-dev libtiff-dev libnotify-dev libsm-dev make
             )
             for pkg in "${packages[@]}"; do
               sudo apt-get install -y "$pkg" || true
@@ -144,7 +144,7 @@ jobs:
                 git curl jq python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu 
                 libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 
                 readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut 
-                libtiff libnotify
+                libtiff libnotify make
             )
             for pkg in "${packages[@]}"; do
               sudo pacman -S --noconfirm "$pkg" || true
@@ -157,7 +157,7 @@ jobs:
               mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
               gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
               xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
-              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel
+              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel make
             )
             for pkg in "${packages[@]}"; do
               sudo dnf install -y "$pkg" || true
@@ -170,7 +170,7 @@ jobs:
               mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
               gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
               xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
-              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel
+              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel make
             )
             for pkg in "${packages[@]}"; do
               sudo yum install -y "$pkg" || true
@@ -183,7 +183,7 @@ jobs:
               Mesa-libEGL-devel SDL2-devel Mesa-libGLU-devel libusb-1_0-devel portaudio-devel alsa-devel 
               gcc-c++ libopenssl-devel libbz2-devel libffi-devel zlib-devel sqlite3-devel readline-devel 
               xz-devel libjpeg-devel libpng16-compat-devel libSM-devel gstreamer-plugins-base-devel 
-              gstreamer-devel freeglut-devel libtiff-devel libnotify-devel
+              gstreamer-devel freeglut-devel libtiff-devel libnotify-devel make
             )
             for pkg in "${packages[@]}"; do
               sudo zypper install -y "$pkg" || true
