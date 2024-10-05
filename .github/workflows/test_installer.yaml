@@ -191,7 +191,7 @@ jobs:
       
       - name: Commit and push changes
         run: |
-          git add .github/installation_results.md
+          git add -f .github/installation_results.md
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
           else
