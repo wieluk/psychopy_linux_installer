@@ -48,7 +48,7 @@ jobs:
       - name: Prepare environment
         run: |
           sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
-          sudo rm -rf /tmp_dir
+          sudo rm -rf /tmp_dir ~/.cache/pip
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
@@ -145,7 +145,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
+          sudo rm -rf /tmp_dir ~/.cache/pip ~/Desktop/* ~/.local/share/applications/*
 
   update-readme:
     needs: run-installer
