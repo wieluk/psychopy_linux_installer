@@ -1,5 +1,5 @@
 ### Report generated on 2024-10-04
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11178378100)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11183237103)
 
 | OS | Python Version | WxPython Version |
 |---|---|---|
@@ -11,6 +11,7 @@
 | debian-11 | 3.9.20 | 4.2.2 |
 | debian-12 | 3.10.15 | 4.2.2 |
 | debian-12 | 3.8.20 | 4.2.2 |
+| debian-12 | 3.9.20 | 4.2.2 |
 | fedora-39 | 3.10.15 | 4.2.2 |
 | fedora-39 | 3.8.20 | 4.2.2 |
 | fedora-39 | 3.9.20 | 4.2.2 |
@@ -32,6 +33,9 @@
 | rocky-9.4 | 3.10.15 | 4.2.2 |
 | rocky-9.4 | 3.8.20 | 4.2.2 |
 | rocky-9.4 | 3.9.20 | 4.2.2 |
+| ubuntu-20.04 | 3.10.15 | 4.2.2 |
+| ubuntu-20.04 | 3.8.20 | 4.2.2 |
+| ubuntu-20.04 | 3.9.20 | 4.2.2 |
 | ubuntu-22.04 | 3.10.15 | 4.2.2 |
 | ubuntu-22.04 | 3.8.20 | 4.2.2 |
 | ubuntu-22.04 | 3.9.20 | 4.2.2 |
