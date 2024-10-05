@@ -38,20 +38,20 @@ jobs:
           ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --build=both --sudo-mode=auto"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
         
-      - name: Verify PsychoPy installation and version
-        id: verify-psychopy
-        continue-on-error: true
-        run: |
-          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
-            echo "PsychoPy help command failed"
-            exit 1
-          fi
-          
-          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
-            echo "PsychoPy version check failed"
-            exit 1
-          fi
-
+          - name: Verify PsychoPy installation and version
+          id: verify-psychopy
+          continue-on-error: true
+          run: |
+            if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
+              echo "PsychoPy help command failed"
+              exit 1
+            fi
+            
+            if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
+              echo "PsychoPy version check failed"
+              exit 1
+            fi
+        
       - name: run basic PsychoPy test
         id: psychopy-test
         continue-on-error: true
@@ -98,7 +98,89 @@ jobs:
             exit 1
           fi
 
+      - name: Record result
+        run: |
+          STATUS="❌"
+          if [[ "${{ steps.run-installer.outcome }}" == "success" && 
+                "${{ steps.verify-psychopy.outcome }}" == "success" && 
+                "${{ steps.psychopy-test.outcome }}" == "success" && 
+                "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
+                "${{ steps.verify-bids.outcome }}" == "success" && 
+                "${{ steps.verify-bids-handler.outcome }}" == "success"  ]]; then
+            STATUS="✅"
+          fi
+      
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md"
+          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | ${{ env.PSYCHOPY_VERSION_CLEAN }} | $STATUS |" >> $RESULT_FILE
+          cat $RESULT_FILE
+      
+      - name: Upload result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md
+      
       - name: Cleanup
         if: always()
         run: |
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
+
+  update-readme:
+    needs: run-installer
+    if: ${{ failure() || success() }}
+    runs-on: [self-hosted, ubuntu-24.04]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Pull changes from remote
+        run: |
+          git fetch origin
+          git reset --hard origin/${{ github.ref_name }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: Create and save result table
+        run: |
+          cat << EOF > results.md
+          ### Report generated on $(date '+%Y-%m-%d')
+          ### All runners used the flag `--build=both`
+          ### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          | OS | Python Version | PsychoPy Version | Status |
+          |---|---|---|---|
+          EOF
+
+          cat ./artifacts/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 >> results.md
+
+          if [ -s results.md ]; then
+            cp results.md .github/installation_results_build.md
+          else
+            echo "::warning::results.md is empty; skipping save."
+          fi
+      
+      - name: Commit and push changes
+        run: |
+          git add .github/installation_results_build.md
+          if git diff-index --quiet HEAD --; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update installation results"
+            git push --force
+          fi
+
+      - name: Check for failed statuses
+        run: |
+          if grep -q "❌" .github/installation_results_build.md && ! grep -q "✅" .github/installation_results_build.md; then
+            echo "All entries failed or no successful entries found. Failing the job."
+            exit 1
+          fi
