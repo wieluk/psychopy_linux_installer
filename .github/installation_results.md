@@ -1,5 +1,5 @@
-### Report generated on 2024-10-04
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11183615177)
+### Report generated on 2024-10-05
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11191226594)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
@@ -57,24 +57,24 @@
 | linuxmint-22 | 3.9.20 | 2023.2.3 | ✅ |
 | linuxmint-22 | 3.9.20 | 2024.1.4 | ✅ |
 | linuxmint-22 | 3.9.20 | 2024.2.1 | ✅ |
-| manjarolinux-24 | 3.10.15 | 2023.2.3 | ❌ |
-| manjarolinux-24 | 3.10.15 | 2024.1.4 | ❌ |
-| manjarolinux-24 | 3.10.15 | 2024.2.1 | ❌ |
-| manjarolinux-24 | 3.8.20 | 2023.2.3 | ❌ |
-| manjarolinux-24 | 3.8.20 | 2024.1.4 | ❌ |
-| manjarolinux-24 | 3.8.20 | 2024.2.1 | ❌ |
-| manjarolinux-24 | 3.9.20 | 2023.2.3 | ❌ |
-| manjarolinux-24 | 3.9.20 | 2024.1.4 | ❌ |
-| manjarolinux-24 | 3.9.20 | 2024.2.1 | ❌ |
-| opensuse-leap-15.6 | 3.10.15 | 2023.2.3 | ❌ |
-| opensuse-leap-15.6 | 3.10.15 | 2024.1.4 | ❌ |
-| opensuse-leap-15.6 | 3.10.15 | 2024.2.1 | ❌ |
-| opensuse-leap-15.6 | 3.8.20 | 2023.2.3 | ❌ |
-| opensuse-leap-15.6 | 3.8.20 | 2024.1.4 | ❌ |
-| opensuse-leap-15.6 | 3.8.20 | 2024.2.1 | ❌ |
-| opensuse-leap-15.6 | 3.9.20 | 2023.2.3 | ❌ |
-| opensuse-leap-15.6 | 3.9.20 | 2024.1.4 | ❌ |
-| opensuse-leap-15.6 | 3.9.20 | 2024.2.1 | ❌ |
+| manjarolinux-24 | 3.10.15 | 2023.2.3 | ✅ |
+| manjarolinux-24 | 3.10.15 | 2024.1.4 | ✅ |
+| manjarolinux-24 | 3.10.15 | 2024.2.1 | ✅ |
+| manjarolinux-24 | 3.8.20 | 2023.2.3 | ✅ |
+| manjarolinux-24 | 3.8.20 | 2024.1.4 | ✅ |
+| manjarolinux-24 | 3.8.20 | 2024.2.1 | ✅ |
+| manjarolinux-24 | 3.9.20 | 2023.2.3 | ✅ |
+| manjarolinux-24 | 3.9.20 | 2024.1.4 | ✅ |
+| manjarolinux-24 | 3.9.20 | 2024.2.1 | ✅ |
+| opensuse-leap-15.6 | 3.10.15 | 2023.2.3 | ✅ |
+| opensuse-leap-15.6 | 3.10.15 | 2024.1.4 | ✅ |
+| opensuse-leap-15.6 | 3.10.15 | 2024.2.1 | ✅ |
+| opensuse-leap-15.6 | 3.8.20 | 2023.2.3 | ✅ |
+| opensuse-leap-15.6 | 3.8.20 | 2024.1.4 | ✅ |
+| opensuse-leap-15.6 | 3.8.20 | 2024.2.1 | ✅ |
+| opensuse-leap-15.6 | 3.9.20 | 2023.2.3 | ✅ |
+| opensuse-leap-15.6 | 3.9.20 | 2024.1.4 | ✅ |
+| opensuse-leap-15.6 | 3.9.20 | 2024.2.1 | ✅ |
 | pop-22.04 | 3.10.15 | 2023.2.3 | ✅ |
 | pop-22.04 | 3.10.15 | 2024.1.4 | ✅ |
 | pop-22.04 | 3.10.15 | 2024.2.1 | ✅ |
