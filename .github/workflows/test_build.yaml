@@ -169,11 +169,11 @@ jobs:
       
       - name: Commit and push changes
         run: |
-          git add .github/installation_results_build.md
+          git add -f .github/installation_results_build.md
           if git diff-index --quiet HEAD --; then
             echo "No changes to commit."
           else
-            git commit -m "Update installation results"
+            git commit -m "Update installation build results"
             git push --force
           fi
 

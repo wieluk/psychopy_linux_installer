@@ -318,5 +318,5 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git add .github/build_results.md
-          git diff-index --quiet HEAD || (git commit -m "Update build results" && git push --force)
+          git add -f .github/build_results.md
+          git diff-index --quiet HEAD || (git commit -m "Update cloud build results" && git push --force)
