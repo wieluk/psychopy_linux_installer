@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-04
-#  Version:       1.1.2
+#  Date:          2024-10-08
+#  Version:       1.1.3
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -117,7 +117,7 @@ sudo_wrapper() {
     # Execute the command and capture its output and exit code
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
-
+    
     is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
 
     if needs_sudo "$exit_code" "$error_output"; then
@@ -685,7 +685,7 @@ main() {
                     log_message "Error: Installing wxPython failed. Attempting to build from source."
                     build_wxpython
                 fi
-                log sudo_wrapper rm "$wx_python_file"
+                sudo_wrapper rm "$wx_python_file"
             else
                 build_wxpython
             fi
@@ -786,19 +786,19 @@ main() {
         case $shell_name in
             bash)
                 config_file="$HOME/.bashrc"
-                sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
+                path_line="export PATH=\"${psychopy_dir}/.bin:\$PATH\""
                 ;;
             zsh)
                 config_file="$HOME/.zshrc"
-                sudo_wrapper sh -c "echo 'export PATH=\"${psychopy_dir}/.bin:\$PATH\"' >> \"$config_file\""
+                path_line="export PATH=\"${psychopy_dir}/.bin:\$PATH\""
                 ;;
             fish)
                 config_file="$HOME/.config/fish/config.fish"
-                sudo_wrapper sh -c "echo 'set -gx PATH \"${psychopy_dir}/.bin\" \$PATH' >> \"$config_file\""
+                path_line="set -gx PATH \"${psychopy_dir}/.bin\" \$PATH"
                 ;;
             csh|tcsh)
                 config_file="$HOME/.${shell_name}rc"
-                sudo_wrapper sh -c "echo 'setenv PATH ${psychopy_dir}/.bin:\$PATH' >> \"$config_file\""
+                path_line="setenv PATH ${psychopy_dir}/.bin:\$PATH"
                 ;;
             *)
                 log_message "Unsupported shell: $shell_name; PsychoPy not added to path"
@@ -810,6 +810,14 @@ main() {
                 exit 0
                 ;;
         esac
+
+        # Check if the line already exists in the config file
+        if ! grep -Fxq "$path_line" "$config_file"; then
+            sudo_wrapper sh -c "echo '$path_line' >> \"$config_file\""
+            log_message "PsychoPy path added to $config_file"
+        else
+            log_message "PsychoPy path already exists in $config_file"
+        fi
 
         echo
         log_message "PsychoPy installation complete!"
@@ -826,7 +834,7 @@ main() {
         echo
         log_message "PsychoPy installation complete!"
         echo
-        echo "To start PsychoPy from terminal, use:"
+        echo "To start PsychoPy, use:"
         echo "${psychopy_dir}/bin/psychopy"
     fi
 }
