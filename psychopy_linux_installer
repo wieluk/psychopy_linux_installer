@@ -398,29 +398,32 @@ create_desktop_shortcut() {
     local icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
     local icon_file="${psychopy_dir}/psychopy.png"
     local desktop_content
-    # Download the icon if available
-    curl --silent --head --fail "$icon_url" && curl -s -o "$icon_file" "$icon_url" || icon_file=""
 
-    # Check if desktop directory exists
+
     if [ ! -d "$desktop_shortcut" ]; then
         log_message "Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
         return
     fi
 
-    # Shortcut properties
+    if curl --output /dev/null --silent --head --fail "$icon_url"; then
+        log curl -s -o "$icon_file" "$icon_url"
+    fi
+    if [ ! -f "$icon_file" ]; then
+        log_message "PsychoPy icon not found. Skipping icon setting."
+        icon_file=""
+    fi
+
     local shortcuts=(
         "" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})"
         "--coder" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})"
         "--builder" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})"
     )
 
-    # Create shortcuts
     for ((i=0; i<${#shortcuts[@]}; i+=2)); do
         local exec_args="${shortcuts[i]}"
         local pretty_name="${shortcuts[i+1]}"
         local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
 
-        # Store the content in a variable
         desktop_content="[Desktop Entry]
 Version=1.0
 Name=${pretty_name}
@@ -431,33 +434,29 @@ Terminal=false
 Type=Application
 Categories=Education;Science;"
 
-        # Write the content to the desktop file using sudo_wrapper
         sudo_wrapper sh -c "echo '$desktop_content' > '$desktop_file'"
         sudo_wrapper chmod +x "$desktop_file"
         sudo_wrapper gio set "$desktop_file" metadata::trusted true
 
-        # Link to applications directory
         if [ -d "$desktop_dir" ]; then
             sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
         fi
     done
 }
 
+# Function to create add PsychoPy to system path
 add_psychopy_to_path() {
-    # Assume psychopy_dir, psychopy_version_clean, and python_version_clean are defined globally
     local shell_name
     local bin_dir="${psychopy_dir}/.bin"
     local target_bin="${bin_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
 
     shell_name=$(basename "$SHELL")
-    # Create the .bin directory and symbolic link
     mkdir -p "$bin_dir"
     sudo_wrapper ln -sf "${psychopy_dir}/bin/psychopy" "$target_bin"
 
     local config_file=""
     local path_line=""
 
-    # Determine shell config file and the appropriate path line based on the shell type
     case $shell_name in
         bash)
             config_file="$HOME/.bashrc"
@@ -486,7 +485,6 @@ add_psychopy_to_path() {
             ;;
     esac
 
-    # Add the PATH line to the appropriate shell configuration file if it doesn't already exist
     if ! grep -Fxq "$path_line" "$config_file"; then
         sudo_wrapper sh -c "echo '$path_line' >> \"$config_file\""
         log_message "PsychoPy path added to $config_file"
@@ -494,7 +492,6 @@ add_psychopy_to_path() {
         log_message "PsychoPy path already exists in $config_file"
     fi
 
-    # Output completion message
     echo
     log_message "PsychoPy installation complete!"
     echo
