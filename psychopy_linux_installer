@@ -187,7 +187,6 @@ detect_package_manager() {
 
 # Function to update the package manager
 update_package_manager() {
-    local pkg_manager=$1
     case $pkg_manager in
         apt-get) sudo_wrapper apt-get update -qq ;;
         yum) sudo_wrapper yum check-update -q ;;
@@ -200,8 +199,6 @@ update_package_manager() {
 
 # Function to install packages using the package manager
 install_packages() {
-    local pkg_manager=$1
-    shift
     local packages=("$@")
     
     for package in "${packages[@]}"; do
@@ -218,8 +215,7 @@ install_packages() {
 
 # Function to install different types of dependencies
 install_dependencies() {
-    local pkg_manager=$1
-    local dep_type=$2
+    local dep_type=$1
     local dependencies=()
 
     # Define dependencies for different package managers
@@ -262,7 +258,7 @@ install_dependencies() {
     esac
 
     # Install the dependencies
-    install_packages "$pkg_manager" "${dependencies[@]}"
+    install_packages "${dependencies[@]}"
 }
 
 # Function to compare version numbers
@@ -384,7 +380,7 @@ get_wxpython_wheel() {
 # Function to build wxPython from source
 build_wxpython() {
     log_message "Installing wxPython build dependencies. This might take a while ..."
-    install_dependencies "$pkg_manager" wxpython_deps
+    install_dependencies wxpython_deps
 
     log_message "Building wxPython $wxpython_version from source. This might take a while ..."
     if pip install --no-binary=:all: "wxpython==$wxpython_version"; then
@@ -395,27 +391,123 @@ build_wxpython() {
 }
 
 # Function to create a desktop shortcut file
-create_desktop_file() {
-    local exec_args=$1
-    local pretty_name=$2
-    local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
-    
-    {
-        echo "[Desktop Entry]"
-        echo "Version=1.0"
-        echo "Name=${pretty_name}"
-        echo "Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}"
-        echo "Exec=${psychopy_exec} ${exec_args}"
-        [ -n "$icon_file" ] && echo "Icon=${icon_file}"
-        echo "Terminal=false"
-        echo "Type=Application"
-        echo "Categories=Education;Science;"
-    } | sudo_wrapper tee "$desktop_file" > /dev/null
-    
-    sudo_wrapper chmod +x "$desktop_file"
-    sudo_wrapper gio set "$desktop_file" metadata::trusted true
-    echo "$desktop_file"
+create_desktop_shortcut() {
+    local desktop_shortcut="${HOME}/Desktop/"
+    local desktop_dir="${HOME}/.local/share/applications/"
+    local psychopy_exec="${psychopy_dir}/bin/psychopy"
+    local icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
+    local icon_file="${psychopy_dir}/psychopy.png"
+    local desktop_content
+    # Download the icon if available
+    curl --silent --head --fail "$icon_url" && curl -s -o "$icon_file" "$icon_url" || icon_file=""
+
+    # Check if desktop directory exists
+    if [ ! -d "$desktop_shortcut" ]; then
+        log_message "Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
+        return
+    fi
+
+    # Shortcut properties
+    local shortcuts=(
+        "" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})"
+        "--coder" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})"
+        "--builder" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})"
+    )
+
+    # Create shortcuts
+    for ((i=0; i<${#shortcuts[@]}; i+=2)); do
+        local exec_args="${shortcuts[i]}"
+        local pretty_name="${shortcuts[i+1]}"
+        local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
+
+        # Store the content in a variable
+        desktop_content="[Desktop Entry]
+            Version=1.0
+            Name=${pretty_name}
+            Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
+            Exec=${psychopy_exec} ${exec_args}
+            $( [ -n "$icon_file" ] && echo "Icon=${icon_file}" )
+            Terminal=false
+            Type=Application
+            Categories=Education;Science;"
+
+        # Write the content to the desktop file using sudo_wrapper
+        sudo_wrapper sh -c "echo '$desktop_content' > '$desktop_file'"
+        sudo_wrapper chmod +x "$desktop_file"
+        sudo_wrapper gio set "$desktop_file" metadata::trusted true
+
+        # Link to applications directory
+        if [ -d "$desktop_dir" ]; then
+            sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
+        fi
+    done
 }
+
+add_psychopy_to_path() {
+    # Assume psychopy_dir, psychopy_version_clean, and python_version_clean are defined globally
+    local shell_name
+    local bin_dir="${psychopy_dir}/.bin"
+    local target_bin="${bin_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+
+    shell_name=$(basename "$SHELL")
+    # Create the .bin directory and symbolic link
+    mkdir -p "$bin_dir"
+    ln -sf "${psychopy_dir}/bin/psychopy" "$target_bin"
+
+    local config_file=""
+    local path_line=""
+
+    # Determine shell config file and the appropriate path line based on the shell type
+    case $shell_name in
+        bash)
+            config_file="$HOME/.bashrc"
+            path_line="export PATH=\"${bin_dir}:\$PATH\""
+            ;;
+        zsh)
+            config_file="$HOME/.zshrc"
+            path_line="export PATH=\"${bin_dir}:\$PATH\""
+            ;;
+        fish)
+            config_file="$HOME/.config/fish/config.fish"
+            path_line="set -gx PATH \"${bin_dir}\" \$PATH"
+            ;;
+        csh|tcsh)
+            config_file="$HOME/.${shell_name}rc"
+            path_line="setenv PATH ${bin_dir}:\$PATH"
+            ;;
+        *)
+            log_message "Unsupported shell: $shell_name; PsychoPy not added to path"
+            echo
+            log_message "PsychoPy installation complete!"
+            echo
+            echo "To start PsychoPy, use:"
+            echo "${psychopy_dir}/bin/psychopy"
+            exit 0
+            ;;
+    esac
+
+    # Add the PATH line to the appropriate shell configuration file if it doesn't already exist
+    if ! grep -Fxq "$path_line" "$config_file"; then
+        sudo_wrapper sh -c "echo '$path_line' >> \"$config_file\""
+        log_message "PsychoPy path added to $config_file"
+    else
+        log_message "PsychoPy path already exists in $config_file"
+    fi
+
+    # Output completion message
+    echo
+    log_message "PsychoPy installation complete!"
+    echo
+    echo "To update your path, run:"
+    echo "source $config_file"
+    echo
+    echo "To start PsychoPy from terminal, use:"
+    echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    echo
+    echo "You can also use the absolute path:"
+    echo "${psychopy_dir}/bin/psychopy"
+}
+
 
 
 main() {
@@ -538,7 +630,7 @@ main() {
 
     # Install basic dependencies
     log_message "Installing git, curl, and jq."
-    install_dependencies "$pkg_manager" script_deps
+    install_dependencies script_deps
 
     # Determine PsychoPy version to install
     if [ "$psychopy_version" == "latest" ]; then
@@ -553,7 +645,7 @@ main() {
 
     # Install PsychoPy dependencies
     log_message "Installing PsychoPy dependencies. This might take a while ..."
-    install_dependencies "$pkg_manager" psychopy_deps
+    install_dependencies psychopy_deps
 
     #If no python version is set by user, use system python
     if [ "$python_version_set_by_user" = false ] && command -v python3 &>/dev/null && system_python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')") && [[ "$system_python_version" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
@@ -608,7 +700,7 @@ main() {
         log_message "Python version ${python_version} is already installed. Skipping installation."
     else
         log_message "Installing python build dependencies ..."
-        log install_dependencies "$pkg_manager" python_build_deps
+        log install_dependencies python_build_deps
 
         if [ "$build_python" = true ]; then
             build_python_from_source "$python_version"
@@ -646,7 +738,7 @@ main() {
 
     if [ "$wxpython_version" = "git" ]; then
         log_message "Installing wxpython build dependencies. This might take a while ..."
-        install_dependencies "$pkg_manager" wxpython_deps
+        install_dependencies wxpython_deps
         log_message "Building wxPython from git. This might take a while ..."
         log pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "$build_wx" = true ]; then
@@ -739,97 +831,14 @@ main() {
 
     # Create desktop shortcut if not disabled
     if [ "$disable_shortcut" = false ]; then
-        desktop_shortcut="${HOME}/Desktop/"
-        if [ -d "$desktop_shortcut" ]; then
-            desktop_dir="${HOME}/.local/share/applications/"
-            psychopy_exec="${psychopy_dir}/bin/psychopy"
-            icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
-            icon_file="${psychopy_dir}/psychopy.png"
-
-            if curl --output /dev/null --silent --head --fail "$icon_url"; then
-                log curl -s -o "$icon_file" "$icon_url"
-            fi
-
-            if [ ! -f "$icon_file" ]; then
-                log_message "PsychoPy icon not found. Skipping icon setting."
-                icon_file=""
-            fi
-
-            pretty_name_no_args="PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})"
-            pretty_name_coder="PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})"
-            pretty_name_builder="PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})"
-
-            file_no_args=$(create_desktop_file "" "$pretty_name_no_args")
-            file_coder=$(create_desktop_file "--coder" "$pretty_name_coder")
-            file_builder=$(create_desktop_file "--builder" "$pretty_name_builder")
-
-            if [ -d "$desktop_dir" ]; then
-                sudo_wrapper ln -sf "$file_no_args" "${desktop_dir}${pretty_name_no_args}.desktop"
-                sudo_wrapper ln -sf "$file_coder" "${desktop_dir}${pretty_name_coder}.desktop"
-                sudo_wrapper ln -sf "$file_builder" "${desktop_dir}${pretty_name_builder}.desktop"
-            else
-                log_message "Applications directory $desktop_dir does not exist. Skipping application menu shortcut creation."
-            fi
-        else
-            log_message "Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
-        fi
+        create_desktop_shortcut
     else
         log_message "Desktop shortcut creation disabled by user."
     fi
 
     # Add PsychoPy to PATH if not disabled
     if [ "$disable_path" = false ]; then
-        shell_name=$(basename "$SHELL")
-        mkdir -p "${psychopy_dir}/.bin"
-        ln -sf "${psychopy_dir}/bin/psychopy" "${psychopy_dir}/.bin/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
-
-        case $shell_name in
-            bash)
-                config_file="$HOME/.bashrc"
-                path_line="export PATH=\"${psychopy_dir}/.bin:\$PATH\""
-                ;;
-            zsh)
-                config_file="$HOME/.zshrc"
-                path_line="export PATH=\"${psychopy_dir}/.bin:\$PATH\""
-                ;;
-            fish)
-                config_file="$HOME/.config/fish/config.fish"
-                path_line="set -gx PATH \"${psychopy_dir}/.bin\" \$PATH"
-                ;;
-            csh|tcsh)
-                config_file="$HOME/.${shell_name}rc"
-                path_line="setenv PATH ${psychopy_dir}/.bin:\$PATH"
-                ;;
-            *)
-                log_message "Unsupported shell: $shell_name; PsychoPy not added to path"
-                echo
-                log_message "PsychoPy installation complete!"
-                echo
-                echo "To start PsychoPy, use:"
-                echo "${psychopy_dir}/bin/psychopy"
-                exit 0
-                ;;
-        esac
-
-        # Check if the line already exists in the config file
-        if ! grep -Fxq "$path_line" "$config_file"; then
-            sudo_wrapper sh -c "echo '$path_line' >> \"$config_file\""
-            log_message "PsychoPy path added to $config_file"
-        else
-            log_message "PsychoPy path already exists in $config_file"
-        fi
-
-        echo
-        log_message "PsychoPy installation complete!"
-        echo
-        echo "To update your path, run:"
-        echo "source $config_file"
-        echo
-        echo "To start PsychoPy from terminal, use:"
-        echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
-        echo
-        echo "You can also use the absolute path:"
-        echo "${psychopy_dir}/bin/psychopy"
+        add_psychopy_to_path
     else
         echo
         log_message "PsychoPy installation complete!"
