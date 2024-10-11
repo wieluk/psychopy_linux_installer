@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-08
-#  Version:       1.1.3
+#  Date:          2024-10-11
+#  Version:       1.1.4
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -422,14 +422,14 @@ create_desktop_shortcut() {
 
         # Store the content in a variable
         desktop_content="[Desktop Entry]
-            Version=1.0
-            Name=${pretty_name}
-            Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
-            Exec=${psychopy_exec} ${exec_args}
-            $( [ -n "$icon_file" ] && echo "Icon=${icon_file}" )
-            Terminal=false
-            Type=Application
-            Categories=Education;Science;"
+Version=1.0
+Name=${pretty_name}
+Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
+Exec=${psychopy_exec} ${exec_args}
+$( [ -n "$icon_file" ] && echo "Icon=${icon_file}" )
+Terminal=false
+Type=Application
+Categories=Education;Science;"
 
         # Write the content to the desktop file using sudo_wrapper
         sudo_wrapper sh -c "echo '$desktop_content' > '$desktop_file'"
@@ -452,7 +452,7 @@ add_psychopy_to_path() {
     shell_name=$(basename "$SHELL")
     # Create the .bin directory and symbolic link
     mkdir -p "$bin_dir"
-    ln -sf "${psychopy_dir}/bin/psychopy" "$target_bin"
+    sudo_wrapper ln -sf "${psychopy_dir}/bin/psychopy" "$target_bin"
 
     local config_file=""
     local path_line=""
