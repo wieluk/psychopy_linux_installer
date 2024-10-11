@@ -392,44 +392,52 @@ build_wxpython() {
 
 # Function to create a desktop shortcut file
 create_desktop_shortcut() {
+    local desktop_content
     local desktop_shortcut="${HOME}/Desktop/"
     local desktop_dir="${HOME}/.local/share/applications/"
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
-    local icon_url="https://raw.githubusercontent.com/psychopy/psychopy/master/psychopy/app/Resources/psychopy.png"
-    local icon_file="${psychopy_dir}/psychopy.png"
-    local desktop_content
+    local resources_dir1="${script_dir}/Resources"
+    local resources_dir2="${psychopy_dir}/Resources"
 
+    mkdir -p "$resources_dir2"
+
+    local shortcuts=(
+        "" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/psychopy.png"
+        "--coder" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/coder.png"
+        "--builder" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/builder.png"
+        "--runner" "PsychoPy Runner (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/runner.png"
+    )
 
     if [ ! -d "$desktop_shortcut" ]; then
         log_message "Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
         return
     fi
 
-    if curl --output /dev/null --silent --head --fail "$icon_url"; then
-        log curl -s -o "$icon_file" "$icon_url"
-    fi
-    if [ ! -f "$icon_file" ]; then
-        log_message "PsychoPy icon not found. Skipping icon setting."
-        icon_file=""
-    fi
+    for icon in "psychopy.png" "coder.png" "builder.png" "runner.png"; do
+        if [ -f "${resources_dir1}/${icon}" ]; then
+            sudo_wrapper cp "${resources_dir1}/${icon}" "${resources_dir2}/${icon}"
+        else
+            log_message "Icon file ${resources_dir1}/${icon} not found, skipping..."
+        fi
+    done
 
-    local shortcuts=(
-        "" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})"
-        "--coder" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})"
-        "--builder" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})"
-    )
-
-    for ((i=0; i<${#shortcuts[@]}; i+=2)); do
+    for ((i=0; i<${#shortcuts[@]}; i+=3)); do
         local exec_args="${shortcuts[i]}"
         local pretty_name="${shortcuts[i+1]}"
+        local icon_file="${shortcuts[i+2]}"
         local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
+
+        local icon_line=""
+        if [ -f "$icon_file" ]; then
+            icon_line="Icon=${icon_file}"
+        fi
 
         desktop_content="[Desktop Entry]
 Version=1.0
 Name=${pretty_name}
 Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
 Exec=${psychopy_exec} ${exec_args}
-$( [ -n "$icon_file" ] && echo "Icon=${icon_file}" )
+${icon_line}
 Terminal=false
 Type=Application
 Categories=Education;Science;"
@@ -609,6 +617,8 @@ main() {
         esac
     done
 
+    # Sa
+    script_dir="$(pwd)"
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
