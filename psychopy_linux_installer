@@ -16,7 +16,7 @@ Usage: ./psychopy_linux_installer [options]
 Options:
   --python-version=VERSION                      Specify Python version (default: 3.10.15). Only 3.8.x, 3.9.x, or 3.10.x allowed.
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
-  --wxpython-version=VERSION                    Specify wxPython version (default: latest).
+  --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
   --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
@@ -392,20 +392,15 @@ build_wxpython() {
 
 # Function to create a desktop shortcut file
 create_desktop_shortcut() {
-    local desktop_content
     local desktop_shortcut="${HOME}/Desktop/"
     local desktop_dir="${HOME}/.local/share/applications/"
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
-    local resources_dir1="${script_dir}/Resources"
-    local resources_dir2="${psychopy_dir}/Resources"
-
-    mkdir -p "$resources_dir2"
+    local resources_dir="${psychopy_dir}/Resources"
 
     local shortcuts=(
-        "" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/psychopy.png"
-        "--coder" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/coder.png"
-        "--builder" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/builder.png"
-        "--runner" "PsychoPy Runner (v${psychopy_version_clean}) python(v${python_version_clean})" "${resources_dir2}/runner.png"
+        "--no-splash" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})" "psychopy.png"
+        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})" "builder.png"
+        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})" "coder.png"
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
@@ -413,26 +408,31 @@ create_desktop_shortcut() {
         return
     fi
 
-    for icon in "psychopy.png" "coder.png" "builder.png" "runner.png"; do
-        if [ -f "${resources_dir1}/${icon}" ]; then
-            sudo_wrapper cp "${resources_dir1}/${icon}" "${resources_dir2}/${icon}"
-        else
-            log_message "Icon file ${resources_dir1}/${icon} not found, skipping..."
-        fi
-    done
+    if [ ! -d "${resources_dir}" ]; then
+        sudo_wrapper mkdir -p "${resources_dir}"
+    fi
 
     for ((i=0; i<${#shortcuts[@]}; i+=3)); do
         local exec_args="${shortcuts[i]}"
         local pretty_name="${shortcuts[i+1]}"
         local icon_file="${shortcuts[i+2]}"
+        #local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}"
+        local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/dev/Resources/${icon_file}"
         local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
+        local icon_path="${resources_dir}/${icon_file}"
 
-        local icon_line=""
-        if [ -f "$icon_file" ]; then
-            icon_line="Icon=${icon_file}"
+        if curl --output /dev/null --silent --head --fail "${icon_url}"; then
+            sudo_wrapper curl -o "${icon_path}" "${icon_url}"
+        else
+            log_message "Icon file ${icon_url} not found, skipping..."
         fi
 
-        desktop_content="[Desktop Entry]
+        local icon_line=""
+        if [ -f "$icon_path" ]; then
+            icon_line="Icon=${icon_path}"
+        fi
+
+        local desktop_content="[Desktop Entry]
 Version=1.0
 Name=${pretty_name}
 Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
@@ -617,8 +617,8 @@ main() {
         esac
     done
 
-    # Sa
-    script_dir="$(pwd)"
+
+
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
@@ -691,7 +691,6 @@ main() {
     #Exit script if writing or cd to psychopy_dir is not possible
     if [ -w "${psychopy_dir}" ]; then
         if cd "${psychopy_dir}"; then
-            # Continue with your script here
             :
         else
             log_message "Failed to change directory to ${psychopy_dir}. Exiting."
