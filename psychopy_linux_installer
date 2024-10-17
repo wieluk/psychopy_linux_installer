@@ -416,8 +416,7 @@ create_desktop_shortcut() {
         local exec_args="${shortcuts[i]}"
         local pretty_name="${shortcuts[i+1]}"
         local icon_file="${shortcuts[i+2]}"
-        #local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}"
-        local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/dev/Resources/${icon_file}"
+        local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}"
         local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
         local icon_path="${resources_dir}/${icon_file}"
 
