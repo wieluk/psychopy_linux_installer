@@ -27,6 +27,7 @@ jobs:
         run: |
           sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
           sudo rm -rf /tmp_dir ~/.cache/pip
+          sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
 
@@ -37,19 +38,19 @@ jobs:
           ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --build=both --sudo-mode=auto"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
         
-          - name: Verify PsychoPy installation and version
-          id: verify-psychopy
-          continue-on-error: true
-          run: |
-            if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
-              echo "PsychoPy help command failed"
-              exit 1
-            fi
-            
-            if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
-              echo "PsychoPy version check failed"
-              exit 1
-            fi
+      - name: Verify PsychoPy installation and version
+        id: verify-psychopy
+        continue-on-error: true
+        run: |
+          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
+            echo "PsychoPy help command failed"
+            exit 1
+          fi
+          
+          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
+            echo "PsychoPy version check failed"
+            exit 1
+          fi
         
       - name: run basic PsychoPy test
         id: psychopy-test
