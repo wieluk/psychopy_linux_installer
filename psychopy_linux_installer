@@ -731,11 +731,11 @@ main() {
         log install_dependencies python_build_deps
 
         if [ "$build_python" = true ]; then
-            build_python_from_source "$python_version"
+            build_python_from_source
         elif download_prebuilt_python; then
             :
         else   
-            build_wxpython
+            build_python_from_source
         fi
     fi
 
