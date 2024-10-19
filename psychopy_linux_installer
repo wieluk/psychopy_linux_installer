@@ -298,7 +298,6 @@ check_pypi_for_version() {
 
 # Function to build Python from source
 build_python_from_source() {
-    local python_version=$1
     log_message "Building Python ${python_version} from source ..."
     
     official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
@@ -319,10 +318,6 @@ build_python_from_source() {
 
 # Function to download prebuilt Python from Nextcloud
 download_prebuilt_python() {
-    local python_version=$1
-    local processor_structure=$2
-    local os_version=$3
-
     nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
     temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
     temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
@@ -338,9 +333,10 @@ download_prebuilt_python() {
             sudo_wrapper make altinstall
         )
         sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+        return 0
     else
         log_message "Warning: Failed to download from Nextcloud. No matching Python version found."
-        build_python_from_source "${python_version}"
+        return 1
     fi
 }
 
@@ -448,9 +444,9 @@ create_desktop_shortcut() {
     local resources_dir="${psychopy_dir}/Resources"
 
     local shortcuts=(
-        "--no-splash" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})" "psychopy.png"
-        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})" "builder.png"
-        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})" "coder.png"
+        "--no-splash" "PsychoPy (v${psychopy_version}) python(v${python_version})" "psychopy.png"
+        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) python(v${python_version})" "builder.png"
+        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) python(v${python_version})" "coder.png"
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
@@ -484,7 +480,7 @@ create_desktop_shortcut() {
         local desktop_content="[Desktop Entry]
 Version=1.0
 Name=${pretty_name}
-Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
+Comment=Run PsychoPy version ${psychopy_version} with ${exec_args}
 Exec=${psychopy_exec} ${exec_args}
 ${icon_line}
 Terminal=false
@@ -505,7 +501,7 @@ Categories=Education;Science;"
 add_psychopy_to_path() {
     local shell_name
     local bin_dir="${psychopy_dir}/.bin"
-    local target_bin="${bin_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    local target_bin="${bin_dir}/psychopy_${psychopy_version}_py_${python_version}"
 
     shell_name=$(basename "$SHELL")
     mkdir -p "$bin_dir"
@@ -556,7 +552,7 @@ add_psychopy_to_path() {
     echo "source $config_file"
     echo
     echo "To start PsychoPy from terminal, use:"
-    echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    echo "psychopy_${psychopy_version}_py_${python_version}"
     echo
     echo "You can also use the absolute path:"
     echo "${psychopy_dir}/bin/psychopy"
@@ -681,12 +677,8 @@ main() {
     # Determine PsychoPy version to install
     if [ "$psychopy_version" == "latest" ]; then
         psychopy_version=$(get_latest_pypi_version "psychopy")
-        psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
-    elif [ "$psychopy_version" == "git" ]; then
-        psychopy_version_clean=git_dev
-    else
+    elif [ "$psychopy_version" != "git" ]; then
         check_pypi_for_version psychopy "${psychopy_version}"
-        psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
     fi
 
     # Install PsychoPy dependencies
@@ -700,13 +692,12 @@ main() {
     else
         check_python_version "${python_version}"
     fi
-    python_version_clean=$(echo "${python_version}" | tr -d ',;')
     
     # Set up PsychoPy installation directory
     if [ "$no_versioned_install_dir" = true ]; then
         psychopy_dir="${install_dir}"
     else
-        psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+        psychopy_dir="${install_dir}/psychopy_${psychopy_version}_py_${python_version}"
     fi
 
     if [ -d "${psychopy_dir}" ]; then
@@ -741,8 +732,10 @@ main() {
 
         if [ "$build_python" = true ]; then
             build_python_from_source "$python_version"
-        else
-            download_prebuilt_python "$python_version" "$processor_structure" "$os_version"
+        elif download_prebuilt_python; then
+            :
+        else   
+            build_wxpython
         fi
     fi
 
@@ -763,7 +756,7 @@ main() {
     log pip install -U pip distro sip six psychtoolbox attrdict
 
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
-    if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
+    if version_greater_than "2024.2.0" "$psychopy_version"; then
         log_message "PsychoPy version < 2024.2.0, installing numpy<2"
         log pip install "numpy<2"
     fi
@@ -799,11 +792,11 @@ main() {
     fi
 
     # Install PsychoPy
-    log_message "Installing PsychoPy version ${psychopy_version_clean}"
+    log_message "Installing PsychoPy version ${psychopy_version}"
     if [ "$psychopy_version" == "git" ]; then
         log pip install git+https://github.com/psychopy/psychopy.git@dev
     else
-        log pip install psychopy=="${psychopy_version_clean}"
+        log pip install psychopy=="${psychopy_version}"
     fi
 
     # Check if PsychoPy was successfully installed
