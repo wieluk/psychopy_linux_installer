@@ -195,20 +195,81 @@ update_package_manager() {
     esac
 }
 
+# Function to check if packages exist in the package manager
+check_packages() {
+    local available_packages=()
+    local package
+    case $pkg_manager in
+        apt-get)
+            for package in "$@"; do
+                if apt-cache show "$package" >/dev/null 2>&1; then
+                    available_packages+=("$package")
+                else
+                    log_message "Package $package not found, skipping."
+                fi
+            done
+            ;;
+        yum|dnf)
+            for package in "$@"; do
+                if yum list available "$package" >/dev/null 2>&1; then
+                    available_packages+=("$package")
+                else
+                    log_message "Package $package not found, skipping."
+                fi
+            done
+            ;;
+        pacman)
+            for package in "$@"; do
+                if pacman -Si "$package" >/dev/null 2>&1; then
+                    available_packages+=("$package")
+                else
+                    log_message "Package $package not found, skipping."
+                fi
+            done
+            ;;
+        zypper)
+            for package in "$@"; do
+                if zypper --non-interactive search --match-exact "$package" >/dev/null 2>&1; then
+                    available_packages+=("$package")
+                else
+                    log_message "Package $package not found, skipping."
+                fi
+            done
+            ;;
+        *)
+            log_message "Error: No compatible package manager found."; exit 1 ;;
+    esac
+    echo "${available_packages[@]}"
+}
+
 # Function to install packages using the package manager
 install_packages() {
     local packages=("$@")
-    
-    for package in "${packages[@]}"; do
-        case $pkg_manager in
-            apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Package $package not found, skipping." ;;
-            yum) sudo_wrapper yum install -y -q "$package" || log_message "Package $package not found, skipping." ;;
-            dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Package $package not found, skipping." ;;
-            pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Package $package not found, skipping." ;;
-            zypper) sudo_wrapper zypper install -y "$package" || log_message "Package $package not found, skipping." ;;
-            *) log_message "Error: No compatible package manager found."; exit 1 ;;
-        esac
-    done
+    local available_packages=($(check_packages "${packages[@]}"))
+    if [ ${#available_packages[@]} -eq 0 ]; then
+        log_message "No packages to install."
+        return
+    fi
+
+    case $pkg_manager in
+        apt-get)
+            sudo_wrapper apt-get install -y -qq "${available_packages[@]}" || log_message "Failed to install some packages."
+            ;;
+        yum)
+            sudo_wrapper yum install -y -q "${available_packages[@]}" || log_message "Failed to install some packages."
+            ;;
+        dnf)
+            sudo_wrapper dnf install -y -q "${available_packages[@]}" || log_message "Failed to install some packages."
+            ;;
+        pacman)
+            sudo_wrapper pacman -S --noconfirm --needed "${available_packages[@]}" || log_message "Failed to install some packages."
+            ;;
+        zypper)
+            sudo_wrapper zypper install -y "${available_packages[@]}" || log_message "Failed to install some packages."
+            ;;
+        *)
+            log_message "Error: No compatible package manager found."; exit 1 ;;
+    esac
 }
 
 # Function to install different types of dependencies
@@ -244,7 +305,7 @@ install_dependencies() {
         *)
             log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
-    
+
     case $dep_type in
         script_deps) dependencies=("${script_deps[@]}") ;;
         python_build_deps) dependencies=("${python_build_deps[@]}") ;;
@@ -360,7 +421,6 @@ wxpython_pip_install() {
         log_message "Successfully installed wxPython version $wxpython_version using a pip wheel."
         return 0
     else
-        log_message "Pip install with --only-binary failed."
         return 1
     fi
 }
@@ -383,7 +443,7 @@ wxpython_wheelurl_install() {
     wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
 
     if [ -z "$wheels" ]; then
-        log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure}."
+        log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure} on extras.wxpython.org."
         return 1
     fi
 
@@ -661,7 +721,7 @@ main() {
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "Initiating PsychoPy installation on ${os_version} (${processor_structure} architecture)."
+    log_message "Initiating PsychoPy(${psychopy_version}) installation on ${os_version} (${processor_structure})."
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
@@ -764,6 +824,8 @@ main() {
     # Determine wxPython version and install it
     if [ "$wxpython_version" = "latest" ]; then
         wxpython_version=$(get_latest_pypi_version "wxPython")
+    elif [ "$wxpython_version" != "git" ]; then
+        check_pypi_for_version wxpython "${wxpython_version}"
     fi
 
     if [ "$wxpython_version" = "git" ]; then
