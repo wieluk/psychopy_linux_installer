@@ -187,8 +187,8 @@ detect_package_manager() {
 update_package_manager() {
     case $pkg_manager in
         apt-get) sudo_wrapper apt-get update -qq ;;
-        yum) sudo_wrapper yum check-update -q ;;
-        dnf) sudo_wrapper dnf check-update -q ;;
+        yum) sudo_wrapper yum makecache -q ;;
+        dnf) sudo_wrapper dnf makecache -q ;;
         pacman) sudo_wrapper pacman -Sy --noconfirm ;;
         zypper) sudo_wrapper zypper refresh ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
