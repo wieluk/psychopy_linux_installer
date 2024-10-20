@@ -95,7 +95,7 @@ sudo_wrapper() {
                 esac
                 ;;
             auto)
-                log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
+                log log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
                 log sudo "${command[@]}"
                 ;;
             continue)
