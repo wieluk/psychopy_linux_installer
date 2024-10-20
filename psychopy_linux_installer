@@ -43,6 +43,7 @@ sudo_wrapper() {
     local command=("$@")
     local error_output
     local exit_code
+    local is_pkg_manager_command=false
 
     needs_sudo() {
         local exit_code=$1
@@ -63,10 +64,22 @@ sudo_wrapper() {
 
         case "$sudo_mode" in
             ask)
-                read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
+                if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
+                    log sudo "${command[@]}"
+                    return
+                fi
+
+                if $is_pkg_manager_command; then
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
+                else
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
+                fi
 
                 case "$response" in
                     [Rr])
+                        if $is_pkg_manager_command; then
+                            pkg_manager_permission=true
+                        fi
                         log_message "Retrying ${command[*]} with sudo ..."
                         log sudo "${command[@]}"
                         ;;
@@ -99,6 +112,8 @@ sudo_wrapper() {
 
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
+    
+    is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
 
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
