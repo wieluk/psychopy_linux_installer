@@ -190,82 +190,28 @@ detect_package_manager() {
 update_package_manager() {
     case $pkg_manager in
         apt-get) sudo_wrapper apt-get update -qq ;;
-        yum|dnf) sudo_wrapper "$pkg_manager" makecache -q ;;
+        yum) sudo_wrapper yum check-update -q ;;
+        dnf) sudo_wrapper dnf check-update -q ;;
         pacman) sudo_wrapper pacman -Sy --noconfirm ;;
         zypper) sudo_wrapper zypper refresh ;;
+        *) log_message "No compatible package manager found."; exit 1 ;;
     esac
-}
-
-# Function to check if packages exist in the package manager
-check_packages() {
-    local available_packages=()
-    local package
-    case $pkg_manager in
-        apt-get)
-            for package in "$@"; do
-                if apt-cache show "$package" >/dev/null 2>&1; then
-                    available_packages+=("$package")
-                else
-                    log_message "Package $package not found, skipping."
-                fi
-            done
-            ;;
-        yum|dnf)
-            for package in "$@"; do
-                if "$pkg_manager" list available "$package" >/dev/null 2>&1; then
-                    available_packages+=("$package")
-                else
-                    log_message "Package $package not found, skipping."
-                fi
-            done
-            ;;
-        pacman)
-            for package in "$@"; do
-                if pacman -Si "$package" >/dev/null 2>&1; then
-                    available_packages+=("$package")
-                else
-                    log_message "Package $package not found, skipping."
-                fi
-            done
-            ;;
-        zypper)
-            for package in "$@"; do
-                if zypper --non-interactive search --match-exact "$package" >/dev/null 2>&1; then
-                    available_packages+=("$package")
-                else
-                    log_message "Package $package not found, skipping."
-                fi
-            done
-            ;;
-    esac
-    echo "${available_packages[@]}"
 }
 
 # Function to install packages using the package manager
 install_packages() {
     local packages=("$@")
-    local available_packages=($(check_packages "${packages[@]}"))
-    if [ ${#available_packages[@]} -eq 0 ]; then
-        return
-    fi
-
-    case $pkg_manager in
-        apt-get)
-            sudo_wrapper apt-get install -y -qq "${available_packages[@]}"
-            ;;
-        yum)
-            sudo_wrapper yum install -y -q "${available_packages[@]}"
-            ;;
-        dnf)
-            sudo_wrapper dnf install -y -q "${available_packages[@]}"
-            ;;
-        pacman)
-            sudo_wrapper pacman -S --noconfirm --needed "${available_packages[@]}"
-            ;;
-        zypper)
-            sudo_wrapper zypper install -y "${available_packages[@]}"
-            ;;
-    esac
+    
+    for package in "${packages[@]}"; do
+        case $pkg_manager in
+            apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Package $package not found, skipping." ;;
+            yum) sudo_wrapper yum install -y -q "$package" || log_message "Package $package not found, skipping." ;;
+            dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Package $package not found, skipping." ;;
+            pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Package $package not found, skipping." ;;
+            zypper) sudo_wrapper zypper install -y "$package" || log_message "Package $package not found, skipping." ;;
+            *) log_message "No compatible package manager found."; exit 1 ;;
+        esac
+    done
 }
 
 # Function to install different types of dependencies
@@ -299,7 +245,7 @@ install_dependencies() {
             wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel gtk2-devel gcc-c++ make)
             ;;
         *)
-            log_message "Error: No compatible package manager found."; exit 1 ;;
+            log_message "No compatible package manager found."; exit 1 ;;
     esac
 
     case $dep_type in
