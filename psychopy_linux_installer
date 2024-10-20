@@ -38,6 +38,11 @@ log() {
     fi
 }
 
+# Function to print log messages with timestamp
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
 # Wrapper function to handle sudo requests and permissions dynamically
 sudo_wrapper() {
     local command=("$@")
@@ -121,11 +126,6 @@ sudo_wrapper() {
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
     fi
-}
-
-# Function to print log messages with timestamp
-log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >&2
 }
 
 # Function to detect OS of machine
