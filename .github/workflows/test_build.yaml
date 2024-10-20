@@ -132,6 +132,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
 
       - name: Configure Git
         run: |
@@ -141,7 +143,7 @@ jobs:
       - name: Pull changes from remote
         run: |
           git fetch origin
-          git reset --hard origin/${{ github.ref_name }}
+          git reset --hard origin/${{ github.event.workflow_run.head_branch }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
