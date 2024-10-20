@@ -122,7 +122,7 @@ sudo_wrapper() {
 
 # Function to print log messages with timestamp
 log_message() {
-    echo "$(date "+%Y-%m-%d %H:%M:%S") - $1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >&2
 }
 
 # Function to detect OS of machine
