@@ -70,9 +70,9 @@ sudo_wrapper() {
                 fi
 
                 if $is_pkg_manager_command; then
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager commands (r), continue (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
                 else
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue without sudo (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
                 fi
 
                 case "$response" in
@@ -85,6 +85,9 @@ sudo_wrapper() {
                         ;;
                     [Cc])
                         ;;
+                    [aA])
+                        sudo_mode=auto
+                        ;;
                     *)
                         log_message "Exiting."
                         exit 1
@@ -92,7 +95,7 @@ sudo_wrapper() {
                 esac
                 ;;
             auto)
-                log log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
+                log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
                 log sudo "${command[@]}"
                 ;;
             continue)
@@ -190,7 +193,6 @@ update_package_manager() {
         yum|dnf) sudo_wrapper "$pkg_manager" makecache -q ;;
         pacman) sudo_wrapper pacman -Sy --noconfirm ;;
         zypper) sudo_wrapper zypper refresh ;;
-        *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
 }
 
@@ -235,8 +237,6 @@ check_packages() {
                 fi
             done
             ;;
-        *)
-            log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
     echo "${available_packages[@]}"
 }
@@ -246,28 +246,25 @@ install_packages() {
     local packages=("$@")
     local available_packages=($(check_packages "${packages[@]}"))
     if [ ${#available_packages[@]} -eq 0 ]; then
-        log_message "No packages to install."
         return
     fi
 
     case $pkg_manager in
         apt-get)
-            sudo_wrapper apt-get install -y -qq "${available_packages[@]}" || log_message "Failed to install some packages."
+            sudo_wrapper apt-get install -y -qq "${available_packages[@]}"
             ;;
         yum)
-            sudo_wrapper yum install -y -q "${available_packages[@]}" || log_message "Failed to install some packages."
+            sudo_wrapper yum install -y -q "${available_packages[@]}"
             ;;
         dnf)
-            sudo_wrapper dnf install -y -q "${available_packages[@]}" || log_message "Failed to install some packages."
+            sudo_wrapper dnf install -y -q "${available_packages[@]}"
             ;;
         pacman)
-            sudo_wrapper pacman -S --noconfirm --needed "${available_packages[@]}" || log_message "Failed to install some packages."
+            sudo_wrapper pacman -S --noconfirm --needed "${available_packages[@]}"
             ;;
         zypper)
-            sudo_wrapper zypper install -y "${available_packages[@]}" || log_message "Failed to install some packages."
+            sudo_wrapper zypper install -y "${available_packages[@]}"
             ;;
-        *)
-            log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
 }
 
