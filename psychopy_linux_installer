@@ -43,7 +43,6 @@ sudo_wrapper() {
     local command=("$@")
     local error_output
     local exit_code
-    local is_pkg_manager_command=false
 
     needs_sudo() {
         local exit_code=$1
@@ -64,22 +63,10 @@ sudo_wrapper() {
 
         case "$sudo_mode" in
             ask)
-                if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
-                    log sudo "${command[@]}"
-                    return
-                fi
-
-                if $is_pkg_manager_command; then
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
-                else
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
-                fi
+                read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
 
                 case "$response" in
                     [Rr])
-                        if $is_pkg_manager_command; then
-                            pkg_manager_permission=true
-                        fi
                         log_message "Retrying ${command[*]} with sudo ..."
                         log sudo "${command[@]}"
                         ;;
@@ -112,8 +99,6 @@ sudo_wrapper() {
 
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
-    
-    is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
 
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
@@ -187,8 +172,7 @@ detect_package_manager() {
 update_package_manager() {
     case $pkg_manager in
         apt-get) sudo_wrapper apt-get update -qq ;;
-        yum) sudo_wrapper yum makecache -q ;;
-        dnf) sudo_wrapper dnf makecache -q ;;
+        yum|dnf) sudo_wrapper "$pkg_manager" makecache -q ;;
         pacman) sudo_wrapper pacman -Sy --noconfirm ;;
         zypper) sudo_wrapper zypper refresh ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
@@ -211,7 +195,7 @@ check_packages() {
             ;;
         yum|dnf)
             for package in "$@"; do
-                if yum list available "$package" >/dev/null 2>&1; then
+                if "$pkg_manager" list available "$package" >/dev/null 2>&1; then
                     available_packages+=("$package")
                 else
                     log_message "Package $package not found, skipping."
