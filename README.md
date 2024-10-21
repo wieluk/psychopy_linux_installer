@@ -26,7 +26,7 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
 - For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source.
-- If the downloads fail building Python and wxPython may take 1-2 hours.
+- If the downloads fail, building Python and wxPython may take a long time.
 - The script provides minimal output by default. Use the --verbose option for detailed logging.
 
 ## Usage
@@ -71,7 +71,7 @@ If you do not want prompts throughout the script use `--sudo-mode=auto`.
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
 | `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
 | `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
-| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. Note: This process might take 1-2 hours. |
+| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. |
 | `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. |
 | `-f`, `--force` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output. |
@@ -83,11 +83,10 @@ If you do not want prompts throughout the script use `--sudo-mode=auto`.
 
 - The default version for `--psychopy-version` is set to `2024.1.4` Because new releases for Linux often introduce bugs that require manual fixes. For example `2024.2.1` has problems with opening the GUI when not installing a earlier version first.
 - `--psychopy-version` and `--wxpython-version` can take a pypi version, `latest` or `git` as argument. Git versions are not recommended because they can be unstable.
-- A faster install is possible for OS, Python-version and wxpython-version combination with these [pre-compiled versions](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md).
+- A fast install is possible for OS, Python-version and wxpython-version combination with these [pre-compiled versions](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md).
 
-## Examples
+## Example
 
-- `./psychopy_linux_installer` (all default)
 - `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python -v -f`
 
 ## Script Details
@@ -121,11 +120,6 @@ You can also launch PsychoPy directly using the absolute path:
 **Note:**
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
 
-## Links
-
-- [PsychoPy Github](https://github.com/psychopy/psychopy)
-- [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
-
 ## Automated Installation, Test and build Results
 
 [View the latest installation test results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/installation_results.md)
@@ -137,3 +131,8 @@ All commands, along with the installed versions and set paths, as well as the co
 [wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
 
 [Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
+
+## Links
+
+- [PsychoPy Github](https://github.com/psychopy/psychopy)
+- [PsychoPy_bids GitLab](https://gitlab.com/psygraz/psychopy-bids)
