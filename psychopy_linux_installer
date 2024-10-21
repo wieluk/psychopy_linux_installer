@@ -4,12 +4,11 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-11
-#  Version:       1.1.4
+#  Date:          2024-10-19
+#  Version:       1.1.5
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
-# Function to show help message
 show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
@@ -39,6 +38,11 @@ log() {
     fi
 }
 
+# Function to print log messages with timestamp
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
 # Wrapper function to handle sudo requests and permissions dynamically
 sudo_wrapper() {
     local command=("$@")
@@ -50,18 +54,15 @@ sudo_wrapper() {
         local exit_code=$1
         local error_output=$2
 
-        # Check for common exit codes indicating permission errors
         case $exit_code in
             13|77|100|126|127) return 0 ;;
         esac
 
-        # Check for common error messages indicating permission errors
         if [[ $exit_code -ne 0 ]]; then
             echo "$error_output" | grep -Eqi "permission denied|requires root|must be root|not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with|error: must run as root|unless you are root|root privileges are required|eacces|eperm|not allowed|need root|failed to open|permission problem|permission error|not permitted|cannot access|cannot create|cannot remove|cannot write|read-only file system|you don't have the right|do not have the required permissions|cannot execute"
         fi
     }
 
-    # Function to handle sudo requests based on the sudo_mode
     handle_sudo_request() {
         local command=("$@")
         local response
@@ -74,9 +75,9 @@ sudo_wrapper() {
                 fi
 
                 if $is_pkg_manager_command; then
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager package manager commands (r), continue (c), or quit (q)? [r/c/q] " response
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager commands (r), continue (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
                 else
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue (c), or quit (q)? [r/c/q] " response
+                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue without sudo (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
                 fi
 
                 case "$response" in
@@ -88,6 +89,9 @@ sudo_wrapper() {
                         log sudo "${command[@]}"
                         ;;
                     [Cc])
+                        ;;
+                    [aA])
+                        sudo_mode=auto
                         ;;
                     *)
                         log_message "Exiting."
@@ -114,7 +118,6 @@ sudo_wrapper() {
         return
     fi
 
-    # Execute the command and capture its output and exit code
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
     
@@ -125,11 +128,7 @@ sudo_wrapper() {
     fi
 }
 
-# Function to print log messages with timestamp
-log_message() {
-    echo "$(date "+%Y-%m-%d %H:%M:%S") - $1"
-}
-
+# Function to detect OS of machine
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
@@ -165,6 +164,7 @@ detect_os_version() {
         return
     fi
 
+    log_message "Error: Unable to detect OS version."
     exit 1
 }
 
@@ -181,7 +181,8 @@ detect_package_manager() {
     elif command -v zypper > /dev/null 2>&1; then
         echo "zypper"
     else
-        echo "none"
+        log_message "Error: No compatible package manager found. Exiting."
+        exit 1
     fi
 }
 
@@ -218,7 +219,6 @@ install_dependencies() {
     local dep_type=$1
     local dependencies=()
 
-    # Define dependencies for different package managers
     case $pkg_manager in
         apt-get)
             script_deps=(git curl jq)
@@ -247,8 +247,7 @@ install_dependencies() {
         *)
             log_message "No compatible package manager found."; exit 1 ;;
     esac
-    
-    # Set the list of dependencies based on the type requested
+
     case $dep_type in
         script_deps) dependencies=("${script_deps[@]}") ;;
         python_build_deps) dependencies=("${python_build_deps[@]}") ;;
@@ -257,7 +256,6 @@ install_dependencies() {
         *) log_message "Invalid dependency type specified."; exit 1 ;;
     esac
 
-    # Install the dependencies
     install_packages "${dependencies[@]}"
 }
 
@@ -274,7 +272,7 @@ version_greater_than() {
 check_python_version() {
     local version=$1
     if ! curl -s --head --fail "https://www.python.org/ftp/python/${version}/Python-${version}.tgz" > /dev/null; then
-        log_message "Python version ${version} does not exist. Exiting."
+        log_message "Error: Python version ${version} does not exist. Exiting."
         exit 1
     fi
 }
@@ -285,7 +283,7 @@ get_latest_pypi_version() {
     local latest_version
     latest_version=$(curl -s "https://pypi.org/pypi/${package_name}/json" | jq -r .info.version)
     if [ -z "$latest_version" ]; then
-        log_message "Unable to fetch the latest version for package ${package_name}. Exiting."
+        log_message "Error: Unable to fetch the latest version for package ${package_name}. Exiting."
         exit 1
     fi
     echo "$latest_version"
@@ -296,14 +294,13 @@ check_pypi_for_version() {
     local package=$1
     local version=$2
     if ! curl -s "https://pypi.org/pypi/${package}/${version}/json" | jq -e .info.version > /dev/null; then
-        log_message "${package} version ${version} does not exist. Exiting."
+        log_message "Error: ${package} version ${version} does not exist. Exiting."
         exit 1
     fi
 }
 
 # Function to build Python from source
 build_python_from_source() {
-    local python_version=$1
     log_message "Building Python ${python_version} from source ..."
     
     official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
@@ -324,10 +321,6 @@ build_python_from_source() {
 
 # Function to download prebuilt Python from Nextcloud
 download_prebuilt_python() {
-    local python_version=$1
-    local processor_structure=$2
-    local os_version=$3
-
     nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
     temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
     temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
@@ -343,40 +336,13 @@ download_prebuilt_python() {
             sudo_wrapper make altinstall
         )
         sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+        return 0
     else
-        log_message "Failed to download from Nextcloud. No matching Python version found."
-        build_python_from_source "${python_version}"
-    fi
-}
-
-# Function to get the URL for the wxPython wheel
-get_wxpython_wheel() {
-    local wxpython_version=$1
-    local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-    local wheel_dir
-    local python_version_short
-    local html
-    local wheels
-    local latest_wheel
-    local wheel_url
-
-    wheel_dir="${base_url}${os_version}/"
-    python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
-    html=$(curl -s "$wheel_dir")
-
-    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
-
-    if [ -z "$wheels" ]; then
-        log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure}."
+        log_message "Warning: Failed to download from Nextcloud. No matching Python version found."
         return 1
     fi
-
-    latest_wheel=$(echo "$wheels" | tail -n 1)
-    wheel_url="${wheel_dir}${latest_wheel}"
-
-    echo "$wheel_url"
-    return 0
 }
+
 # Function to build wxPython from source
 build_wxpython() {
     log_message "Installing wxPython build dependencies. This might take a while ..."
@@ -387,6 +353,88 @@ build_wxpython() {
         log_message "Successfully built wxPython from source."
     else
         log_message "Error: Building wxPython from source failed."
+        exit 1
+    fi
+}
+
+# Function install wxPython using pip without building
+wxpython_pip_install() {
+    if log pip install --only-binary=:all: "wxpython==$wxpython_version"; then
+        log_message "Successfully installed wxPython version $wxpython_version using a pip wheel."
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Function to install wxPython from wheel URL
+wxpython_wheelurl_install() {
+    local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
+    local wheel_dir
+    local python_version_short
+    local html
+    local wheels
+    local latest_wheel
+    local wheel_url
+    local wheel_file
+
+    wheel_dir="${base_url}${os_version}/"
+    python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
+    html=$(curl -s "$wheel_dir")
+
+    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
+
+    if [ -z "$wheels" ]; then
+        log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure} on extras.wxpython.org."
+        return 1
+    fi
+
+    latest_wheel=$(echo "$wheels" | tail -n 1)
+    wheel_url="${wheel_dir}${latest_wheel}"
+    wheel_file=$(basename "$wheel_url")
+
+    log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
+    if log curl -s -O "$wheel_url"; then
+        log_message "Download successful. Installing wxPython from $wheel_file..."
+        if log pip install "$wheel_file"; then
+            log_message "Installed wxPython from $wheel_file"
+            sudo_wrapper rm "$wheel_file"
+            return 0
+        else
+            log_message "Warning: Installing wxPython from $wheel_file failed."
+            sudo_wrapper rm "$wheel_file"
+            return 1
+        fi
+    else
+        log_message "Warning: Downloading $wheel_url failed."
+        return 1
+    fi
+}
+
+# Function to install wxPython from Nextcloud
+wxpython_nextcloud_install() {
+    python_major=$(python -c "import sys; print(sys.version_info.major)")
+    python_minor=$(python -c "import sys; print(sys.version_info.minor)")
+    wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
+    wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
+
+    log_message "Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
+    if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
+        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
+        mv "$wheel_name" "$wx_python_file"
+        log_message "Download successful. Installing wxPython from $wx_python_file"
+        if log pip install "$wx_python_file"; then
+            log_message "Installed wxPython from $wx_python_file"
+            sudo_wrapper rm "$wx_python_file"
+            return 0
+        else
+            log_message "Warning: Installing wxPython from Nextcloud failed."
+            sudo_wrapper rm "$wx_python_file"
+            return 1
+        fi
+    else
+        log_message "Warning: Downloading from Nextcloud failed."
+        return 1
     fi
 }
 
@@ -398,9 +446,9 @@ create_desktop_shortcut() {
     local resources_dir="${psychopy_dir}/Resources"
 
     local shortcuts=(
-        "--no-splash" "PsychoPy (v${psychopy_version_clean}) python(v${python_version_clean})" "psychopy.png"
-        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version_clean}) python(v${python_version_clean})" "builder.png"
-        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version_clean}) python(v${python_version_clean})" "coder.png"
+        "--no-splash" "PsychoPy (v${psychopy_version}) python(v${python_version})" "psychopy.png"
+        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) python(v${python_version})" "builder.png"
+        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) python(v${python_version})" "coder.png"
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
@@ -434,7 +482,7 @@ create_desktop_shortcut() {
         local desktop_content="[Desktop Entry]
 Version=1.0
 Name=${pretty_name}
-Comment=Run PsychoPy version ${psychopy_version_clean} with ${exec_args}
+Comment=Run PsychoPy version ${psychopy_version} with ${exec_args}
 Exec=${psychopy_exec} ${exec_args}
 ${icon_line}
 Terminal=false
@@ -455,7 +503,7 @@ Categories=Education;Science;"
 add_psychopy_to_path() {
     local shell_name
     local bin_dir="${psychopy_dir}/.bin"
-    local target_bin="${bin_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    local target_bin="${bin_dir}/psychopy_${psychopy_version}_py_${python_version}"
 
     shell_name=$(basename "$SHELL")
     mkdir -p "$bin_dir"
@@ -506,16 +554,13 @@ add_psychopy_to_path() {
     echo "source $config_file"
     echo
     echo "To start PsychoPy from terminal, use:"
-    echo "psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+    echo "psychopy_${psychopy_version}_py_${python_version}"
     echo
     echo "You can also use the absolute path:"
     echo "${psychopy_dir}/bin/psychopy"
 }
 
-
-
 main() {
-    # Set default values for variables
     python_version="3.10.15"
     python_version_set_by_user=false
     psychopy_version="2024.1.4"
@@ -534,7 +579,6 @@ main() {
     disable_shortcut=false
     disable_path=false
 
-    # Parse command line arguments
     for arg in "$@"; do
         case $arg in
             --python-version=*)
@@ -579,7 +623,7 @@ main() {
                         build_wx=true
                         ;;
                     *)
-                        echo "Invalid option for --build: $build_arg"
+                        echo "Error: Invalid option for --build: $build_arg"
                         show_help
                         exit 1
                         ;;
@@ -609,26 +653,20 @@ main() {
                 exit 0
                 ;;
             *)
-                echo "Unknown option: $arg"
+                echo "Error: Unknown option: $arg"
                 show_help
                 exit 1
                 ;;
         esac
     done
 
-
-
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "Initiating PsychoPy installation on ${os_version} (${processor_structure} architecture)."
+    log_message "Initiating PsychoPy(${psychopy_version}) installation on ${os_version} (${processor_structure})."
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
-    if [ "$pkg_manager" == "none" ]; then
-        log_message "No compatible package manager found. Exiting."
-        exit 1
-    fi
 
     # Update package manager
     log_message "Updating ${pkg_manager} package manager."
@@ -641,12 +679,8 @@ main() {
     # Determine PsychoPy version to install
     if [ "$psychopy_version" == "latest" ]; then
         psychopy_version=$(get_latest_pypi_version "psychopy")
-        psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
-    elif [ "$psychopy_version" == "git" ]; then
-        psychopy_version_clean=git_dev
-    else
+    elif [ "$psychopy_version" != "git" ]; then
         check_pypi_for_version psychopy "${psychopy_version}"
-        psychopy_version_clean=$(echo "${psychopy_version}" | tr -d ',;')
     fi
 
     # Install PsychoPy dependencies
@@ -660,14 +694,12 @@ main() {
     else
         check_python_version "${python_version}"
     fi
-
-    # Clean up Python version string
-    python_version_clean=$(echo "${python_version}" | tr -d ',;')
+    
     # Set up PsychoPy installation directory
     if [ "$no_versioned_install_dir" = true ]; then
         psychopy_dir="${install_dir}"
     else
-        psychopy_dir="${install_dir}/psychopy_${psychopy_version_clean}_py_${python_version_clean}"
+        psychopy_dir="${install_dir}/psychopy_${psychopy_version}_py_${python_version}"
     fi
 
     if [ -d "${psychopy_dir}" ]; then
@@ -676,7 +708,7 @@ main() {
             sudo_wrapper rm -rf "${psychopy_dir}"
             sudo_wrapper mkdir -p "${psychopy_dir}"
         else
-            log_message "Directory ${psychopy_dir} already exists. Use the --force flag to overwrite. Exiting."
+            log_message "Error: Directory ${psychopy_dir} already exists. Use the --force flag to overwrite. Exiting."
             exit 1
         fi
     else
@@ -687,16 +719,9 @@ main() {
     #Check if psychopy_dir is writeable else change ownership 
     [ -w "${psychopy_dir}" ] || sudo_wrapper chown "$USER" "${psychopy_dir}"
 
-    #Exit script if writing or cd to psychopy_dir is not possible
-    if [ -w "${psychopy_dir}" ]; then
-        if cd "${psychopy_dir}"; then
-            :
-        else
-            log_message "Failed to change directory to ${psychopy_dir}. Exiting."
-            exit 1
-        fi
-    else
-        log_message "Cannot write to ${psychopy_dir}. Exiting."
+    # Exit script if writing or changing directory to psychopy_dir is not possible
+    if ! [ -w "${psychopy_dir}" ] || ! cd "${psychopy_dir}"; then
+        log_message "Error: Failed to access or change directory to ${psychopy_dir}. Exiting."
         exit 1
     fi
 
@@ -708,9 +733,11 @@ main() {
         log install_dependencies python_build_deps
 
         if [ "$build_python" = true ]; then
-            build_python_from_source "$python_version"
-        else
-            download_prebuilt_python "$python_version" "$processor_structure" "$os_version"
+            build_python_from_source
+        elif download_prebuilt_python; then
+            :
+        else   
+            build_python_from_source
         fi
     fi
 
@@ -731,7 +758,7 @@ main() {
     log pip install -U pip distro sip six psychtoolbox attrdict
 
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
-    if version_greater_than "2024.2.0" "$psychopy_version_clean"; then
+    if version_greater_than "2024.2.0" "$psychopy_version"; then
         log_message "PsychoPy version < 2024.2.0, installing numpy<2"
         log pip install "numpy<2"
     fi
@@ -739,53 +766,26 @@ main() {
     # Determine wxPython version and install it
     if [ "$wxpython_version" = "latest" ]; then
         wxpython_version=$(get_latest_pypi_version "wxPython")
+    elif [ "$wxpython_version" != "git" ]; then
+        check_pypi_for_version wxpython "${wxpython_version}"
     fi
 
     if [ "$wxpython_version" = "git" ]; then
-        log_message "Installing wxpython build dependencies. This might take a while ..."
+        log_message "Installing wxPython build dependencies. This might take a while ..."
         install_dependencies wxpython_deps
         log_message "Building wxPython from git. This might take a while ..."
         log pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "$build_wx" = true ]; then
         build_wxpython
     else
-        if log pip install --only-binary=:all: "wxpython==$wxpython_version"; then
-            log_message "Successfully installed wxPython version $wxpython_version using a pip wheel."
-        elif wheel_url=$(get_wxpython_wheel "$wxpython_version"); then
-            wheel_file=$(basename "$wheel_url")
-            log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
-            log curl -s -O "$wheel_url"
-            log_message "Download successful. Installing wxPython from $wheel_file..."
-            if log pip install "$wheel_file"; then
-                log_message "Installed wxPython from $wheel_file"
-                sudo_wrapper rm "$wheel_file"
-            else
-                log_message "Error: Installing wxPython from $wheel_file failed. Attempting to build from source."
-                build_wxpython
-            fi
+        if wxpython_pip_install; then
+            :
+        elif wxpython_wheelurl_install; then
+            :
+        elif wxpython_nextcloud_install; then
+            :
         else
-            # If no wheel is found, try downloading from Nextcloud or build from source
-            python_major=$(python -c "import sys; print(sys.version_info.major)")
-            python_minor=$(python -c "import sys; print(sys.version_info.minor)")
-
-            wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
-            
-            wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
-            
-            log_message "There is no matching wheel on wxpython.org. Trying to download wxPython wheel from Nextcloud"
-
-            if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
-                wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
-                mv "$wheel_name" "$wx_python_file"
-                log_message "Download successful. Installing wxPython from $wx_python_file"
-                if ! log pip install "$wx_python_file"; then
-                    log_message "Error: Installing wxPython failed. Attempting to build from source."
-                    build_wxpython
-                fi
-                sudo_wrapper rm "$wx_python_file"
-            else
-                build_wxpython
-            fi
+            build_wxpython
         fi
     fi
 
@@ -796,11 +796,11 @@ main() {
     fi
 
     # Install PsychoPy
-    log_message "Installing PsychoPy version ${psychopy_version_clean}"
+    log_message "Installing PsychoPy version ${psychopy_version}"
     if [ "$psychopy_version" == "git" ]; then
         log pip install git+https://github.com/psychopy/psychopy.git@dev
     else
-        log pip install psychopy=="${psychopy_version_clean}"
+        log pip install psychopy=="${psychopy_version}"
     fi
 
     # Check if PsychoPy was successfully installed
@@ -808,7 +808,6 @@ main() {
         log "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use --verbose flag."
         exit 1
     fi
-
 
     # Install additional packages if specified
     if [ -n "$additional_packages" ]; then
@@ -834,14 +833,14 @@ main() {
     sudo_wrapper usermod -a -G psychopy "$USER"
     sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
 
-    # Create desktop shortcut if not disabled
+    # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
     else
         log_message "Desktop shortcut creation disabled by user."
     fi
 
-    # Add PsychoPy to PATH if not disabled
+    # Add PsychoPy to PATH
     if [ "$disable_path" = false ]; then
         add_psychopy_to_path
     else
