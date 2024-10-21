@@ -65,7 +65,7 @@ If you do not want prompts throughout the script use `--sudo-mode=auto`.
 
 | Option | Description |
 |--------|-------------|
-| `--python-version=`<br>`VERSION` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10.15`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
+| `--python-version=`<br>`VERSION` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). Only versions `3.8`, `3.9`, or `3.10` are allowed. |
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
