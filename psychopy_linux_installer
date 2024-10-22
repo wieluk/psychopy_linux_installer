@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --python-version=3.8|3.9|3.10                      Specify Python version (default: 3.10). Only 3.8, 3.9, or 3.10 allowed.
+  --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10). Only 3.8, 3.9, or 3.10 allowed.
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
@@ -294,34 +294,60 @@ check_pypi_for_version() {
 
 # Function to build Python from source
 build_python_from_source() {
+    local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Building Python ${python_version} from source ..."
+    major_minor_version="${python_version}"
+    official_base_url="https://www.python.org/ftp/python/"
     
-    official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
-    temp_file="Python-${python_version}.tgz"
-    temp_dir="Python-${python_version}_temp"
+    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
+    official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
+    temp_file="Python-${latest_patch_version}.tgz"
+    temp_dir="Python-${latest_patch_version}_temp"
+    
     log curl -s -O "${official_url}"
     mkdir -p "${temp_dir}"
     tar -xf "${temp_file}" -C "${temp_dir}"
+
     (
-        cd "${temp_dir}/Python-${python_version}" || exit
+        cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
         log ./configure --enable-optimizations --with-ensurepip=install
         log make -j "$(nproc)"
         sudo_wrapper make altinstall
     )
+
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+    log_message "Python ${latest_patch_version} built and installed successfully."
+    return 0
 }
 
 # Function to download prebuilt Python from Nextcloud
 download_prebuilt_python() {
-    nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
-    temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
-    temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
+    local versions_url temp_versions_file latest_patch_version nextcloud_url temp_file temp_dir
+    versions_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_versions.txt"
+    temp_versions_file="/tmp/python_versions.txt"
+    
+    log_message "Downloading available Python versions from Nextcloud ..."
+    if ! curl -s -f -X GET "${versions_url}" --output "${temp_versions_file}"; then
+        log_message "Warning: Could not download python_versions.txt from Nextcloud."
+        return 1
+    fi
 
-    log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
+    latest_patch_version=$(grep -oP "python-${python_version}\.[0-9]+-${processor_structure}-${os_version}.tar.gz" "${temp_versions_file}" | sort -V | tail -n 1)
+
+    if [ -z "${latest_patch_version}" ]; then
+        log_message "Warning: No matching Python version found in python_versions.txt for Python ${python_version}."
+        return 1
+    fi
+
+    nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=${latest_patch_version}"
+    temp_file="${latest_patch_version}"
+    temp_dir="${latest_patch_version%.tar.gz}_temp"
+
+    log_message "Trying to download prebuilt Python ${latest_patch_version} for ${os_version} ${processor_structure} from Nextcloud ..."
 
     if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-        log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
+        log_message "Successfully downloaded Python ${latest_patch_version} ... making an altinstall ..."
         mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
         (
@@ -439,9 +465,9 @@ create_desktop_shortcut() {
     local resources_dir="${psychopy_dir}/Resources"
 
     local shortcuts=(
-        "--no-splash" "PsychoPy (v${psychopy_version}) python(v${python_version%.*})" "psychopy.png"
-        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) python(v${python_version%.*})" "builder.png"
-        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) python(v${python_version%.*})" "coder.png"
+        "--no-splash" "PsychoPy (v${psychopy_version}) python(v${python_version})" "psychopy.png"
+        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) python(v${python_version})" "builder.png"
+        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) python(v${python_version})" "coder.png"
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
@@ -496,7 +522,7 @@ Categories=Education;Science;"
 add_psychopy_to_path() {
     local shell_name
     local bin_dir="${psychopy_dir}/.bin"
-    local target_bin="${bin_dir}/psychopy_${psychopy_version}_py_${python_version%.*}"
+    local target_bin="${bin_dir}/psychopy_${psychopy_version}_py${python_version}"
 
     shell_name=$(basename "$SHELL")
     mkdir -p "$bin_dir"
@@ -547,14 +573,14 @@ add_psychopy_to_path() {
     echo "source $config_file"
     echo
     echo "To start PsychoPy from terminal, use:"
-    echo "psychopy_${psychopy_version}_py_${python_version%.*}"
+    echo "psychopy_${psychopy_version}_py${python_version}"
     echo
     echo "You can also use the absolute path:"
     echo "${psychopy_dir}/bin/psychopy"
 }
 
 main() {
-    python_version="3.10.15"
+    python_version="3.10"
     python_version_set_by_user=false
     psychopy_version="2024.1.4"
     wxpython_version="4.2.2"
@@ -575,15 +601,9 @@ main() {
     for arg in "$@"; do
         case $arg in
             --python-version=*)
-                input_version="${arg#*=}"
-                if [ "$input_version" = "3.8" ]; then
-                    python_version="3.8.20"
-                elif [ "$input_version" = "3.9" ]; then
-                    python_version="3.9.20"
-                elif [ "$input_version" = "3.10" ]; then
-                    python_version="3.10.15"
-                else
-                    echo "Error: Invalid Python version specified. Only 3.8, 3.9, or 3.10 are allowed."
+                python_version="${arg#*=}"
+                if [[ ! $python_version =~ ^3\.(8|9|10)$ ]]; then
+                    echo "Error: Invalid Python version specified. Only major versions 3.8, 3.9, or 3.10 are allowed."
                     exit 1
                 fi
                 python_version_set_by_user=true
@@ -686,17 +706,23 @@ main() {
     log_message "Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies psychopy_deps
 
-    #If no python version is set by user, use system python
-    if [ "$python_version_set_by_user" = false ] && command -v python3 &>/dev/null && system_python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')") && [[ "$system_python_version" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
-        log_message "Using system Python version: $system_python_version"
-        python_version=$system_python_version
+    # If no python_version is set by the user use the latest between 3.8 and 3.10
+    if [ "$python_version_set_by_user" = false ]; then
+        available_python_versions=$(compgen -c python | grep -oP '^python3\.\d+\.\d+$' | sort -V)
+        latest_python_version=$(echo "$available_python_versions" | grep -E '^python3\.(8|9|10)\.[0-9]+$' | sort -V | tail -n 1)
+
+        if [ -n "$latest_python_version" ]; then
+            system_python_version=$($latest_python_version --version 2>&1 | awk '{print $2}')
+            log_message "Using latest available Python version: $system_python_version"
+            python_version="$system_python_version"
+        fi
     fi
-    
+
     # Set up PsychoPy installation directory
     if [ "$no_versioned_install_dir" = true ]; then
         psychopy_dir="${install_dir}"
     else
-        psychopy_dir="${install_dir}/psychopy_${psychopy_version}_py_${python_version%.*}"
+        psychopy_dir="${install_dir}/psychopy_${psychopy_version}_py${python_version}"
     fi
 
     if [ -d "${psychopy_dir}" ]; then
@@ -722,8 +748,8 @@ main() {
         exit 1
     fi
 
-    # Check if python version exists else install python
-    if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version%.*}"; then
+        # Check if python version exists else install python
+    if command -v python"${python_version}" &> /dev/null; then
         log_message "Python version ${python_version} is already installed. Skipping installation."
     else
         log_message "Installing python build dependencies ..."
@@ -739,14 +765,14 @@ main() {
     fi
 
     # Check if Python was successfully installed
-    if ! command -v python"${python_version%.*}" &> /dev/null; then
-        log_message "Error: python${python_version%.*} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
+    if ! command -v python"${python_version}" &> /dev/null; then
+        log_message "Error: python${python_version} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
         exit 1
     fi
 
     # Create and activate virtual environment
     log_message "Creating and activating virtual environment..."
-    python"${python_version%.*}" -m venv "${psychopy_dir}"
+    python"${python_version}" -m venv "${psychopy_dir}"
 
     log source "${psychopy_dir}/bin/activate"
 

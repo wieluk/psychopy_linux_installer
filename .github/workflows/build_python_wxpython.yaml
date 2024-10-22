@@ -215,6 +215,17 @@ jobs:
           FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+          
+          FILENAME="python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
+          echo "$FILENAME" >> /tmp_dir/python_filenames.txt
+
+      - name: Upload Python Filenames Artifact
+        if: env.skip_process == 'false'
+        if: steps.build-python.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt
+          path: /tmp_dir/python_filenames.txt
 
       - name: Build and upload wxPython
         if: env.skip_process == 'false'
@@ -295,7 +306,8 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          path: ./artifacts/results
+          pattern: 'result*'
           merge-multiple: true
 
       - name: Create and save result table
@@ -308,15 +320,30 @@ jobs:
           |---|---|---|
           EOF
 
-          cat ./artifacts/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
+          cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
 
           if [ -s results.md ]; then
             cp results.md .github/build_results.md
           else
             echo "::warning::results.md is empty; skipping save."
           fi
-
+      
       - name: Commit and push changes
         run: |
           git add -f .github/build_results.md
           git diff-index --quiet HEAD || (git commit -m "Update cloud build results" && git push --force)
+      
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts/python
+          pattern: 'python*'
+          merge-multiple: true
+
+      - name: Update Python version index (python_versions.txt)
+        run: |
+          INDEX_FILE="/tmp_dir/python_versions.txt"
+          touch "$INDEX_FILE"
+          cat ./artifacts/python/*.txt >> "$INDEX_FILE"
+
+          curl -T "$INDEX_FILE" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+
