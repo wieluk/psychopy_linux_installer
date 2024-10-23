@@ -253,7 +253,7 @@ jobs:
           cd "$WXPYTHON_DIR"
           
           # Use the specific Python version for building wxPython
-          $PYTHON_BIN -m pip wheel .
+          python -m pip wheel .
                     
           PYTHON_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
           PYTHON_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
