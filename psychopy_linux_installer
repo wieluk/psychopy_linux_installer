@@ -314,35 +314,11 @@ build_python_from_source() {
     tar -xf "${temp_file}" -C "${temp_dir}"
     (
         cd "${temp_dir}/Python-${python_version}" || exit
-        log ./configure --enable-optimizations --with-ensurepip=install
+        log ./configure --enable-optimizations --with-ensurepip=install --prefix=/"${psychopy_dir}"/python
         log make -j "$(nproc)"
         sudo_wrapper make altinstall
     )
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-}
-
-# Function to download prebuilt Python from Nextcloud
-download_prebuilt_python() {
-    nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
-    temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
-    temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
-
-    log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
-
-    if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-        log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
-        mkdir -p "${temp_dir}"
-        tar -xf "${temp_file}" -C "${temp_dir}"
-        (
-            cd "${temp_dir}" || exit
-            sudo_wrapper make altinstall
-        )
-        sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-        return 0
-    else
-        log_message "Warning: Failed to download from Nextcloud. No matching Python version found."
-        return 1
-    fi
 }
 
 # Function to build wxPython from source
@@ -733,14 +709,7 @@ main() {
     else
         log_message "Installing python build dependencies ..."
         log install_dependencies python_build_deps
-
-        if [ "$build_python" = true ]; then
-            build_python_from_source
-        elif download_prebuilt_python; then
-            :
-        else   
-            build_python_from_source
-        fi
+        build_python_from_source
     fi
 
     # Check if Python was successfully installed
