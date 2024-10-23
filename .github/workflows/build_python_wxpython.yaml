@@ -200,7 +200,7 @@ jobs:
           curl -O "https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/Python-${{ env.PYTHON_VERSION }}.tgz"
           tar -xf "Python-${{ env.PYTHON_VERSION }}.tgz"
           cd "Python-${{ env.PYTHON_VERSION }}"
-          ./configure --enable-optimizations
+          ./configure --enable-optimizations --with-ensurepip=install --with-venv
           make -j "$(nproc)"
           sudo make altinstall
 
