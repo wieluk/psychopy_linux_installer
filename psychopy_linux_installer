@@ -703,13 +703,16 @@ main() {
         exit 1
     fi
 
-    # Check if python version exists else install python
-    if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
-        log_message "Python version ${python_version} is already installed. Skipping installation."
-    else
-        log_message "Installing python build dependencies ..."
-        log install_dependencies python_build_deps
+    if [ "$build_python" = true ]; then
         build_python_from_source
+    else
+        if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
+            log_message "Python version ${python_version} is already installed. Skipping installation."
+        else
+            log_message "Installing python build dependencies ..."
+            install_dependencies python_build_deps
+            build_python_from_source
+        fi
     fi
 
     # Check if Python was successfully installed
