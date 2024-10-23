@@ -119,8 +119,12 @@ jobs:
    
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "skip_process=true" >> $GITHUB_ENV
+            
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
             echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
+            
+            RESULT_FILE_PY="/tmp_dir/python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.txt"
+            echo "python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.tar.gz" >> $RESULT_FILE_PY
           else
             echo "skip_process=false" >> $GITHUB_ENV
           fi
@@ -220,16 +224,16 @@ jobs:
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           
-          FILENAME="python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
-          echo "$FILENAME" >> /tmp_dir/python_filenames.txt
-
+          RESULT_FILE_PY="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt"
+          echo "python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz" >> $RESULT_FILE_PY
+      
       - name: Upload Python Filenames Artifact
         if: env.skip_process == 'true' || steps.build-python.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt
-          path: /tmp_dir/python_filenames.txt
-
+          name: python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}
+          path: /tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt
+      
       - name: Build and upload wxPython
         if: env.skip_process == 'false'
         id: build-wxpython
