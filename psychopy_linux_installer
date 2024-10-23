@@ -84,18 +84,18 @@ sudo_wrapper() {
                         if $is_pkg_manager_command; then
                             pkg_manager_permission=true
                         fi
-                        log_message "Retrying ${command[*]} with sudo ..."
+                        log_message "Info: Retrying ${command[*]} with sudo ..."
                         log sudo "${command[@]}"
                         ;;
                     [Cc])
                         ;;
                     [aA])
-                        log_message "Retrying ${command[*]} with sudo and setting sudo-mode=auto ..."
+                        log_message "Info: Retrying ${command[*]} with sudo and setting sudo-mode=auto ..."
                         log sudo "${command[@]}"
                         sudo_mode=auto
                         ;;
                     *)
-                        log_message "Exiting."
+                        log_message "Info: Exiting."
                         exit 1
                         ;;
                 esac
@@ -195,7 +195,7 @@ update_package_manager() {
         dnf) sudo_wrapper dnf check-update -q ;;
         pacman) sudo_wrapper pacman -Sy --noconfirm ;;
         zypper) sudo_wrapper zypper refresh ;;
-        *) log_message "No compatible package manager found."; exit 1 ;;
+        *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
 }
 
@@ -205,12 +205,12 @@ install_packages() {
     
     for package in "${packages[@]}"; do
         case $pkg_manager in
-            apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Package $package not found, skipping." ;;
-            yum) sudo_wrapper yum install -y -q "$package" || log_message "Package $package not found, skipping." ;;
-            dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Package $package not found, skipping." ;;
-            pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Package $package not found, skipping." ;;
-            zypper) sudo_wrapper zypper install -y "$package" || log_message "Package $package not found, skipping." ;;
-            *) log_message "No compatible package manager found."; exit 1 ;;
+            apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            yum) sudo_wrapper yum install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            zypper) sudo_wrapper zypper install -y "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            *) log_message "Error: No compatible package manager found."; exit 1 ;;
         esac
     done
 }
@@ -246,7 +246,7 @@ install_dependencies() {
             wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel gtk2-devel gcc-c++ make)
             ;;
         *)
-            log_message "No compatible package manager found."; exit 1 ;;
+            log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
 
     case $dep_type in
@@ -254,7 +254,7 @@ install_dependencies() {
         python_build_deps) dependencies=("${python_build_deps[@]}") ;;
         psychopy_deps) dependencies=("${psychopy_deps[@]}") ;;
         wxpython_deps) dependencies=("${wxpython_deps[@]}") ;;
-        *) log_message "Invalid dependency type specified."; exit 1 ;;
+        *) log_message "Error: Invalid dependency type specified."; exit 1 ;;
     esac
 
     install_packages "${dependencies[@]}"
@@ -294,7 +294,7 @@ check_pypi_for_version() {
 # Function to build Python from source
 build_python() {
     local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
-    log_message "Building Python ${python_version} from source this might take a while ..."
+    log_message "Info: Building Python ${python_version} from source this might take a while ..."
     major_minor_version="${python_version}"
     official_base_url="https://www.python.org/ftp/python/"
     
@@ -316,7 +316,7 @@ build_python() {
     )
 
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-    log_message "Python ${latest_patch_version} built and installed successfully."
+    log_message "Info: Python ${latest_patch_version} built and installed successfully."
     return 0
 }
 
@@ -342,10 +342,10 @@ python_nextcloud_install() {
     temp_file="${latest_patch_version}"
     temp_dir="${latest_patch_version%.tar.gz}_temp"
 
-    log_message "Trying to download prebuilt Python ${latest_patch_version} for ${os_version} ${processor_structure} from Nextcloud ..."
+    log_message "Info: Trying to download prebuilt Python ${latest_patch_version} for ${os_version} ${processor_structure} from Nextcloud ..."
 
     if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-        log_message "Successfully downloaded Python ${latest_patch_version} ... making an altinstall ..."
+        log_message "Info: Successfully downloaded Python ${latest_patch_version} ... making an altinstall ..."
         mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
         (
@@ -362,12 +362,12 @@ python_nextcloud_install() {
 
 # Function to build wxPython from source
 build_wxpython() {
-    log_message "Installing wxPython build dependencies. This might take a while ..."
+    log_message "Info: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
-    log_message "Building wxPython $wxpython_version from source. This might take a while ..."
+    log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
     if pip install --no-binary=:all: "wxpython==$wxpython_version"; then
-        log_message "Successfully built wxPython from source."
+        log_message "Info: Successfully built wxPython from source."
     else
         log_message "Error: Building wxPython from source failed."
         exit 1
@@ -377,7 +377,7 @@ build_wxpython() {
 # Function install wxPython using pip without building
 wxpython_pip_install() {
     if log pip install --only-binary=:all: "wxpython==$wxpython_version"; then
-        log_message "Successfully installed wxPython version $wxpython_version using a pip wheel."
+        log_message "Info: Successfully installed wxPython version $wxpython_version using a pip wheel."
         return 0
     else
         return 1
@@ -396,7 +396,7 @@ wxpython_wheelurl_install() {
     wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
 
     if [ -z "$wheels" ]; then
-        log_message "No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure} on extras.wxpython.org."
+        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure} on extras.wxpython.org."
         return 1
     fi
 
@@ -404,11 +404,11 @@ wxpython_wheelurl_install() {
     wheel_url="${wheel_dir}${latest_wheel}"
     wheel_file=$(basename "$wheel_url")
 
-    log_message "Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
+    log_message "Info: Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
     if log curl -s -O "$wheel_url"; then
-        log_message "Download successful. Installing wxPython from $wheel_file..."
+        log_message "Info: Download successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
-            log_message "Installed wxPython from $wheel_file"
+            log_message "Info: Installed wxPython from $wheel_file"
             sudo_wrapper rm "$wheel_file"
             return 0
         else
@@ -429,13 +429,13 @@ wxpython_nextcloud_install() {
     wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
     wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
 
-    log_message "Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
+    log_message "Info: Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
     if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
         mv "$wheel_name" "$wx_python_file"
-        log_message "Download successful. Installing wxPython from $wx_python_file"
+        log_message "Info: Download successful. Installing wxPython from $wx_python_file"
         if log pip install "$wx_python_file"; then
-            log_message "Installed wxPython from $wx_python_file"
+            log_message "Info: Installed wxPython from $wx_python_file"
             sudo_wrapper rm "$wx_python_file"
             return 0
         else
@@ -463,7 +463,7 @@ create_desktop_shortcut() {
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
-        log_message "Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
+        log_message "Warning: Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
         return
     fi
 
@@ -482,7 +482,7 @@ create_desktop_shortcut() {
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
             sudo_wrapper curl -o "${icon_path}" "${icon_url}"
         else
-            log_message "Icon file ${icon_url} not found, skipping..."
+            log_message "Warning: Icon file ${icon_url} not found, skipping..."
         fi
 
         local icon_line=""
@@ -541,7 +541,7 @@ add_psychopy_to_path() {
             path_line="setenv PATH ${bin_dir}:\$PATH"
             ;;
         *)
-            log_message "Unsupported shell: $shell_name; PsychoPy not added to path"
+            log_message "Warning: Unsupported shell: $shell_name; PsychoPy not added to path"
             echo
             log_message "PsychoPy installation complete!"
             echo
@@ -553,9 +553,9 @@ add_psychopy_to_path() {
 
     if ! grep -Fxq "$path_line" "$config_file"; then
         sudo_wrapper sh -c "echo '$path_line' >> \"$config_file\""
-        log_message "PsychoPy path added to $config_file"
+        log_message "Info: PsychoPy path added to $config_file"
     else
-        log_message "PsychoPy path already exists in $config_file"
+        log_message "Info: PsychoPy path already exists in $config_file"
     fi
 
     echo
@@ -674,17 +674,17 @@ main() {
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "Initiating PsychoPy(${psychopy_version}) installation on ${os_version} (${processor_structure})."
+    log_message "Info: Initiating PsychoPy(${psychopy_version}) installation on ${os_version} (${processor_structure})."
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
 
     # Update package manager
-    log_message "Updating ${pkg_manager} package manager."
+    log_message "Info: Updating ${pkg_manager} package manager."
     update_package_manager "$pkg_manager"
 
     # Install basic dependencies
-    log_message "Installing git, curl, and jq."
+    log_message "Info: Installing git, curl, and jq."
     install_dependencies script_deps
 
     # Determine PsychoPy version to install
@@ -695,7 +695,7 @@ main() {
     fi
 
     # Install PsychoPy dependencies
-    log_message "Installing PsychoPy dependencies. This might take a while ..."
+    log_message "Info: Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies psychopy_deps
 
     # If no python_version is set by the user, use the latest available among 3.10, 3.9, or 3.8
@@ -703,7 +703,7 @@ main() {
         for version in 3.10 3.9 3.8; do
             if command -v python$version &> /dev/null; then
                 python_version=$version
-                log_message "Using Python version: $python_version"
+                log_message "Inof: Python version not set by user, using existing version: $python_version"
                 break
             fi
         done
@@ -718,7 +718,7 @@ main() {
 
     if [ -d "${psychopy_dir}" ]; then
         if [ "$force_overwrite" = true ]; then
-            log_message "Directory ${psychopy_dir} already exists. Overwriting ..."
+            log_message "Info: Directory ${psychopy_dir} already exists. Overwriting ..."
             sudo_wrapper rm -rf "${psychopy_dir}"
             sudo_wrapper mkdir -p "${psychopy_dir}"
         else
@@ -726,7 +726,7 @@ main() {
             exit 1
         fi
     else
-        log_message "Creating PsychoPy directory at ${psychopy_dir} ..."
+        log_message "Info: Creating PsychoPy directory at ${psychopy_dir} ..."
         sudo_wrapper mkdir -p "${psychopy_dir}"
     fi
 
@@ -741,9 +741,9 @@ main() {
 
         # Check if python version exists else install python
     if command -v python"${python_version}" &> /dev/null; then
-        log_message "Python version ${python_version} is already installed. Skipping installation."
+        log_message "Info: Python version ${python_version} is already installed. Skipping installation."
     else
-        log_message "Installing python build dependencies ..."
+        log_message "Info: Installing python build dependencies ..."
         log install_dependencies python_build_deps
 
         if [ "$build_python" = true ]; then
@@ -762,18 +762,18 @@ main() {
     fi
 
     # Create and activate virtual environment
-    log_message "Creating and activating virtual environment..."
+    log_message "Info:Creating and activating virtual environment..."
     python"${python_version}" -m venv "${psychopy_dir}"
 
     log source "${psychopy_dir}/bin/activate"
 
     # Upgrade pip and install required Python packages
-    log_message "Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
+    log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
     log pip install -U pip distro sip six psychtoolbox attrdict
 
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
     if version_greater_than "2024.2.0" "$psychopy_version"; then
-        log_message "PsychoPy version < 2024.2.0, installing numpy<2"
+        log_message "Info:PsychoPy version < 2024.2.0, installing numpy<2"
         log pip install "numpy<2"
     fi
 
@@ -785,9 +785,9 @@ main() {
     fi
 
     if [ "$wxpython_version" = "git" ]; then
-        log_message "Installing wxPython build dependencies. This might take a while ..."
+        log_message "Info: Installing wxPython build dependencies. This might take a while ..."
         install_dependencies wxpython_deps
-        log_message "Building wxPython from git. This might take a while ..."
+        log_message "Info: Building wxPython from git. This might take a while ..."
         log pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "$build_wx" = true ]; then
         build_wxpython
@@ -805,12 +805,12 @@ main() {
 
     # Check if wxPython was successfully installed
     if ! pip show wxPython &> /dev/null; then
-        log "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
+        log_message "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
         exit 1
     fi
 
     # Install PsychoPy
-    log_message "Installing PsychoPy version ${psychopy_version}"
+    log_message "Info: Installing PsychoPy version ${psychopy_version}"
     if [ "$psychopy_version" == "git" ]; then
         log pip install git+https://github.com/psychopy/psychopy.git@dev
     else
@@ -819,19 +819,19 @@ main() {
 
     # Check if PsychoPy was successfully installed
     if ! pip show psychopy &> /dev/null; then
-        log "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use --verbose flag."
+        log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use --verbose flag."
         exit 1
     fi
 
     # Install additional packages if specified
     if [ -n "$additional_packages" ]; then
-        log_message "Installing additional packages..."
+        log_message "Info: Installing additional packages..."
         IFS=',' read -ra PACKAGES <<< "$additional_packages"
         for package in "${PACKAGES[@]}"; do
-            log_message "Installing $package..."
+            log_message "Info: Installing $package..."
             if log pip install "$package"; then
                 installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
-                log_message "${package%%=*} version $installed_version installed successfully."
+                log_message "Info: ${package%%=*} version $installed_version installed successfully."
             else
                 log_message "Warning: Failed to install $package. Skipping."
             fi
@@ -842,7 +842,7 @@ main() {
     deactivate
 
     # Add user to the 'psychopy' group and set security limits
-    log_message "Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
+    log_message "Info: Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
     sudo_wrapper groupadd --force psychopy
     sudo_wrapper usermod -a -G psychopy "$USER"
     sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
@@ -851,7 +851,7 @@ main() {
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
     else
-        log_message "Desktop shortcut creation disabled by user."
+        log_message "Info: Desktop shortcut creation disabled by user."
     fi
 
     # Add PsychoPy to PATH
@@ -859,7 +859,7 @@ main() {
         add_psychopy_to_path
     else
         echo
-        log_message "PsychoPy installation complete!"
+        log_message "Info: PsychoPy installation complete!"
         echo
         echo "To start PsychoPy, use:"
         echo "${psychopy_dir}/bin/psychopy"
