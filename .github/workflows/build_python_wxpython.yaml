@@ -25,7 +25,7 @@ jobs:
             sudo apt-get update || true
             sudo apt-get install -y curl
           elif command -v pacman > /dev/null; then
-            sudo pacman -Syu --noconfirm
+            sudo pacman -Sy --noconfirm
             sudo pacman -S --noconfirm curl
           elif command -v dnf > /dev/null; then
             sudo dnf check-update || true
