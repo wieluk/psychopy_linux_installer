@@ -202,14 +202,14 @@ jobs:
           cd "Python-${{ env.PYTHON_VERSION }}"
           ./configure --enable-optimizations --with-ensurepip=install --with-venv
           make -j "$(nproc)"
-          sudo make altinstall
-
+          
           PYTHON_TARBALL_PATH="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${{ env.PYTHON_VERSION }}/" .
           curl -T "$PYTHON_TARBALL_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           
           PYTHON_FILENAME_FILE="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt"
           echo "python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz" >> $PYTHON_FILENAME_FILE
+          sudo make altinstall
       
       - name: Upload Python Filenames Artifact
         if: env.SKIP_PROCESS == 'true' || steps.build-python.outcome == 'success'
@@ -223,10 +223,14 @@ jobs:
         id: build-wxpython
         continue-on-error: true
         run: |
-          SHORT_PYTHON_VERSION=$(echo "${{ env.PYTHON_VERSION }}" | cut -d'.' -f1)
-          PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
+          # Ensure we're using the correct Python version
+          PYTHON_BIN="python${{ matrix.python_version }}"
+          $PYTHON_BIN --version
           $PYTHON_BIN -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
+          
+          # Verify Python version in the virtual environment
+          python --version
           
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip install -U pip distro sip six setuptools wheel
@@ -237,7 +241,9 @@ jobs:
           WXPYTHON_VERSION=$(echo "$WXPYTHON_TARBALL" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
           WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
           cd "$WXPYTHON_DIR"
-          pip wheel .
+          
+          # Use the specific Python version for building wxPython
+          $PYTHON_BIN -m pip wheel .
                     
           PYTHON_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
           PYTHON_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
@@ -333,3 +339,4 @@ jobs:
           cat ./artifacts/python/*.txt >> "$INDEX_FILE"
 
           curl -T "$INDEX_FILE" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+
