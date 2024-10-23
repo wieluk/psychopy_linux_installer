@@ -23,19 +23,19 @@ jobs:
           sudo rm -rf /tmp_dir ~/.cache/pip && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
-            sudo apt-get install -y curl python3-pip
+            sudo apt-get install -y curl
           elif command -v pacman > /dev/null; then
             sudo pacman -Syu --noconfirm
-            sudo pacman -S --noconfirm curl python-pip
+            sudo pacman -S --noconfirm curl
           elif command -v dnf > /dev/null; then
             sudo dnf check-update || true
-            sudo dnf install -y curl python3-pip
+            sudo dnf install -y curl
           elif command -v yum > /dev/null; then
             sudo yum check-update || true
-            sudo yum install -y curl python3-pip
+            sudo yum install -y curl
           elif command -v zypper > /dev/null; then
             sudo zypper refresh || true
-            sudo zypper install -y curl python3-pip
+            sudo zypper install -y curl
           else
             echo "Unsupported package manager"
             exit 1
@@ -226,6 +226,7 @@ jobs:
           PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
           $PYTHON_BIN -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
+          
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip install -U pip distro sip six
           
