@@ -2,11 +2,8 @@ name: Build Python/wxPython and upload to cloud
 
 on:
   push:
-    branches:
-      - main
-      - dev
-    paths:
-      - '.github/workflows/build_python_wxpython.yaml'
+    branches: [main, dev]
+    paths: ['.github/workflows/build_python_wxpython.yaml']
   workflow_dispatch:
 
 jobs:
@@ -50,12 +47,11 @@ jobs:
           major_minor_version="${{ matrix.python_version }}"
           official_base_url="https://www.python.org/ftp/python/"
           latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
-          PYTHON_VERSION=${latest_patch_version}
+          echo "PYTHON_VERSION=${latest_patch_version}" >> $GITHUB_ENV
           
           detect_os_version() {
               if [ -f /etc/os-release ]; then
                   . /etc/os-release
-                  # Only return if both $ID and $VERSION_ID exist
                   if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
                       echo "$ID-$VERSION_ID"
                       return
@@ -90,52 +86,45 @@ jobs:
               exit 1
           }
 
-
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-          PYTHON_MAJOR="${PYTHON_VERSION%%.*}"
-          PYTHON_MINOR="${PYTHON_VERSION#*.}"
-          PYTHON_MINOR="${PYTHON_MINOR%%.*}"
+          PYTHON_MAJOR=$(echo "${{ env.PYTHON_VERSION }}" | cut -d. -f1)
+          PYTHON_MINOR=$(echo "${{ env.PYTHON_VERSION }}" | cut -d. -f2)
       
-          # Get the latest wxPython version from PyPI
           WXPYTHON_VERSION=$(curl -s "https://pypi.org/pypi/wxPython/json" | jq -r .info.version)
           if [ -z "$WXPYTHON_VERSION" ]; then
             echo "Unable to fetch the latest version for wxPython. Exiting." >&2
             exit 1
           fi
       
-          NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
-          WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          WX_PYTHON_NEXTCLOUD_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WHEEL_NAME}"
+          PYTHON_TARBALL_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${{ env.PYTHON_VERSION }}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
+          WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+          WXPYTHON_WHEEL_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WXPYTHON_WHEEL_NAME}"
       
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
       
-          # Check if the Python tarball exists on Nextcloud
-          curl -I -f "${NEXTCLOUD_URL}" --output /dev/null && PYTHON_EXISTS=true
-      
-          # Check if the wxPython wheel exists on Nextcloud
-          curl -I -f "${WX_PYTHON_NEXTCLOUD_URL}" --output /dev/null && WXPYTHON_EXISTS=true
+          curl -I -f "${PYTHON_TARBALL_URL}" --output /dev/null && PYTHON_EXISTS=true
+          curl -I -f "${WXPYTHON_WHEEL_URL}" --output /dev/null && WXPYTHON_EXISTS=true
    
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
-            echo "skip_process=true" >> $GITHUB_ENV
+            echo "SKIP_PROCESS=true" >> $GITHUB_ENV
             
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
-            echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${WXPYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | ${{ env.PYTHON_VERSION }} | $WXPYTHON_VERSION |" >> $RESULT_FILE
             
-            RESULT_FILE_PY="/tmp_dir/python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.txt"
-            echo "python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.tar.gz" >> $RESULT_FILE_PY
+            PYTHON_FILENAME_FILE="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.txt"
+            echo "python-${{ env.PYTHON_VERSION }}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.tar.gz" >> $PYTHON_FILENAME_FILE
           else
-            echo "skip_process=false" >> $GITHUB_ENV
+            echo "SKIP_PROCESS=false" >> $GITHUB_ENV
           fi
 
-          echo "PYTHON_VERSION=$PYTHON_VERSION" >> $GITHUB_ENV
-          echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
-          echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
+          echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=${WXPYTHON_VERSION}" >> $GITHUB_ENV
+          echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
 
-          
       - name: Set up dependencies
-        if: env.skip_process == 'false'
+        if: env.SKIP_PROCESS == 'false'
         run: |
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
@@ -149,7 +138,6 @@ jobs:
             for pkg in "${packages[@]}"; do
               sudo apt-get install -y "$pkg" || true
             done
-            
           elif command -v pacman > /dev/null; then
             sudo pacman -Syu --noconfirm || true
             packages=(
@@ -161,7 +149,6 @@ jobs:
             for pkg in "${packages[@]}"; do
               sudo pacman -S --noconfirm "$pkg" || true
             done
-          
           elif command -v dnf > /dev/null; then
             sudo dnf check-update || true
             packages=(
@@ -174,7 +161,6 @@ jobs:
             for pkg in "${packages[@]}"; do
               sudo dnf install -y "$pkg" || true
             done
-          
           elif command -v yum > /dev/null; then
             sudo yum check-update || true
             packages=(
@@ -187,7 +173,6 @@ jobs:
             for pkg in "${packages[@]}"; do
               sudo yum install -y "$pkg" || true
             done
-          
           elif command -v zypper > /dev/null; then
             sudo zypper refresh || true
             packages=(
@@ -200,80 +185,74 @@ jobs:
             for pkg in "${packages[@]}"; do
               sudo zypper install -y "$pkg" || true
             done
-
           else
             echo "Unsupported package manager"
             exit 1
           fi
 
       - name: Download, make and upload Python
-        if: env.skip_process == 'false'
+        if: env.SKIP_PROCESS == 'false'
         id: build-python
         continue-on-error: true
         run: |
           cd /tmp_dir
-          PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
-          curl -O "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
-          tar -xf "Python-${PYTHON_VERSION}.tgz"
-          cd "Python-${PYTHON_VERSION}"
+          curl -O "https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/Python-${{ env.PYTHON_VERSION }}.tgz"
+          tar -xf "Python-${{ env.PYTHON_VERSION }}.tgz"
+          cd "Python-${{ env.PYTHON_VERSION }}"
           ./configure --enable-optimizations
           make -j "$(nproc)"
           sudo make altinstall
 
-          FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
-          tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
-          curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+          PYTHON_TARBALL_PATH="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
+          tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${{ env.PYTHON_VERSION }}/" .
+          curl -T "$PYTHON_TARBALL_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
           
-          RESULT_FILE_PY="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt"
-          echo "python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz" >> $RESULT_FILE_PY
+          PYTHON_FILENAME_FILE="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt"
+          echo "python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz" >> $PYTHON_FILENAME_FILE
       
       - name: Upload Python Filenames Artifact
-        if: env.skip_process == 'true' || steps.build-python.outcome == 'success'
+        if: env.SKIP_PROCESS == 'true' || steps.build-python.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}
           path: /tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt
       
       - name: Build and upload wxPython
-        if: env.skip_process == 'false'
+        if: env.SKIP_PROCESS == 'false'
         id: build-wxpython
         continue-on-error: true
         run: |
-          PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
-          SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
+          SHORT_PYTHON_VERSION=$(echo "${{ env.PYTHON_VERSION }}" | cut -d'.' -f1)
           PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
           $PYTHON_BIN -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
-          
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip install -U pip distro sip six
           
           pip download wxPython
-          tarball=$(ls wxPython-*.tar.gz)
-          tar -xzf "$tarball"
-          wxpython_version=$(echo "$tarball" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
-          wxPython_dir=$(find . -type d -name "wxPython-*")
-          cd "$wxPython_dir"
+          WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
+          tar -xzf "$WXPYTHON_TARBALL"
+          WXPYTHON_VERSION=$(echo "$WXPYTHON_TARBALL" | grep -oP '(?<=wxPython-)[0-9]+\.[0-9]+\.[0-9]+')
+          WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
+          cd "$WXPYTHON_DIR"
           pip wheel .
                     
-          python_major=$(python -c "import sys; print(sys.version_info.major)")
-          python_minor=$(python -c "import sys; print(sys.version_info.minor)")
-          wheel_file=$(ls wxPython-*.whl)
-          identified_wheel_file="/tmp_dir/wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.whl"
-          cp "$wheel_file" "$identified_wheel_file"
+          PYTHON_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
+          PYTHON_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
+          WXPYTHON_WHEEL=$(ls wxPython-*.whl)
+          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${{ env.PROCESSOR_STRUCTURE }}-${{ env.OS_VERSION }}.whl"
+          cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           
           deactivate
-          curl -T "$identified_wheel_file" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
-          echo "WXPYTHON_VERSION=$wxpython_version" >> $GITHUB_ENV
+          curl -T "$WXPYTHON_IDENTIFIED_WHEEL" -u "${{ secrets.NEXTCLOUD_ID_WXPYTHON }}:${{ secrets.NEXTCLOUD_PASS_WXPYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+          echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
 
       - name: Create and Record Result Table
-        if: env.skip_process == 'false'
+        if: env.SKIP_PROCESS == 'false'
         run: |
-          # Default to failure indicators
           PYTHON_STATUS="❌"
           WXPYTHON_STATUS="❌"
           
-          # Check if the relevant steps succeeded and update status accordingly
           if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
             PYTHON_STATUS="${{ env.PYTHON_VERSION }}"
           fi
@@ -282,11 +261,9 @@ jobs:
             WXPYTHON_STATUS="${{ env.WXPYTHON_VERSION }}"
           fi
           
-          # Output the result to a file
           RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md"
           echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
           
-          # Display the content of the result file
           cat $RESULT_FILE
 
       - name: Upload result artifact
@@ -308,7 +285,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure Git and download artifacts
         run: |
-          git config --global user.name 'github-actions[bot]' && git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git fetch origin && git reset --hard origin/${{ github.ref_name }}
 
       - uses: actions/download-artifact@v4
@@ -353,4 +331,3 @@ jobs:
           cat ./artifacts/python/*.txt >> "$INDEX_FILE"
 
           curl -T "$INDEX_FILE" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
-
