@@ -45,9 +45,8 @@ log_message() {
 
 # Wrapper function to handle sudo requests and permissions dynamically
 sudo_wrapper() {
+    local error_output exit_code
     local command=("$@")
-    local error_output
-    local exit_code
     local is_pkg_manager_command=false
 
     needs_sudo() {
@@ -295,7 +294,7 @@ check_pypi_for_version() {
 # Function to build Python from source
 build_python() {
     local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
-    log_message "Building Python ${python_version} from source ..."
+    log_message "Building Python ${python_version} from source this might take a while ..."
     major_minor_version="${python_version}"
     official_base_url="https://www.python.org/ftp/python/"
     
@@ -327,8 +326,7 @@ python_nextcloud_install() {
     versions_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_versions.txt"
     temp_versions_file="/tmp/python_versions.txt"
     
-    log_message "Downloading available Python versions from Nextcloud ..."
-    if ! curl -s -f -X GET "${versions_url}" --output "${temp_versions_file}"; then
+    if ! log curl -s -f -X GET "${versions_url}" --output "${temp_versions_file}"; then
         log_message "Warning: Could not download python_versions.txt from Nextcloud."
         return 1
     fi
@@ -388,14 +386,8 @@ wxpython_pip_install() {
 
 # Function to install wxPython from wheel URL
 wxpython_wheelurl_install() {
+    local wheel_dir python_version_short html wheels latest_wheel wheel_url wheel_file
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-    local wheel_dir
-    local python_version_short
-    local html
-    local wheels
-    local latest_wheel
-    local wheel_url
-    local wheel_file
 
     wheel_dir="${base_url}${os_version}/"
     python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
@@ -706,16 +698,15 @@ main() {
     log_message "Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies psychopy_deps
 
-    # If no python_version is set by the user use the latest between 3.8 and 3.10
+    # If no python_version is set by the user, use the latest available among 3.10, 3.9, or 3.8
     if [ "$python_version_set_by_user" = false ]; then
-        available_python_versions=$(compgen -c python | grep -oP '^python3\.\d+\.\d+$' | sort -V)
-        latest_python_version=$(echo "$available_python_versions" | grep -E '^python3\.(8|9|10)\.[0-9]+$' | sort -V | tail -n 1)
-
-        if [ -n "$latest_python_version" ]; then
-            system_python_version=$($latest_python_version --version 2>&1 | awk '{print $2}')
-            log_message "Using latest available Python version: $system_python_version"
-            python_version="$system_python_version"
-        fi
+        for version in 3.10 3.9 3.8; do
+            if command -v python$version &> /dev/null; then
+                python_version=$version
+                log_message "Using Python version: $python_version"
+                break
+            fi
+        done
     fi
 
     # Set up PsychoPy installation directory
