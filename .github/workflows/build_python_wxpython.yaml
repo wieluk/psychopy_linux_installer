@@ -44,19 +44,9 @@ jobs:
       - name: Check existing files and set variables
         id: check-files
         run: |
-          echo "matrix.python_version: ${{ matrix.python_version }}"
           major_minor_version="${{ matrix.python_version }}"
-          echo "major_minor_version: $major_minor_version"
-          
           official_base_url="https://www.python.org/ftp/python/"
-          echo "official_base_url: $official_base_url"
-          
-          echo "Fetching latest patch version..."
-          latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
-          echo "latest_patch_version: $latest_patch_version"
-          
-          PYTHON_VERSION="${latest_patch_version}"
-          echo "PYTHON_VERSION: $PYTHON_VERSION"
+          PYTHON_VERSION=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
           
           detect_os_version() {
               if [ -f /etc/os-release ]; then
@@ -96,19 +86,10 @@ jobs:
           }
 
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
-          echo "OS_VERSION: $OS_VERSION"
-          
-          echo "Determining processor structure..."
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-          echo "PROCESSOR_STRUCTURE: $PROCESSOR_STRUCTURE"
-          
-          echo "Extracting Python major and minor versions..."
-          PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
-          PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
-          echo "PYTHON_MAJOR: $PYTHON_MAJOR"
-          echo "PYTHON_MINOR: $PYTHON_MINOR"
+          PYTHON_MAJOR=$(echo "${PYTHON_VERSION }" | cut -d. -f1)
+          PYTHON_MINOR=$(echo "${PYTHON_VERSION }" | cut -d. -f2)
       
-          echo "Fetching latest wxPython version..."
           WXPYTHON_VERSION=$(curl -s "https://pypi.org/pypi/wxPython/json" | jq -r .info.version)
           if [ -z "$WXPYTHON_VERSION" ]; then
             echo "Unable to fetch the latest version for wxPython. Exiting." >&2
@@ -116,49 +97,32 @@ jobs:
           fi
       
           PYTHON_TARBALL_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
-          echo "PYTHON_TARBALL_URL: $PYTHON_TARBALL_URL"
-          
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          echo "WXPYTHON_WHEEL_NAME: $WXPYTHON_WHEEL_NAME"
-          
           WXPYTHON_WHEEL_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WXPYTHON_WHEEL_NAME}"
-          echo "WXPYTHON_WHEEL_URL: $WXPYTHON_WHEEL_URL"
       
-          echo "Checking if files exist..."
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
       
           if curl -I -f "${PYTHON_TARBALL_URL}" --output /dev/null; then
             PYTHON_EXISTS=true
-            echo "Python tarball exists"
-          else
-            echo "Python tarball does not exist"
           fi
           
           if curl -I -f "${WXPYTHON_WHEEL_URL}" --output /dev/null; then
             WXPYTHON_EXISTS=true
-            echo "wxPython wheel exists"
-          else
-            echo "wxPython wheel does not exist"
           fi
    
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_PROCESS=true" >> $GITHUB_ENV
-            echo "Both Python and wxPython exist, skipping process"
             
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
             echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
-            echo "Result file created: $RESULT_FILE"
             
             PYTHON_FILENAME_FILE="/tmp_dir/python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.txt"
             echo "python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.tar.gz" >> $PYTHON_FILENAME_FILE
-            echo "Python filename file created: $PYTHON_FILENAME_FILE"
           else
             echo "SKIP_PROCESS=false" >> $GITHUB_ENV
-            echo "Either Python or wxPython does not exist, process will continue"
           fi
 
-          echo "Setting environment variables..."
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=${WXPYTHON_VERSION}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
@@ -373,4 +337,3 @@ jobs:
           cat ./artifacts/python/*.txt >> "$INDEX_FILE"
 
           curl -T "$INDEX_FILE" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
-
