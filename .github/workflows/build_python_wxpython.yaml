@@ -229,8 +229,8 @@ jobs:
           source /tmp_dir/venv/bin/activate
           
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
-          pip install -U pip distro sip six
-          
+          pip install -U pip distro sip six setuptools wheel
+
           pip download wxPython
           WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
