@@ -739,19 +739,20 @@ main() {
         exit 1
     fi
 
-        # Check if python version exists else install python
-    if command -v python"${python_version}" &> /dev/null; then
-        log_message "Info: Python version ${python_version} is already installed. Skipping installation."
+    if [ "$build_python" = true ]; then
+        build_python
     else
-        log_message "Info: Installing python build dependencies ..."
-        log install_dependencies python_build_deps
+        if command -v python"${python_version}" &> /dev/null; then
+            log_message "Info: Python version ${python_version} is already installed. Skipping installation."
+        else
+            log_message "Info: Installing python build dependencies ..."
+            log install_dependencies python_build_deps
 
-        if [ "$build_python" = true ]; then
-            build_python
-        elif python_nextcloud_install; then
-            :
-        else   
-            build_python
+            if python_nextcloud_install; then
+                :
+            else   
+                build_python
+            fi
         fi
     fi
 
