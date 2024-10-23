@@ -310,7 +310,7 @@ build_python() {
 
     (
         cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
-        log ./configure --enable-optimizations --with-ensurepip=install --with-venv
+        log ./configure --enable-optimizations --with-ensurepip=install
         log make -j "$(nproc)"
         sudo_wrapper make altinstall
     )

@@ -200,7 +200,7 @@ jobs:
           curl -O "https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/Python-${{ env.PYTHON_VERSION }}.tgz"
           tar -xf "Python-${{ env.PYTHON_VERSION }}.tgz"
           cd "Python-${{ env.PYTHON_VERSION }}"
-          ./configure --enable-optimizations --with-ensurepip=install --with-venv
+          ./configure --enable-optimizations --with-ensurepip=install
           make -j "$(nproc)"
           
           PYTHON_TARBALL_PATH="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
