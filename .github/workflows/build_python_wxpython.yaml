@@ -209,8 +209,7 @@ jobs:
           
           PYTHON_FILENAME_FILE="/tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt"
           echo "python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz" >> $PYTHON_FILENAME_FILE
-          sudo make altinstall
-      
+          
       - name: Upload Python Filenames Artifact
         if: env.SKIP_PROCESS == 'true' || steps.build-python.outcome == 'success'
         uses: actions/upload-artifact@v4
@@ -223,10 +222,16 @@ jobs:
         id: build-wxpython
         continue-on-error: true
         run: |
-          # Ensure we're using the correct Python version
-          PYTHON_BIN="python${{ matrix.python_version }}"
-          $PYTHON_BIN --version
-          $PYTHON_BIN -m venv /tmp_dir/venv
+          sudo rm -rf /tmp_dir ~/.cache/pip && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          cd /tmp_dir
+          curl -O "https://www.python.org/ftp/python/${{ env.PYTHON_VERSION }}/Python-${{ env.PYTHON_VERSION }}.tgz"
+          tar -xf "Python-${{ env.PYTHON_VERSION }}.tgz"
+          cd "Python-${{ env.PYTHON_VERSION }}"
+          ./configure --enable-optimizations --with-ensurepip=install --prefix=/tmp_dir/python3
+          make -j "$(nproc)"
+          sudo make altinstall
+
+          /tmp_dir/python3/bin/python${{ matrix.python_version }} -m venv /tmp_dir/venv
           source /tmp_dir/venv/bin/activate
           
           # Verify Python version in the virtual environment
