@@ -302,34 +302,23 @@ check_pypi_for_version() {
 }
 
 # Function to build Python from source
-build_python() {
-    local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
-    custom_python_path="${psychopy_dir}/python"
-    log_message "Info: Building Python ${python_version} from source this might take a while ..."
-    major_minor_version="${python_version}"
-    official_base_url="https://www.python.org/ftp/python/"
+build_python_from_source() {
+    log_message "Building Python ${python_version} from source ..."
     
-    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
+    official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
+    temp_file="Python-${python_version}.tgz"
+    temp_dir="Python-${python_version}_temp"
 
-    official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
-    temp_file="Python-${latest_patch_version}.tgz"
-    temp_dir="Python-${latest_patch_version}_temp"
-    
     log curl -s -O "${official_url}"
     mkdir -p "${temp_dir}"
     tar -xf "${temp_file}" -C "${temp_dir}"
-
     (
-        cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
-        log ./configure --enable-optimizations --with-ensurepip=install --prefix="${custom_python_path}"
+        cd "${temp_dir}/Python-${python_version}" || exit
+        log ./configure --enable-optimizations --with-ensurepip=install
         log make -j "$(nproc)"
-        log make altinstall
+        sudo_wrapper make altinstall
     )
-
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-    log_message "Info: Python ${latest_patch_version} built and installed successfully to ${custom_python_path}."
-
-    return 0
 }
 
 # Function to download prebuilt Python from Nextcloud
@@ -591,7 +580,6 @@ main() {
     verbose=false
     disable_shortcut=false
     disable_path=false
-    custom_python_path=""
 
     for arg in "$@"; do
         case $arg in
@@ -747,11 +735,11 @@ main() {
         log install_dependencies python_build_deps
 
         if [ "$build_python" = true ]; then
-            build_python
+            build_python_from_source
         elif download_prebuilt_python; then
             :
         else   
-            build_python
+            build_python_from_source
         fi
     fi
 
