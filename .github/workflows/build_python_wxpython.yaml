@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9, manjarolinux-24, opensuse-leap-15.6, linuxmint-22]
-        python_version: ['3.8.20', '3.9.20', '3.10.15']
+        python_version: ['3.8', '3.9', '3.10']
       fail-fast: false
 
     steps:
@@ -47,7 +47,10 @@ jobs:
       - name: Check existing files and set variables
         id: check-files
         run: |
-          PYTHON_VERSION="${{ matrix.python_version }}"
+          major_minor_version="${{ matrix.python_version }}"
+          official_base_url="https://www.python.org/ftp/python/"
+          latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
+          PYTHON_VERSION=${latest_patch_version}
           
           detect_os_version() {
               if [ -f /etc/os-release ]; then
@@ -116,12 +119,17 @@ jobs:
    
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "skip_process=true" >> $GITHUB_ENV
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${WXPYTHON_VERSION}.md"
-            echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | $WXPYTHON_VERSION |" >> $RESULT_FILE
+            
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
+            
+            RESULT_FILE_PY="/tmp_dir/python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.txt"
+            echo "python-${PYTHON_VERSION}-${PROCESSOR_STRUCTURE}-${{ matrix.os }}.tar.gz" >> $RESULT_FILE_PY
           else
             echo "skip_process=false" >> $GITHUB_ENV
           fi
-      
+
+          echo "PYTHON_VERSION=$PYTHON_VERSION" >> $GITHUB_ENV
           echo "PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
 
@@ -204,7 +212,7 @@ jobs:
         continue-on-error: true
         run: |
           cd /tmp_dir
-          PYTHON_VERSION="${{ matrix.python_version }}"
+          PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
           curl -O "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
           tar -xf "Python-${PYTHON_VERSION}.tgz"
           cd "Python-${PYTHON_VERSION}"
@@ -215,13 +223,23 @@ jobs:
           FILE_PATH="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz"
           tar -czvf "$FILE_PATH" -C "/tmp_dir/Python-${PYTHON_VERSION}/" .
           curl -T "$FILE_PATH" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
-
+          
+          RESULT_FILE_PY="/tmp_dir/python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt"
+          echo "python-${PYTHON_VERSION}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.tar.gz" >> $RESULT_FILE_PY
+      
+      - name: Upload Python Filenames Artifact
+        if: env.skip_process == 'true' || steps.build-python.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}
+          path: /tmp_dir/python-${{ env.PYTHON_VERSION }}-${{ env.PROCESSOR_STRUCTURE }}-${{ matrix.os }}.txt
+      
       - name: Build and upload wxPython
         if: env.skip_process == 'false'
         id: build-wxpython
         continue-on-error: true
         run: |
-          PYTHON_VERSION="${{ matrix.python_version }}"
+          PYTHON_VERSION="${{ env.PYTHON_VERSION }}"
           SHORT_PYTHON_VERSION="${PYTHON_VERSION%.*}"
           PYTHON_BIN="python${SHORT_PYTHON_VERSION}"
           $PYTHON_BIN -m venv /tmp_dir/venv
@@ -257,7 +275,7 @@ jobs:
           
           # Check if the relevant steps succeeded and update status accordingly
           if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
-            PYTHON_STATUS="${{ matrix.python_version }}"
+            PYTHON_STATUS="${{ env.PYTHON_VERSION }}"
           fi
           
           if [[ "${{ steps.build-wxpython.outcome }}" == "success" ]]; then
@@ -265,7 +283,7 @@ jobs:
           fi
           
           # Output the result to a file
-          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md"
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md"
           echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
           
           # Display the content of the result file
@@ -274,8 +292,8 @@ jobs:
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.WXPYTHON_VERSION }}.md
+          name: result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md
 
       - name: Cleanup
         if: always()
@@ -295,7 +313,8 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          path: ./artifacts/results
+          pattern: 'result*'
           merge-multiple: true
 
       - name: Create and save result table
@@ -308,15 +327,30 @@ jobs:
           |---|---|---|
           EOF
 
-          cat ./artifacts/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
+          cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
 
           if [ -s results.md ]; then
             cp results.md .github/build_results.md
           else
             echo "::warning::results.md is empty; skipping save."
           fi
-
+      
       - name: Commit and push changes
         run: |
           git add -f .github/build_results.md
           git diff-index --quiet HEAD || (git commit -m "Update cloud build results" && git push --force)
+      
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts/python
+          pattern: 'python*'
+          merge-multiple: true
+
+      - name: Update Python version index (python_versions.txt)
+        run: |
+          INDEX_FILE="python_versions.txt"
+          touch "$INDEX_FILE"
+          cat ./artifacts/python/*.txt >> "$INDEX_FILE"
+
+          curl -T "$INDEX_FILE" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+
