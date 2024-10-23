@@ -47,6 +47,7 @@ jobs:
           major_minor_version="${{ matrix.python_version }}"
           official_base_url="https://www.python.org/ftp/python/"
           latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
+          echo $PYTHON_VERSION
           echo "PYTHON_VERSION=${latest_patch_version}" >> $GITHUB_ENV
           
           detect_os_version() {
@@ -97,16 +98,31 @@ jobs:
             exit 1
           fi
       
+          echo "Debug: PYTHON_VERSION=${{ env.PYTHON_VERSION }}"
+          echo "Debug: PROCESSOR_STRUCTURE=$PROCESSOR_STRUCTURE"
+          echo "Debug: OS_VERSION=$OS_VERSION"
+          echo "Debug: WXPYTHON_VERSION=$WXPYTHON_VERSION"
+          echo "Debug: PYTHON_MAJOR=$PYTHON_MAJOR"
+          echo "Debug: PYTHON_MINOR=$PYTHON_MINOR"
+
           PYTHON_TARBALL_URL="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${{ env.PYTHON_VERSION }}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
           WXPYTHON_WHEEL_URL="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${WXPYTHON_WHEEL_NAME}"
-      
+
+          echo "Debug: PYTHON_TARBALL_URL=$PYTHON_TARBALL_URL"
+          echo "Debug: WXPYTHON_WHEEL_URL=$WXPYTHON_WHEEL_URL"
+
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
       
+          echo "Checking Python tarball..."
           curl -I -f "${PYTHON_TARBALL_URL}" --output /dev/null && PYTHON_EXISTS=true
+          echo "Debug: PYTHON_EXISTS=$PYTHON_EXISTS"
+
+          echo "Checking wxPython wheel..."
           curl -I -f "${WXPYTHON_WHEEL_URL}" --output /dev/null && WXPYTHON_EXISTS=true
-   
+          echo "Debug: WXPYTHON_EXISTS=$WXPYTHON_EXISTS"
+
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_PROCESS=true" >> $GITHUB_ENV
             
@@ -332,3 +348,4 @@ jobs:
           cat ./artifacts/python/*.txt >> "$INDEX_FILE"
 
           curl -T "$INDEX_FILE" -u "${{ secrets.NEXTCLOUD_ID_PYTHON }}:${{ secrets.NEXTCLOUD_PASS_PYTHON }}" -H "X-Requested-With: XMLHttpRequest" "https://cloud.uni-graz.at/public.php/webdav/"
+
