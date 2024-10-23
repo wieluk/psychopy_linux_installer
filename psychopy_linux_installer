@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10). Only 3.8, 3.9, or 3.10 allowed.
+  --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10). Only 3.8, 3.9, or 3.10 are allowed.
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
@@ -293,7 +293,7 @@ check_pypi_for_version() {
 }
 
 # Function to build Python from source
-build_python_from_source() {
+build_python() {
     local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Building Python ${python_version} from source ..."
     major_minor_version="${python_version}"
@@ -322,7 +322,7 @@ build_python_from_source() {
 }
 
 # Function to download prebuilt Python from Nextcloud
-download_prebuilt_python() {
+python_nextcloud_install() {
     local versions_url temp_versions_file latest_patch_version nextcloud_url temp_file temp_dir
     versions_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_versions.txt"
     temp_versions_file="/tmp/python_versions.txt"
@@ -756,11 +756,11 @@ main() {
         log install_dependencies python_build_deps
 
         if [ "$build_python" = true ]; then
-            build_python_from_source
-        elif download_prebuilt_python; then
+            build_python
+        elif python_nextcloud_install; then
             :
         else   
-            build_python_from_source
+            build_python
         fi
     fi
 
