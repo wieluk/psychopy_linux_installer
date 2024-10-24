@@ -469,7 +469,6 @@ add_psychopy_to_path() {
 main() {
     # Set default values for variables
     python_version="3.10.15"
-    python_version_set_by_user=false
     psychopy_version="2024.1.4"
     wxpython_version="4.2.2"
     install_dir="$HOME"
@@ -494,7 +493,6 @@ main() {
                     echo "Error: Invalid Python version specified. Only versions 3.8.x, 3.9.x, or 3.10.x are allowed."
                     exit 1
                 fi
-                python_version_set_by_user=true
                 ;;
             --psychopy-version=*)
                 psychopy_version="${arg#*=}"
@@ -524,7 +522,7 @@ main() {
                     exit 1
                 fi
                 ;;
-            --build-wx 
+            --build-wx)
                 build_wx=true
                 ;;
             --disable-shortcut)
