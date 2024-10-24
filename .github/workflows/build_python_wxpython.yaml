@@ -225,6 +225,7 @@ jobs:
         id: build-wxpython
         continue-on-error: true
         run: |
+          export PATH=/usr/local/psychopy_python/bin:$PATH
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
           
