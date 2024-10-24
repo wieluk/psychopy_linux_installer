@@ -752,6 +752,7 @@ main() {
 
     # Create and activate virtual environment
     log_message "Info:Creating and activating virtual environment..."
+    export PATH=/usr/local/psychopy_python/bin:$PATH
     /usr/local/psychopy_python/bin/python"${python_version}" -m venv "${psychopy_dir}"
 
     log source "${psychopy_dir}/bin/activate"
