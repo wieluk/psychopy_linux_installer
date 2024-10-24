@@ -310,7 +310,7 @@ build_python() {
 
     (
         cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
-        log ./configure --enable-optimizations --with-ensurepip=install
+        log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
         log make -j "$(nproc)"
         sudo_wrapper make altinstall
     )
@@ -573,7 +573,6 @@ add_psychopy_to_path() {
 
 main() {
     python_version="3.10"
-    python_version_set_by_user=false
     psychopy_version="2024.1.4"
     wxpython_version="4.2.2"
     install_dir="$HOME"
@@ -598,7 +597,6 @@ main() {
                     echo "Error: Invalid Python version specified. Only major versions 3.8, 3.9, or 3.10 are allowed."
                     exit 1
                 fi
-                python_version_set_by_user=true
                 ;;
             --psychopy-version=*)
                 psychopy_version="${arg#*=}"
@@ -698,17 +696,6 @@ main() {
     log_message "Info: Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies psychopy_deps
 
-    # If no python_version is set by the user, use the latest available among 3.10, 3.9, or 3.8
-    if [ "$python_version_set_by_user" = false ]; then
-        for version in 3.10 3.9 3.8; do
-            if command -v python$version &> /dev/null; then
-                python_version=$version
-                log_message "Inof: Python version not set by user, using existing version: $python_version"
-                break
-            fi
-        done
-    fi
-
     # Set up PsychoPy installation directory
     if [ "$no_versioned_install_dir" = true ]; then
         psychopy_dir="${install_dir}"
@@ -742,8 +729,8 @@ main() {
     if [ "$build_python" = true ]; then
         build_python
     else
-        if command -v python"${python_version}" &> /dev/null; then
-            log_message "Info: Python version ${python_version} is already installed. Skipping installation."
+        if [ -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
+            log_message "Info: Python version ${python_version} is already installed in /usr/local/psychopy_python. Skipping installation."
         else
             log_message "Info: Installing python build dependencies ..."
             log install_dependencies python_build_deps
@@ -756,18 +743,19 @@ main() {
         fi
     fi
 
-    # Check if Python was successfully installed
-    if ! command -v python"${python_version}" &> /dev/null; then
-        log_message "Error: python${python_version} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
+    # Check if the Python version was successfully installed in the custom directory
+    if [ ! -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
+        log_message "Error: python${python_version} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
         exit 1
     fi
 
+
     # Create and activate virtual environment
     log_message "Info:Creating and activating virtual environment..."
-    python"${python_version}" -m venv "${psychopy_dir}"
+    /usr/local/psychopy_python/bin/python"${python_version}" -m venv "${psychopy_dir}"
 
     log source "${psychopy_dir}/bin/activate"
-
+    python --version
     # Upgrade pip and install required Python packages
     log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
     log pip install -U pip distro sip six psychtoolbox attrdict
