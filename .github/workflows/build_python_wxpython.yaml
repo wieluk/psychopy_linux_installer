@@ -225,11 +225,8 @@ jobs:
         id: build-wxpython
         continue-on-error: true
         run: |
-          /usr/local/psychopy_python${{ matrix.python_version }} -m venv /tmp_dir/venv
-          source /tmp_dir/venv/bin/activate
-          
-          # Verify Python version in the virtual environment
-          python --version
+          /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
+          source /tmp_dir/psychopy_venv/bin/activate
           
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip install -U pip distro sip six setuptools wheel
@@ -242,6 +239,7 @@ jobs:
           cd "$WXPYTHON_DIR"
           
           # Use the specific Python version for building wxPython
+          python --version
           python -m pip wheel .
                     
           PYTHON_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
