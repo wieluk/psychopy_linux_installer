@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-11
-#  Version:       1.1.4
+#  Date:          2024-10-24
+#  Version:       2.0.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -20,8 +20,8 @@ Options:
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
   --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
-  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly.
+  --build-wx                                    Build wxPython from source instead of downloading.
   --disable-shortcut                            Disable desktop shortcut creation.
   --disable-path                                Disable adding psychopy to system path.
   -f, --force                                   Force overwrite of existing installation directory.
@@ -301,54 +301,6 @@ check_pypi_for_version() {
     fi
 }
 
-# Function to build Python from source
-build_python_from_source() {
-    local python_version=$1
-    log_message "Building Python ${python_version} from source ..."
-    
-    official_url="https://www.python.org/ftp/python/${python_version}/Python-${python_version}.tgz"
-    temp_file="Python-${python_version}.tgz"
-    temp_dir="Python-${python_version}_temp"
-
-    log curl -s -O "${official_url}"
-    mkdir -p "${temp_dir}"
-    tar -xf "${temp_file}" -C "${temp_dir}"
-    (
-        cd "${temp_dir}/Python-${python_version}" || exit
-        log ./configure --enable-optimizations --with-ensurepip=install
-        log make -j "$(nproc)"
-        sudo_wrapper make altinstall
-    )
-    sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-}
-
-# Function to download prebuilt Python from Nextcloud
-download_prebuilt_python() {
-    local python_version=$1
-    local processor_structure=$2
-    local os_version=$3
-
-    nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python-${python_version}-${processor_structure}-${os_version}.tar.gz"
-    temp_file="python-${python_version}-${processor_structure}-${os_version}.tar.gz"
-    temp_dir="python-${python_version}-${processor_structure}-${os_version}_temp"
-
-    log_message "Trying to download prebuilt Python ${python_version} for ${os_version} ${processor_structure} from Nextcloud ..."
-
-    if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-        log_message "Successfully downloaded Python ${python_version} ... making an altinstall ..."
-        mkdir -p "${temp_dir}"
-        tar -xf "${temp_file}" -C "${temp_dir}"
-        (
-            cd "${temp_dir}" || exit
-            sudo_wrapper make altinstall
-        )
-        sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-    else
-        log_message "Failed to download from Nextcloud. No matching Python version found."
-        build_python_from_source "${python_version}"
-    fi
-}
-
 # Function to get the URL for the wxPython wheel
 get_wxpython_wheel() {
     local wxpython_version=$1
@@ -524,7 +476,6 @@ main() {
     no_versioned_install_dir=false
     install_dir_set_by_user=false
     additional_packages=""
-    build_python=false
     build_wx=false
     sudo_mode="ask"
     pkg_manager_permission=false
@@ -565,32 +516,16 @@ main() {
             --additional-packages=*)
                 additional_packages="${arg#*=}"
                 ;;
-            --build=*)
-                build_arg="${arg#*=}"
-                case $build_arg in
-                    python)
-                        build_python=true
-                        ;;
-                    wxpython)
-                        build_wx=true
-                        ;;
-                    both)
-                        build_python=true
-                        build_wx=true
-                        ;;
-                    *)
-                        echo "Invalid option for --build: $build_arg"
-                        show_help
-                        exit 1
-                        ;;
-                esac
-                ;;
+
             --sudo-mode=*)
                 sudo_mode="${arg#*=}"
                 if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "continue" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
                     echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                     exit 1
                 fi
+                ;;
+            --build-wx 
+                build_wx=true
                 ;;
             --disable-shortcut)
                 disable_shortcut=true
@@ -653,14 +588,6 @@ main() {
     log_message "Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies psychopy_deps
 
-    #If no python version is set by user, use system python
-    if [ "$python_version_set_by_user" = false ] && command -v python3 &>/dev/null && system_python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')") && [[ "$system_python_version" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
-        log_message "Using system Python version: $system_python_version"
-        python_version=$system_python_version
-    else
-        check_python_version "${python_version}"
-    fi
-
     # Clean up Python version string
     python_version_clean=$(echo "${python_version}" | tr -d ',;')
     # Set up PsychoPy installation directory
@@ -700,30 +627,23 @@ main() {
         exit 1
     fi
 
-    # Check if python version exists else install python
-    if python"${python_version%.*}" --version 2>&1 | grep -q "${python_version}"; then
-        log_message "Python version ${python_version} is already installed. Skipping installation."
+
+    if ! command -v pyenv &> /dev/null; then
+        log_message "Installing pyenv..."
+        curl https://pyenv.run | bash
+    fi
+
+    if pyenv versions --bare | grep -q "^${python_version}$"; then
+        log_message "Python version ${python_version} is already installed with pyenv. Skipping installation."
     else
-        log_message "Installing python build dependencies ..."
-        log install_dependencies python_build_deps
-
-        if [ "$build_python" = true ]; then
-            build_python_from_source "$python_version"
-        else
-            download_prebuilt_python "$python_version" "$processor_structure" "$os_version"
-        fi
+        log_message "Installing Python version ${python_version} using pyenv..."
+        pyenv install "${python_version}"
     fi
 
-    # Check if Python was successfully installed
-    if ! command -v python"${python_version%.*}" &> /dev/null; then
-        log_message "Error: python${python_version%.*} not found. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
-        exit 1
-    fi
 
-    # Create and activate virtual environment
+    pyenv local "${python_version}"
     log_message "Creating and activating virtual environment..."
-    python"${python_version%.*}" -m venv "${psychopy_dir}"
-
+    python -m venv "${psychopy_dir}"
     log source "${psychopy_dir}/bin/activate"
 
     # Upgrade pip and install required Python packages

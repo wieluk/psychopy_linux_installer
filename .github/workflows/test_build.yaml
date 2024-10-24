@@ -1,4 +1,4 @@
-name: Run PsychoPy Installer on Multiple Linux OS with build option
+name: Run PsychoPy Installer on Multiple Linux OS with build-wx option
 
 on:
   workflow_run:
@@ -35,7 +35,7 @@ jobs:
         id: run-installer
         continue-on-error: true
         run: |
-          ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --build=both --sudo-mode=auto"
+          ARGS="--python-version=${{ matrix.python_version }} --psychopy-version=${{ matrix.psychopy_version }} --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --build-wx --sudo-mode=auto"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
         
       - name: Verify PsychoPy installation and version

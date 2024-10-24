@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - test-pyenv
     paths:
       - psychopy_linux_installer
       - .github/workflows/test_installer.yaml
