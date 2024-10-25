@@ -20,7 +20,7 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 ## Important Information
 
 - PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
-- Default(3.10)/specified Python version latest patch version is installed as `altinstall` into `/usr/local/psychopy_python`.
+- Default(3.10)/specified Python latest patch version is installed as `altinstall` into `/usr/local/psychopy_python`.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
