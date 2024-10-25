@@ -1,6 +1,6 @@
-### Report generated on 2024-10-23
+### Report generated on 2024-10-25
 ### All runners used the flag 
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11481373687)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11515694697)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
