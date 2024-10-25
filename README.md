@@ -20,10 +20,9 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 ## Important Information
 
 - PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
-- If system Python version is compatible, it will be used if `python-version` is not set.
-- Else the specified/default(3.10.15) Python version is installed as `altinstall` if not present.
+- Default(3.10.15)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python`.
 - A directory is created in the specified directory (default: `$HOME`):
-  `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`.
+  `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
 - For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source.
 - If the downloads fail, building Python and wxPython may take a long time.
@@ -65,7 +64,7 @@ If you do not want prompts throughout the script use `--sudo-mode=auto`.
 
 | Option | Description |
 |--------|-------------|
-| `--python-version=`<br>`VERSION` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10.15`). Only versions `3.8.x`, `3.9.x`, or `3.10.x` are allowed. |
+| `--python-version=`<br>`VERSION` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). Only versions `3.8`, `3.9`, or `3.10` are allowed. |
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.1`). |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
