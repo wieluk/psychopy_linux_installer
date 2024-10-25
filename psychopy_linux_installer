@@ -4,7 +4,7 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-21
+#  Date:          2024-10-25
 #  Version:       1.2.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10). Only 3.8, 3.9, or 3.10 are allowed.
+  --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
@@ -133,7 +133,6 @@ sudo_wrapper() {
 detect_os_version() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        # Only return if both $ID and $VERSION_ID exist
         if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
             echo "$ID-$VERSION_ID"
             return
@@ -316,7 +315,7 @@ build_python() {
     )
 
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-    log_message "Info: Python ${latest_patch_version} built and installed successfully."
+    log_message "Info: Python ${latest_patch_version} built and installed into /usr/local/psychopy_python."
     return 0
 }
 
@@ -342,8 +341,6 @@ python_nextcloud_install() {
     temp_file="${latest_patch_version}"
     temp_dir="${latest_patch_version%.tar.gz}_temp"
 
-    log_message "Info: Trying to download prebuilt Python ${latest_patch_version} for ${os_version} ${processor_structure} from Nextcloud ..."
-
     if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
         log_message "Info: Successfully downloaded Python ${latest_patch_version} ... making an altinstall ..."
         mkdir -p "${temp_dir}"
@@ -353,6 +350,7 @@ python_nextcloud_install() {
             sudo_wrapper make altinstall
         )
         sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+        log_message "Successfully installed Python ${latest_patch_version} into /usr/local/psychopy_python"
         return 0
     else
         log_message "Warning: Failed to download from Nextcloud. No matching Python version found."
@@ -404,9 +402,8 @@ wxpython_wheelurl_install() {
     wheel_url="${wheel_dir}${latest_wheel}"
     wheel_file=$(basename "$wheel_url")
 
-    log_message "Info: Found matching wxPython wheel; downloading it from extras.wxpython.org ($wheel_url)"
     if log curl -s -O "$wheel_url"; then
-        log_message "Info: Download successful. Installing wxPython from $wheel_file..."
+        log_message "Info: Download from extras.wxpython.org successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Info: Installed wxPython from $wheel_file"
             sudo_wrapper rm "$wheel_file"
@@ -429,11 +426,10 @@ wxpython_nextcloud_install() {
     wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
     wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
 
-    log_message "Info: Trying to download wxPython wheel from Nextcloud ($wx_python_nextcloud_url)"
     if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
         mv "$wheel_name" "$wx_python_file"
-        log_message "Info: Download successful. Installing wxPython from $wx_python_file"
+        log_message "Info: Download from nextcloud successful. Installing wxPython from $wx_python_file"
         if log pip install "$wx_python_file"; then
             log_message "Info: Installed wxPython from $wx_python_file"
             sudo_wrapper rm "$wx_python_file"
@@ -457,9 +453,9 @@ create_desktop_shortcut() {
     local resources_dir="${psychopy_dir}/Resources"
 
     local shortcuts=(
-        "--no-splash" "PsychoPy (v${psychopy_version}) python(v${python_version})" "psychopy.png"
-        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) python(v${python_version})" "builder.png"
-        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) python(v${python_version})" "coder.png"
+        "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
+        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
+        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) Python(v${python_version})" "coder.png"
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
@@ -583,7 +579,6 @@ main() {
     build_wx=false
     sudo_mode="ask"
     pkg_manager_permission=false
-    disable_shortcut=false
     force_overwrite=false
     verbose=false
     disable_shortcut=false
@@ -594,7 +589,7 @@ main() {
             --python-version=*)
                 python_version="${arg#*=}"
                 if [[ ! $python_version =~ ^3\.(8|9|10)$ ]]; then
-                    echo "Error: Invalid Python version specified. Only major versions 3.8, 3.9, or 3.10 are allowed."
+                    echo "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
                     exit 1
                 fi
                 ;;
@@ -734,7 +729,6 @@ main() {
         else
             log_message "Info: Installing python build dependencies ..."
             log install_dependencies python_build_deps
-
             if python_nextcloud_install; then
                 :
             else   
@@ -807,7 +801,7 @@ main() {
 
     # Check if PsychoPy was successfully installed
     if ! pip show psychopy &> /dev/null; then
-        log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use --verbose flag."
+        log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use the --verbose flag."
         exit 1
     fi
 
