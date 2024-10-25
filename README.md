@@ -20,7 +20,7 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 ## Important Information
 
 - PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
-- Default(3.10.15)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python`.
+- Default(3.10)/specified Python version latest patch version is installed as `altinstall` into `/usr/local/psychopy_python`.
 - A directory is created in the specified directory (default: `$HOME`):
   `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
 - The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
@@ -61,8 +61,8 @@ Execute script; see options below for more information.
 
 | Option | Description |
 |--------|-------------|
-| `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.4`). |
+| `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
 | `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
@@ -84,7 +84,7 @@ Execute script; see options below for more information.
 
 ## Example
 
-- `./psychopy_linux_installer --psychopy-version=2024.1.4 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python -v -f`
+- `./psychopy_linux_installer --psychopy-version=2024.1.4 --python-version=3.10 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force`
 
 ## Script Details
 
