@@ -290,7 +290,7 @@ check_pypi_for_version() {
     fi
 }
 
-# Function to check if Python, pip, and venv are available for the specified global Python version
+# Function to check if Python, pip, and venv are available
 check_python_env() {
     if ! command -v "python${python_version}" >/dev/null 2>&1; then
         return 0
@@ -738,6 +738,7 @@ main() {
         exit 1
     fi
     
+    # Check for installed Python else install/build
     if check_python_env && [ "$build_python" = false ]; then
         log_message "Python${python_version} with pip and venv found in path."
         python"${python_version}" -m venv "${psychopy_dir}"
@@ -757,7 +758,6 @@ main() {
                 fi
             fi
         fi
-        # Check if the Python version was successfully installed in the custom directory
         if [ ! -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
             log_message "Error: python${python_version} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
             exit 1

@@ -63,7 +63,6 @@ Execute script; see options below for more information.
 |--------|-------------|
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `latest`). |
 | `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
-| `--existing-python` | Use installed Python instead of installing a new version. Requires choosen Python version, pip, and venv to be pre-installed and accessible in the system path. |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
@@ -78,7 +77,6 @@ Execute script; see options below for more information.
 
 **Note:**
 
-- Using `--existing-python`: This option speeds up the installation by skipping Python-specific dependency downloads and setup. It assumes that a compatible Python version (including `pip` and `venv`) is already installed and accessible in the system path. In future releases this option may become the default.
 - Non-Admin Installation: The `--sudo-mode=continue` option enables non-admin users to upgrade or reinstall if the required Python version and packages are already in /usr/local/psychopy_python. When used with --existing-python, this option will also work if all necessary packages are already installed. This setup assumes an administrator has previously run the installation.
 - Version Selection: The `--psychopy-version` and `--wxpython-version` options accept specific versions from [PyPI](https://pypi.org), as well as latest or git. Note that git versions may be unstable and are generally not recommended.
 
