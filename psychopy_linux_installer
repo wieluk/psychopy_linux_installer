@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-27
-#  Version:       1.2.1
+#  Version:       1.3.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
+  --psychopy-version=VERSION                    Specify PsychoPy version (default: latest).
   --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
@@ -585,7 +585,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    psychopy_version="2024.1.4"
+    psychopy_version="latest"
     python_version="3.10"
     wxpython_version="4.2.2"
     build_python=false
@@ -738,7 +738,7 @@ main() {
         exit 1
     fi
     
-    if check_python_env; then
+    if check_python_env && [ "$build_python" = false ]; then
         log_message "Python${python_version} with pip and venv found in path."
         python"${python_version}" -m venv "${psychopy_dir}"
     else
