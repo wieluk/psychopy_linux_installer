@@ -293,11 +293,12 @@ check_pypi_for_version() {
 
 # Function to build Python from source
 build_python() {
-    local official_base_url latest_patch_version official_url temp_file temp_dir
+    local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Info: Building Python ${python_version} from source this might take a while ..."
+    major_minor_version="${python_version}"
     official_base_url="https://www.python.org/ftp/python/"
     
-    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${python_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
+    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
     temp_file="Python-${latest_patch_version}.tgz"
@@ -384,15 +385,17 @@ wxpython_pip_install() {
 
 # Function to install wxPython from wheel URL
 wxpython_wheelurl_install() {
-    local html wheels latest_wheel wheel_url wheel_file
+    local wheel_dir python_version_short html wheels latest_wheel wheel_url wheel_file
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-    
+
     wheel_dir="${base_url}${os_version}/"
+    python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
     html=$(curl -s "$wheel_dir")
-    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
+
+    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
 
     if [ -z "$wheels" ]; then
-        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version}, and ${processor_structure} on extras.wxpython.org."
+        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure} on extras.wxpython.org."
         return 1
     fi
 
@@ -419,7 +422,9 @@ wxpython_wheelurl_install() {
 
 # Function to install wxPython from Nextcloud
 wxpython_nextcloud_install() {
-    wheel_name="wxPython-${wxpython_version}-cp${python_version//./}}-cp${python_version//./}}-${processor_structure}-${os_version}.whl"
+    python_major=$(python -c "import sys; print(sys.version_info.major)")
+    python_minor=$(python -c "import sys; print(sys.version_info.minor)")
+    wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
     wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
 
     if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
