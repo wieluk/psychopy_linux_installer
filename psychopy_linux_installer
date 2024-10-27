@@ -15,7 +15,6 @@ Usage: ./psychopy_linux_installer [options]
 Options:
   --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
   --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
-  --existing-python                             Use existing Python version instead of installing a new one. Requires chosen Python version, pip, and venv to be pre-installed and accessible in the system path.
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
@@ -289,6 +288,23 @@ check_pypi_for_version() {
         log_message "Error: ${package} version ${version} does not exist. Exiting."
         exit 1
     fi
+}
+
+# Function to check if Python, pip, and venv are available for the specified global Python version
+check_python_env() {
+    if ! command -v "python$PYTHON_VERSION" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! "python$PYTHON_VERSION" -m pip --version >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if ! "python$PYTHON_VERSION" -m venv --help >/dev/null 2>&1; then
+        return 0
+    fi
+
+    return 1
 }
 
 # Function to build Python from source
@@ -571,7 +587,6 @@ add_psychopy_to_path() {
 main() {
     psychopy_version="2024.1.4"
     python_version="3.10"
-    existing_python=false
     wxpython_version="4.2.2"
     build_python=false
     build_wx=false
@@ -597,9 +612,6 @@ main() {
                     echo "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
                     exit 1
                 fi
-                ;;
-            --existing-python)
-                existing_python=true
                 ;;
             --wxpython-version=*)
                 wxpython_version="${arg#*=}"
@@ -674,12 +686,6 @@ main() {
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
     log_message "Info: Initiating PsychoPy(${psychopy_version}) installation on ${os_version} (${processor_structure})."
 
-    # Exit if --existing-python flag used but python not in path.
-    if [ "$existing_python" = true ] && ! command -v "python${python_version}" > /dev/null 2>&1; then
-        log_message "Error: Python${python_version} not in path use without --existing-python to install Python. Exiting."
-        exit 1
-    fi
-
     # Detect package manager
     pkg_manager=$(detect_package_manager)
 
@@ -732,7 +738,10 @@ main() {
         exit 1
     fi
     
-    if [ "$existing_python" = false ]; then
+    if check_python_env; then
+        log_message "Python${python_version} with pip and venv found in path."
+        python"${python_version}" -m venv "${psychopy_dir}"
+    else
         if [ "$build_python" = true ]; then
             build_python
         else
@@ -755,8 +764,6 @@ main() {
         fi
         export PATH=/usr/local/psychopy_python/bin:$PATH
         /usr/local/psychopy_python/bin/python"${python_version}" -m venv "${psychopy_dir}"
-    else
-        python"${python_version}" -m venv "${psychopy_dir}"
     fi
 
     log_message "Info: Succesfully created Python${python_version} venv in ${psychopy_dir} ... Activating."
