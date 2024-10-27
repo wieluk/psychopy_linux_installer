@@ -63,16 +63,17 @@ Execute script; see options below for more information.
 |--------|-------------|
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.4`). |
 | `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
+|  `--use-system-python` | Use the system-installed Python instead of installing a new version. Requires Python (version 3.*), pip, and venv to be pre-installed and accessible in the system path. |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
+| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
 | `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
 | `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
-| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. |
 | `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. |
-| `-f`, `--force` | Force overwrite of the existing installation directory. |
-| `-v`, `--verbose` | Enable verbose output. |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
 | `--disable-path` | Disable adding psychopy to system path. |
+| `-f`, `--force` | Force overwrite of the existing installation directory. |
+| `-v`, `--verbose` | Enable verbose output. |
 | `-h`, `--help` | Show help message. |
 
 **Note:**
