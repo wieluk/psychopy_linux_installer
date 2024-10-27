@@ -23,6 +23,7 @@ Options:
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly.
   --disable-shortcut                            Disable desktop shortcut creation.
   --disable-path                                Disable adding psychopy to system path.
+  --use-system-python                           Use the system-installed Python instead of installing a new version. Requires Python (version 3.*), pip, and venv to be pre-installed and accessible in the system path.
   -f, --force                                   Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output.
   -h, --help                                    Show this help message.
@@ -583,6 +584,7 @@ main() {
     verbose=false
     disable_shortcut=false
     disable_path=false
+    use_system_python=false
 
     for arg in "$@"; do
         case $arg in
@@ -645,6 +647,9 @@ main() {
                 ;;
             --disable-path)
                 disable_path=true
+                ;;
+            --use-system-python)
+                use_system_python=true
                 ;;
             -f|--force)
                 force_overwrite=true
@@ -721,34 +726,35 @@ main() {
         exit 1
     fi
 
-    if [ "$build_python" = true ]; then
-        build_python
-    else
-        if [ -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
-            log_message "Info: Python version ${python_version} is already installed in /usr/local/psychopy_python. Skipping installation."
+    if [ "$use_system_python" = false ]; then
+        if [ "$build_python" = true ]; then
+            build_python
         else
-            log_message "Info: Installing python build dependencies ..."
-            log install_dependencies python_build_deps
-            if python_nextcloud_install; then
-                :
-            else   
-                build_python
+            if [ -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
+                log_message "Info: Python version ${python_version} is already installed in /usr/local/psychopy_python. Skipping installation."
+            else
+                log_message "Info: Installing python build dependencies ..."
+                log install_dependencies python_build_deps
+                if python_nextcloud_install; then
+                    :
+                else   
+                    build_python
+                fi
             fi
         fi
+        # Check if the Python version was successfully installed in the custom directory
+        if [ ! -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
+            log_message "Error: python${python_version} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
+            exit 1
+        fi
+        export PATH=/usr/local/psychopy_python/bin:$PATH
+        /usr/local/psychopy_python/bin/python"${python_version}" -m venv "${psychopy_dir}"
+    else
+        python"${python_version}" -m venv "${psychopy_dir}"
     fi
 
-    # Check if the Python version was successfully installed in the custom directory
-    if [ ! -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
-        log_message "Error: python${python_version} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
-        exit 1
-    fi
-
-    # Create and activate virtual environment
-    log_message "Info: Creating and activating virtual environment..."
-    export PATH=/usr/local/psychopy_python/bin:$PATH
-    /usr/local/psychopy_python/bin/python"${python_version}" -m venv "${psychopy_dir}"
     log source "${psychopy_dir}/bin/activate"
-
+    
     # Upgrade pip and install required Python packages
     log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
     log pip install -U pip distro sip six psychtoolbox attrdict
