@@ -292,15 +292,15 @@ check_pypi_for_version() {
 
 # Function to check if Python, pip, and venv are available for the specified global Python version
 check_python_env() {
-    if ! command -v "python$PYTHON_VERSION" >/dev/null 2>&1; then
+    if ! command -v "python${python_version}" >/dev/null 2>&1; then
         return 0
     fi
 
-    if ! "python$PYTHON_VERSION" -m pip --version >/dev/null 2>&1; then
+    if ! "python${python_version}" -m pip --version >/dev/null 2>&1; then
         return 0
     fi
 
-    if ! "python$PYTHON_VERSION" -m venv --help >/dev/null 2>&1; then
+    if ! "python${python_version}" -m venv --help >/dev/null 2>&1; then
         return 0
     fi
 
