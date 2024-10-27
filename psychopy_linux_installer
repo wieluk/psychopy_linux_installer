@@ -385,17 +385,14 @@ wxpython_pip_install() {
 
 # Function to install wxPython from wheel URL
 wxpython_wheelurl_install() {
-    local wheel_dir python_version_short html wheels latest_wheel wheel_url wheel_file
+    local wheel_dir html wheels latest_wheel wheel_url wheel_file
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-
     wheel_dir="${base_url}${os_version}/"
-    python_version_short=$(python -c "import sys; print('cp' + ''.join(map(str, sys.version_info[:2])))")
     html=$(curl -s "$wheel_dir")
-
-    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version_short}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
+    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
 
     if [ -z "$wheels" ]; then
-        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version_short}, and ${processor_structure} on extras.wxpython.org."
+        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version}, and ${processor_structure} on extras.wxpython.org."
         return 1
     fi
 
@@ -422,9 +419,8 @@ wxpython_wheelurl_install() {
 
 # Function to install wxPython from Nextcloud
 wxpython_nextcloud_install() {
-    python_major=$(python -c "import sys; print(sys.version_info.major)")
-    python_minor=$(python -c "import sys; print(sys.version_info.minor)")
-    wheel_name="wxPython-${wxpython_version}-cp${python_major}${python_minor}-cp${python_major}${python_minor}-${processor_structure}-${os_version}.whl"
+    local wheel_name wx_python_nextcloud_url wx_python_file
+    wheel_name="wxPython-${wxpython_version}-cp${python_version//./}-cp${python_version//./}-${processor_structure}-${os_version}.whl"
     wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
 
     if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
