@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-27
-#  Version:       1.2.1
+#  Date:          2024-10-28
+#  Version:       1.2.2
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -775,7 +775,7 @@ main() {
         exit 1
     fi
     
-    if ! check_python_pkg_manager; then
+    if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
             build_python
         else
@@ -799,6 +799,7 @@ main() {
         export PATH=/usr/local/psychopy_python/bin:$PATH
         /usr/local/psychopy_python/bin/python"${python_version}" -m venv "${psychopy_dir}"
     else
+        log_message "Info: Python${python_version} can be installed via package manager. Installing ..."
         install_dependencies python_with_venv
         check_python_env "python${python_version}"
         python"${python_version}" -m venv "${psychopy_dir}"
