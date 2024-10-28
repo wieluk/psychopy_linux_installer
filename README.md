@@ -20,12 +20,11 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 ## Important Information
 
 - PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
-- Default(3.10)/specified Python latest patch version is installed as `altinstall` into `/usr/local/psychopy_python`.
-- A directory is created in the specified directory (default: `$HOME`):
-  `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
-- The script first attempts to download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
+- Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python` if not available via package manager.
+- A directory is created in the specified directory (default: `$HOME`): `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
+- The script first attempts to install python via package manager then tries download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
 - For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source.
-- If the downloads fail, building Python and wxPython may take a long time.
+- If the downloads fail, building Python and wxPython may take a some time.
 - The script provides minimal output by default. Use the --verbose option for detailed logging.
 
 ## Usage
@@ -63,7 +62,6 @@ Execute script; see options below for more information.
 |--------|-------------|
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `2024.1.4`). |
 | `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
-| `--existing-python` | Use installed Python instead of installing a new version. Requires choosen Python version, pip, and venv to be pre-installed and accessible in the system path. |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
@@ -78,8 +76,7 @@ Execute script; see options below for more information.
 
 **Note:**
 
-- Using `--existing-python`: This option speeds up the installation by skipping Python-specific dependency downloads and setup. It assumes that a compatible Python version (including `pip` and `venv`) is already installed and accessible in the system path. In future releases this option may become the default.
-- Non-Admin Installation: The `--sudo-mode=continue` option enables non-admin users to upgrade or reinstall if the required Python version and packages are already in /usr/local/psychopy_python. When used with --existing-python, this option will also work if all necessary packages are already installed. This setup assumes an administrator has previously run the installation.
+- Non-Admin Installation: The `--sudo-mode=continue` option enables non-admin users to upgrade or reinstall if the required Python version and packages are already installed. This option assumes an administrator has previously run the installation.
 - Version Selection: The `--psychopy-version` and `--wxpython-version` options accept specific versions from [PyPI](https://pypi.org), as well as latest or git. Note that git versions may be unstable and are generally not recommended.
 
 ## Example
