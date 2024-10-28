@@ -253,7 +253,6 @@ install_dependencies() {
             ;;
     esac
 
-
     case $dep_type in
         script_deps) dependencies=("${script_deps[@]}") ;;
         python_build_deps) dependencies=("${python_build_deps[@]}") ;;
@@ -263,10 +262,10 @@ install_dependencies() {
         *) log_message "Error: Invalid dependency type specified."; exit 1 ;;
     esac
 
-    # Install the selected dependencies
     install_packages "${dependencies[@]}"
 }
 
+# Function to check if python version is available in package manager
 check_python_pkg_manager() {
     local available_version
     
@@ -294,7 +293,7 @@ check_python_pkg_manager() {
     if [ "$available_version" == "$python_version" ]; then
         return 0  
     else
-        log_message "Error: Python $python_version not available in $pkg_manager. available: $available_version"
+        log_message "Warning: Python $python_version not available in $pkg_manager."
         return 1 
     fi
 }
@@ -330,7 +329,7 @@ check_pypi_for_version() {
     fi
 }
 
-
+# Function to check if python is in path and pip and venv are installed
 check_python_env() {
     local python_cmd="$1"
     if ! command -v "$python_cmd" > /dev/null 2>&1; then
@@ -623,7 +622,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    psychopy_version="2024.1.4"
+    psychopy_version="latest"
     python_version="3.10"
     wxpython_version="4.2.2"
     build_python=false
@@ -767,15 +766,14 @@ main() {
         sudo_wrapper mkdir -p "${psychopy_dir}"
     fi
 
-    #Check if psychopy_dir is writeable else change ownership 
     [ -w "${psychopy_dir}" ] || sudo_wrapper chown "$USER" "${psychopy_dir}"
 
-    # Exit script if writing or changing directory to psychopy_dir is not possible
     if ! [ -w "${psychopy_dir}" ] || ! cd "${psychopy_dir}"; then
         log_message "Error: Failed to access or change directory to ${psychopy_dir}. Exiting."
         exit 1
     fi
     
+    # Install python and create vnev
     if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
             build_python
@@ -792,7 +790,7 @@ main() {
                 fi
             fi
         fi
-        # Check if the Python version was successfully installed in the custom directory
+
         if [ ! -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
             log_message "Error: python${python_version} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments."
             exit 1
@@ -806,9 +804,11 @@ main() {
         python"${python_version}" -m venv "${psychopy_dir}"
     fi
 
+    # Activate venv
     log_message "Info: Succesfully created Python${python_version} venv in ${psychopy_dir} ... Activating."
     log source "${psychopy_dir}/bin/activate"
     check_python_env "python"
+
     # Upgrade pip and install required Python packages
     log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
     log pip install -U pip distro sip six psychtoolbox attrdict
@@ -845,7 +845,6 @@ main() {
         fi
     fi
 
-    # Check if wxPython was successfully installed
     if ! pip show wxPython &> /dev/null; then
         log_message "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
         exit 1
@@ -859,7 +858,6 @@ main() {
         log pip install psychopy=="${psychopy_version}"
     fi
 
-    # Check if PsychoPy was successfully installed
     if ! pip show psychopy &> /dev/null; then
         log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use the --verbose flag."
         exit 1
