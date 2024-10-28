@@ -225,14 +225,14 @@ install_dependencies() {
             psychopy_deps=(libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libxcb-cursor0 libxkbcommon-x11-0)
             python_build_deps=(build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils make)
             wxpython_deps=(libjpeg-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libpng-dev libtiff-dev libnotify-dev libsm-dev libgtk2.0-dev g++ make)
-            python_with_venv=(python3 python3-venv python3-pip)
+            python_with_venv=(python3 python3-venv python3-pip python3-dev)
             ;;
         yum|dnf)
             script_deps=(git curl jq)
             psychopy_deps=(gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel)
             python_build_deps=(gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel make)
             wxpython_deps=(libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel gtk2-devel make)
-            python_with_venv=(python3 python3-venv python3-pip)
+            python_with_venv=(python3 python3-venv python3-pip python3-devel)
             ;;
         pacman)
             script_deps=(git curl jq)
@@ -246,12 +246,13 @@ install_dependencies() {
             psychopy_deps=(gtk3-devel libxcb-xinerama0 libSDL2-devel libusb-1_0-devel portaudio-devel alsa-devel)
             python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel bzip2-devel readline-devel xz-devel make)
             wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel gtk2-devel gcc-c++ make)
-            python_with_venv=(python3 python3-virtualenv python3-pip)
+            python_with_venv=(python3 python3-virtualenv python3-pip python3-devel)
             ;;
         *)
             log_message "Error: No compatible package manager found."; exit 1
             ;;
     esac
+
 
     case $dep_type in
         script_deps) dependencies=("${script_deps[@]}") ;;
