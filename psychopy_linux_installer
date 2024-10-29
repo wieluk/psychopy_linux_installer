@@ -776,6 +776,8 @@ main() {
     # Install python and create vnev
     if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
+            log_message "Info: Installing python build dependencies ..."
+            log install_dependencies python_build_deps
             build_python
         else
             if [ -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
