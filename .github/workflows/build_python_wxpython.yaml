@@ -282,6 +282,7 @@ jobs:
         if: always()
         run: |
           sudo rm -rf /tmp_dir ~/.cache/pip /usr/local/psychopy_python
+          sleep 10
 
   update-readme:
     needs: build

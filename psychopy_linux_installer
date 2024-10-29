@@ -13,7 +13,7 @@ show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --psychopy-version=VERSION                    Specify PsychoPy version (default: 2024.1.4).
+  --psychopy-version=VERSION                    Specify PsychoPy version (default: latest).
   --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
