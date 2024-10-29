@@ -287,7 +287,7 @@ jobs:
   update-readme:
     needs: build
     if: ${{ failure() || success() }}
-    runs-on: [self-hosted, ubuntu-24.04]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Configure Git and download artifacts
