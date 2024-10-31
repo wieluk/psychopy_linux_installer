@@ -70,10 +70,10 @@ sudo_wrapper() {
             ask)
                 if $is_pkg_manager_command; then
                     log_message "Warning: Command '${command[*]}' failed with '${error_output}'."
-                    read -r -p "Retry with sudo for this and all future $pkg_manager commands (r), continue (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
+                    read -r -p "Retry with sudo for this and all future $pkg_manager commands(r), continue(c), quit(q), or auto sudo when needed(a)? [r/c/q/a] " response
                 else
                     log_message "Warning: Command '${command[*]}' failed with '${error_output}'."
-                    read -r -p "Retry with sudo (r), continue without sudo (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
+                    read -r -p "Retry with sudo(r), continue without sudo(c), quit(q), or auto sudo when needed(a)? [r/c/q/a] " response
                 fi
 
                 case "$response" in
@@ -87,9 +87,6 @@ sudo_wrapper() {
                     [Cc])
                         ;;
                     [aA])
-                        if $is_pkg_manager_command; then
-                            pkg_manager_permission=true
-                        fi
                         log_message "Info: Retrying ${command[*]} with sudo and setting sudo-mode=auto ..."
                         log sudo "${command[@]}"
                         sudo_mode=auto
@@ -101,6 +98,9 @@ sudo_wrapper() {
                 esac
                 ;;
             auto)
+                if $is_pkg_manager_command; then
+                    pkg_manager_permission=true
+                fi
                 log log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Using sudo..."
                 log sudo "${command[@]}"
                 ;;
@@ -115,6 +115,7 @@ sudo_wrapper() {
     }
 
     is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
+
     if [[ "$sudo_mode" == "force" || ($is_pkg_manager_command && "$pkg_manager_permission" == true) ]]; then
         log sudo "${command[@]}"
         return
@@ -122,7 +123,6 @@ sudo_wrapper() {
 
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
-
 
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
@@ -371,9 +371,7 @@ build_python() {
         log make -j "$(nproc)"
         sudo_wrapper make altinstall
     )
-
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-
     return 0
 }
 
@@ -400,7 +398,7 @@ python_nextcloud_install() {
     temp_dir="${latest_patch_version%.tar.gz}_temp"
 
     if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-        log_message "Info: Successfully downloaded Python ${latest_patch_version} ... making an altinstall ..."
+        log_message "Info: Successfully downloaded ${latest_patch_version} from Nextcloud. Making an altinstall ..."
         mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
         (
@@ -460,11 +458,11 @@ wxpython_wheelurl_install() {
         log_message "Info: Download from extras.wxpython.org successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Info: Installed wxPython from $wheel_file"
-            sudo_wrapper rm "$wheel_file"
+            rm "$wheel_file"
             return 0
         else
             log_message "Warning: Installing wxPython from $wheel_file failed."
-            sudo_wrapper rm "$wheel_file"
+            rm "$wheel_file"
             return 1
         fi
     else
@@ -482,14 +480,14 @@ wxpython_nextcloud_install() {
     if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
         wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
         mv "$wheel_name" "$wx_python_file"
-        log_message "Info: Download from nextcloud successful. Installing wxPython from $wx_python_file"
+        log_message "Info: Download from Nextcloud successful. Installing wxPython from $wx_python_file"
         if log pip install "$wx_python_file"; then
             log_message "Info: Installed wxPython from $wx_python_file"
-            sudo_wrapper rm "$wx_python_file"
+            rm "$wx_python_file"
             return 0
         else
             log_message "Warning: Installing wxPython from Nextcloud failed."
-            sudo_wrapper rm "$wx_python_file"
+            rm "$wx_python_file"
             return 1
         fi
     else
@@ -505,7 +503,7 @@ create_desktop_shortcut() {
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
     local resources_dir="${psychopy_dir}/Resources"
     
-    desktop_shortcut="$(xdg-user-dir DESKTOP)/"
+    desktop_shortcut="$(xdg-user-dir DESKTOP)"
     
     local shortcuts=(
         "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
@@ -518,20 +516,18 @@ create_desktop_shortcut() {
         return
     fi
 
-    if [ ! -d "${resources_dir}" ]; then
-        sudo_wrapper mkdir -p "${resources_dir}"
-    fi
+    mkdir -p "${resources_dir}"
 
     for ((i=0; i<${#shortcuts[@]}; i+=3)); do
         local exec_args="${shortcuts[i]}"
         local pretty_name="${shortcuts[i+1]}"
         local icon_file="${shortcuts[i+2]}"
         local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}"
-        local desktop_file="${desktop_shortcut}${pretty_name}.desktop"
+        local desktop_file="${desktop_shortcut}/${pretty_name}.desktop"
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            sudo_wrapper curl -o "${icon_path}" "${icon_url}"
+            log curl -o "${icon_path}" "${icon_url}"
         else
             log_message "Warning: Icon file ${icon_url} not found, skipping..."
         fi
@@ -551,13 +547,11 @@ Terminal=false
 Type=Application
 Categories=Education;Science;"
 
-        sudo_wrapper sh -c "echo '$desktop_content' > '$desktop_file'"
+        sh -c "echo '$desktop_content' > '$desktop_file'"
         sudo_wrapper chmod +x "$desktop_file"
-        sudo_wrapper gio set "$desktop_file" metadata::trusted true
-
-        if [ -d "$desktop_dir" ]; then
-            sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
-        fi
+        sudo_wrapper chown "$USER" "$desktop_file"
+        gio set "$desktop_file" metadata::trusted true
+        sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
     done
 }
 
@@ -569,7 +563,7 @@ add_psychopy_to_path() {
 
     shell_name=$(basename "$SHELL")
     mkdir -p "$bin_dir"
-    sudo_wrapper ln -sf "${psychopy_dir}/bin/psychopy" "$target_bin"
+    ln -sf "${psychopy_dir}/bin/psychopy" "$target_bin"
 
     local config_file=""
     local path_line=""
@@ -593,33 +587,15 @@ add_psychopy_to_path() {
             ;;
         *)
             log_message "Warning: Unsupported shell: $shell_name; PsychoPy not added to path"
-            echo
-            log_message "PsychoPy installation complete!"
-            echo
-            echo "To start PsychoPy, use:"
-            echo "${psychopy_dir}/bin/psychopy"
-            exit 0
             ;;
     esac
 
     if ! grep -Fxq "$path_line" "$config_file"; then
-        sudo_wrapper sh -c "echo '$path_line' >> \"$config_file\""
+        sh -c "echo '$path_line' >> \"$config_file\""
         log_message "Info: PsychoPy path added to $config_file"
     else
         log_message "Info: PsychoPy path already exists in $config_file"
     fi
-
-    echo
-    log_message "PsychoPy installation complete!"
-    echo
-    echo "To update your path, run:"
-    echo "source $config_file"
-    echo
-    echo "To start PsychoPy from terminal, use:"
-    echo "psychopy_${psychopy_version}_py${python_version}"
-    echo
-    echo "You can also use the absolute path:"
-    echo "${psychopy_dir}/bin/psychopy"
 }
 
 main() {
@@ -901,12 +877,19 @@ main() {
     if [ "$disable_path" = false ]; then
         add_psychopy_to_path
     else
-        echo
-        log_message "Info: PsychoPy installation complete!"
-        echo
-        echo "To start PsychoPy, use:"
-        echo "${psychopy_dir}/bin/psychopy"
+        log_message "Info: Adding PsychoPy to system path disabled by user."
     fi
+
+    echo
+    log_message "PsychoPy installation complete!"
+    echo
+    echo "Please reboot to apply security limits and to refresh system path."
+    echo
+    echo "To start PsychoPy from terminal, use:"
+    echo "psychopy_${psychopy_version}_py${python_version}"
+    echo
+    echo "If PsychoPy is not added to system path,use the absolute path:"
+    echo "${psychopy_dir}/bin/psychopy"
 }
 
 main "$@"
