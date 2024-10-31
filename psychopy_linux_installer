@@ -87,6 +87,9 @@ sudo_wrapper() {
                     [Cc])
                         ;;
                     [aA])
+                        if $is_pkg_manager_command; then
+                            pkg_manager_permission=true
+                        fi
                         log_message "Info: Retrying ${command[*]} with sudo and setting sudo-mode=auto ..."
                         log sudo "${command[@]}"
                         sudo_mode=auto
@@ -502,7 +505,7 @@ create_desktop_shortcut() {
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
     local resources_dir="${psychopy_dir}/Resources"
     
-    desktop_shortcut="$(xdg-user-dir DESKTOP)"
+    desktop_shortcut="${HOME}/$(xdg-user-dir DESKTOP)/"
     local shortcuts=(
         "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
         "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
