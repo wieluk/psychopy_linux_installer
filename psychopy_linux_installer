@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-31
-#  Version:       1.2.3
+#  Version:       1.2.4
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -754,14 +754,14 @@ main() {
     if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
             log_message "Info: Installing python build dependencies ..."
-            log install_dependencies python_build_deps
+            install_dependencies python_build_deps
             build_python
         else
             if [ -x "/usr/local/psychopy_python/bin/python${python_version}" ]; then
                 log_message "Info: Python version ${python_version} is already installed in /usr/local/psychopy_python. Skipping installation."
             else
                 log_message "Info: Installing python build dependencies ..."
-                log install_dependencies python_build_deps
+                install_dependencies python_build_deps
                 if python_nextcloud_install; then
                     :
                 else   
