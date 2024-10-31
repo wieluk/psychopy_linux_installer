@@ -55,7 +55,7 @@ sudo_wrapper() {
 
         case $exit_code in
             0) return 1 ;;  
-            1|2|5|13|77|100|126|127) return 0 ;;
+            1|2|5|10|13|77|100|126|127) return 0 ;;
             *)
                 log_message "Warning: Unhandled exit code $exit_code. Error output: $error_output. Trying to continue ..."
                 return 1 ;;
