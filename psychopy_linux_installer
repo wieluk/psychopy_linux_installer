@@ -116,11 +116,11 @@ sudo_wrapper() {
 
     is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
 
-    if [[ "$sudo_mode" == "force" || ($is_pkg_manager_command && "$pkg_manager_permission" == true) ]]; then
+    if [[ "$sudo_mode" == "force" || ( "$is_pkg_manager_command" == true && "$pkg_manager_permission" == true ) ]]; then
         log sudo "${command[@]}"
         return
     fi
-
+    
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
 
@@ -365,12 +365,13 @@ build_python() {
     mkdir -p "${temp_dir}"
     tar -xf "${temp_file}" -C "${temp_dir}"
 
-    (
-        cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
-        log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
-        log make -j "$(nproc)"
-        sudo_wrapper make altinstall
-    )
+    
+    cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
+    log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
+    log make -j "$(nproc)"
+    sudo_wrapper make altinstall
+    cd "${psychopy_dir}" || exit
+    
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
     return 0
 }
@@ -401,10 +402,11 @@ python_nextcloud_install() {
         log_message "Info: Successfully downloaded ${latest_patch_version} from Nextcloud. Making an altinstall ..."
         mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
-        (
-            cd "${temp_dir}" || exit
-            sudo_wrapper make altinstall
-        )
+
+        cd "${temp_dir}" || exit
+        sudo_wrapper make altinstall
+        cd "${psychopy_dir}" || exit
+
         sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
         return 0
     else
