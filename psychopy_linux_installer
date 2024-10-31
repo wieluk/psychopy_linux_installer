@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-28
-#  Version:       1.2.2
+#  Date:          2024-10-31
+#  Version:       1.2.3
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -54,12 +54,12 @@ sudo_wrapper() {
         local error_output=$2
 
         case $exit_code in
+            0) return 1 ;;  
             1|2|13|77|100|126|127) return 0 ;;
+            *)
+                log_message "Warning: Unhandled exit code $exit_code. Error output: $error_output. Trying to continue ..."
+                return 1 ;;
         esac
-
-        if [[ $exit_code -ne 0 ]]; then
-            echo "$error_output" | grep -Eqi "permission denied|requires root|must be root|not authorized|could not open|operation not permitted|cannot open|superuser privileges|has to be run with|error: must run as root|unless you are root|root privileges are required|eacces|eperm|not allowed|need root|failed to open|permission problem|permission error|not permitted|cannot access|cannot create|cannot remove|cannot write|read-only file system|you don't have the right|do not have the required permissions|cannot execute"
-        fi
     }
 
     handle_sudo_request() {
@@ -68,15 +68,12 @@ sudo_wrapper() {
 
         case "$sudo_mode" in
             ask)
-                if $is_pkg_manager_command && [[ "$pkg_manager_permission" == true ]]; then
-                    log sudo "${command[@]}"
-                    return
-                fi
-
                 if $is_pkg_manager_command; then
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo for this and all future $pkg_manager commands (r), continue (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
+                    log_message "Warning: Command '${command[*]}' failed with '${error_output}'."
+                    read -r -p "Retry with sudo for this and all future $pkg_manager commands (r), continue (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
                 else
-                    read -r -p "Command '${command[*]}' failed due to permission denied. Retry with sudo (r), continue without sudo (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
+                    log_message "Warning: Command '${command[*]}' failed with '${error_output}'."
+                    read -r -p "Retry with sudo (r), continue without sudo (c), quit (q), or auto sudo when needed (a)? [r/c/q/a] " response
                 fi
 
                 case "$response" in
@@ -101,28 +98,28 @@ sudo_wrapper() {
                 esac
                 ;;
             auto)
-                log log_message "Warning: Command '${command[*]}' failed due to permission denied. Using sudo..."
+                log log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Using sudo..."
                 log sudo "${command[@]}"
                 ;;
             continue)
-                log_message "Warning: Command '${command[*]}' failed due to permission denied. Continuing without sudo..."
+                log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo..."
                 ;;
             error)
-                log_message "Error: Command '${command[*]}' failed due to permission denied. Sudo is required, but mode is set to 'error'."
+                log_message "Error: Command '${command[*]}' failed with '${error_output}'. Sudo is required, but mode is set to 'error'."
                 exit 1
                 ;;
         esac
     }
 
-    if [[ "$sudo_mode" == "force" ]]; then
+    is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
+    if [[ "$sudo_mode" == "force" || ($is_pkg_manager_command && "$pkg_manager_permission" == true) ]]; then
         log sudo "${command[@]}"
         return
     fi
 
-    error_output=$(LC_ALL=C "${command[@]}" 2>&1)
+    error_output=$("${command[@]}" 2>&1)
     exit_code=$?
-    
-    is_pkg_manager_command=$([ "$1" == "$pkg_manager" ] && echo true || echo false)
+
 
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
