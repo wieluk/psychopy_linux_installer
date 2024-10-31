@@ -2,7 +2,7 @@ name: Run PsychoPy Installer on Multiple Linux OS
 
 on:
   push:
-    branches: [main, dev, fix-sudo-wrapper]
+    branches: [main, dev]
     paths:
       - psychopy_linux_installer
       - .github/workflows/test_installer.yaml

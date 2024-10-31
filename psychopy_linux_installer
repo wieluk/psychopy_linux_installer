@@ -698,7 +698,7 @@ main() {
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "Info: Initiating PsychoPy(${psychopy_version}) installation on ${os_version} (${processor_structure})."
+    log_message "Info: Initiating PsychoPy(${psychopy_version}) installation using psychopy_linux_installer v$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g') on ${os_version} (${processor_structure})."
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
