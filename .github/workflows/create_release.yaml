@@ -241,7 +241,7 @@ jobs:
           fi
 
           echo "Python exists: $PYTHON_EXISTS"
-          
+          echo "WXPython exists: $WXPYTHON_EXISTS"
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
