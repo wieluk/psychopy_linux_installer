@@ -328,15 +328,13 @@ jobs:
           # Install Python
           sudo make altinstall
 
-          - name: Upload Python to Release
-          if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
-          uses: actions/upload-release-asset@v1
-          with:
-            upload_url: ${{ env.upload_url }}
-            asset_path: ${{ env.PYTHON_TARBALL_PATH }}
-            asset_name: ${{ env.PYTHON_TARBALL_NAME }}
-            asset_content_type: application/gzip
-            repo_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Python to Release
+        if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/gzip" \
+          --data-binary @"${{ env.PYTHON_TARBALL_PATH }}" \
+          "${{ env.upload_url }}?name=${{ env.PYTHON_TARBALL_NAME }}"
 
       - name: Build and upload wxPython
         if: env.SKIP_PROCESS == 'false'
@@ -366,15 +364,13 @@ jobs:
 
           deactivate
 
-          - name: Upload wxPython to Release
-          if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
-          uses: actions/upload-release-asset@v1
-          with:
-            upload_url: ${{ env.upload_url }}
-            asset_path: ${{ env.WXPYTHON_IDENTIFIED_WHEEL }}
-            asset_name: ${{ env.WXPYTHON_WHEEL_NAME }}
-            asset_content_type: application/octet-stream
-            repo_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload wxPython to Release
+        if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @"${{ env.WXPYTHON_IDENTIFIED_WHEEL }}" \
+          "${{ env.upload_url }}?name=${{ env.WXPYTHON_WHEEL_NAME }}"
 
       - name: Create and Record Result Table
         if: env.SKIP_PROCESS == 'false'
