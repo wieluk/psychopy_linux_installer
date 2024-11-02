@@ -224,6 +224,7 @@ jobs:
           WXPYTHON_EXISTS=false
           echo "wxpython file name: $WXPYTHON_WHEEL_NAME"
           for ASSET_NAME in $ASSET_NAMES; do
+          echo $ASSET_NAME
               if [ "$ASSET_NAME" = "$PYTHON_TARBALL_NAME" ]; then
                   PYTHON_EXISTS=true
               fi
