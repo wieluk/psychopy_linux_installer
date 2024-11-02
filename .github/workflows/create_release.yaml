@@ -152,7 +152,7 @@ jobs:
 
       - name: Setup environment and install dependencies
         run: |
-          sudo rm -rf /tmp_dir ~/.cache/pip && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          sudo rm -rf /tmp_dir ~/.cache/pip && sudo mkdir /tmp_dir && sudo chmod -R 750 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
             sudo apt-get install -y curl
@@ -322,6 +322,7 @@ jobs:
 
       - name: Upload Python
         if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
+        continue-on-error: true
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/gzip" \
@@ -358,6 +359,7 @@ jobs:
         
       - name: Upload wxPython to Release
         if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
+        continue-on-error: true
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
