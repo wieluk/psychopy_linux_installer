@@ -2,6 +2,7 @@ name: create release
 
 on:
   push:
+    branches: [gh-binaries] #only for testin REMOVE later
     tags: ['v*.*.*']
   workflow_dispatch:
 
