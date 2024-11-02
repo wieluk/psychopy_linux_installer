@@ -1,4 +1,4 @@
-name: create release
+name: Build Python/wxPython and upload to GitHub Releases
 
 on:
   push:
@@ -11,6 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
 
       - name: Extract version from script
         id: extract_version
@@ -25,40 +30,38 @@ jobs:
 
       - name: Create release if not exists
         id: create_release
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const scriptVersion = process.env.VERSION;
-            const releaseTag = 'v' + scriptVersion;
-
-            try {
-              // Check if the release already exists
-              const release = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag: releaseTag
-              });
-              core.info(`Release ${releaseTag} already exists.`);
-              core.setOutput('release_exists', 'true');
-            } catch (error) {
-              if (error.status === 404) {
-                // Release does not exist, create it
-                const newRelease = await github.rest.repos.createRelease({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag_name: releaseTag,
-                  name: releaseTag,
-                  body: `PsychoPy Linux Installer version ${scriptVersion}`,
-                  draft: false,
-                  prerelease: false
-                });
-                core.info(`Release ${releaseTag} created.`);
-                core.setOutput('release_exists', 'false');
-              } else {
-                throw error;
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          RELEASE_TAG="v${VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          if echo "$RESPONSE" | grep -q '"id":'; then
+            echo "Release ${RELEASE_TAG} already exists."
+            echo "release_exists=true" >> $GITHUB_ENV
+          else
+            echo "Release ${RELEASE_TAG} does not exist. Creating release."
+            CREATE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -d @- "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" <<EOF
+              {
+                "tag_name": "${RELEASE_TAG}",
+                "name": "${RELEASE_TAG}",
+                "body": "PsychoPy Linux Installer version ${VERSION}",
+                "draft": false,
+                "prerelease": false
               }
-            }
+          EOF
+                      )
+                      if echo "$CREATE_RESPONSE" | grep -q '"id":'; then
+                        echo "Release ${RELEASE_TAG} created."
+                        echo "release_exists=false" >> $GITHUB_ENV
+                      else
+                        echo "Failed to create release."
+                        echo "Error response: $CREATE_RESPONSE"
+                        exit 1
+                      fi
+                    fi
 
   build:
     needs: create-release
@@ -85,6 +88,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
       - name: Extract version from script
         id: extract_version
         run: |
@@ -98,18 +106,22 @@ jobs:
 
       - name: Get release info
         id: get_release
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const releaseTag = 'v' + process.env.VERSION;
-            const release = await github.rest.repos.getReleaseByTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: releaseTag
-            });
-            core.setOutput('release_id', release.data.id);
-            core.setOutput('upload_url', release.data.upload_url);
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ env.VERSION }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          RELEASE_TAG="v${VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
+            echo "Failed to get release ID for tag ${RELEASE_TAG}."
+            exit 1
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
+          echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
 
       - name: Setup environment and install dependencies
         run: |
@@ -138,12 +150,16 @@ jobs:
         id: check-files
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ steps.get_release.outputs.release_id }}
+          RELEASE_ID: ${{ env.release_id }}
         run: |
           major_minor_version="${{ matrix.python_version }}"
           PYTHON_VERSION="${major_minor_version}"
-          # We'll use the latest patch version available in the release assets
-          # Assume the assets are named with the full version
+          # We'll use the latest patch version available from python.org
+          PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
+          if [ -z "$PYTHON_FULL_VERSION" ]; then
+            echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
+            exit 1
+          fi
 
           detect_os_version() {
               if [ -f /etc/os-release ]; then
@@ -164,9 +180,9 @@ jobs:
           # Use a fixed wxPython version or fetch as needed
           WXPYTHON_VERSION="4.2.1"
 
-          # Define asset name patterns
-          PYTHON_TARBALL_PATTERN="python-${PYTHON_VERSION}\.[0-9]+-${PROCESSOR_STRUCTURE}-${OS_VERSION}\.tar\.gz"
-          WXPYTHON_WHEEL_PATTERN="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}\.whl"
+          # Define asset names
+          PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
+          WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
 
           # Get the list of assets in the release
           ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets")
@@ -176,13 +192,11 @@ jobs:
           WXPYTHON_EXISTS=false
 
           for ASSET_NAME in $ASSET_NAMES; do
-              if [[ "$ASSET_NAME" =~ $PYTHON_TARBALL_PATTERN ]]; then
+              if [ "$ASSET_NAME" = "$PYTHON_TARBALL_NAME" ]; then
                   PYTHON_EXISTS=true
-                  PYTHON_TARBALL_NAME="$ASSET_NAME"
               fi
-              if [[ "$ASSET_NAME" =~ $WXPYTHON_WHEEL_PATTERN ]]; then
+              if [ "$ASSET_NAME" = "$WXPYTHON_WHEEL_NAME" ]; then
                   WXPYTHON_EXISTS=true
-                  WXPYTHON_WHEEL_NAME="$ASSET_NAME"
               fi
           done
 
@@ -200,6 +214,7 @@ jobs:
           echo "WXPYTHON_VERSION=${WXPYTHON_VERSION}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
+          echo "PYTHON_FULL_VERSION=${PYTHON_FULL_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_MAJOR=${PYTHON_MAJOR}" >> $GITHUB_ENV
           echo "PYTHON_MINOR=${PYTHON_MINOR}" >> $GITHUB_ENV
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
@@ -273,19 +288,12 @@ jobs:
             exit 1
           fi
 
-      - name: Download, make and upload Python
+      - name: Download, build, and upload Python
         if: env.SKIP_PROCESS == 'false'
         id: build-python
         continue-on-error: true
         run: |
           cd /tmp_dir
-          # Download the latest patch version of Python for the specified major.minor version
-          PYTHON_TARBALL_URL=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1)
-          if [ -z "$PYTHON_TARBALL_URL" ]; then
-            echo "Failed to find Python source for version ${PYTHON_VERSION}."
-            exit 1
-          fi
-          PYTHON_FULL_VERSION="${PYTHON_TARBALL_URL%/}"
           curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
           tar -xf "Python-${PYTHON_FULL_VERSION}.tgz"
           cd "Python-${PYTHON_FULL_VERSION}"
@@ -293,23 +301,20 @@ jobs:
           make -j "$(nproc)"
 
           # Create tarball
-          PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
           tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${PYTHON_FULL_VERSION}/" .
           echo "PYTHON_TARBALL_PATH=$PYTHON_TARBALL_PATH" >> $GITHUB_ENV
-          echo "PYTHON_TARBALL_NAME=$PYTHON_TARBALL_NAME" >> $GITHUB_ENV
 
           # Install Python
           sudo make altinstall
 
       - name: Upload Python to Release
         if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ${{ env.PYTHON_TARBALL_PATH }}
-          asset_name: ${{ env.PYTHON_TARBALL_NAME }}
-          asset_content_type: application/gzip
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/gzip" \
+          --data-binary @"${{ env.PYTHON_TARBALL_PATH }}" \
+          "${{ env.upload_url }}?name=${{ env.PYTHON_TARBALL_NAME }}"
 
       - name: Build and upload wxPython
         if: env.SKIP_PROCESS == 'false'
@@ -332,24 +337,20 @@ jobs:
           # Build wxPython
           python build.py bdist_wheel --python=${{ matrix.python_version }}
 
-          PYTHON_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
-          PYTHON_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
           WXPYTHON_WHEEL=$(ls dist/wxPython-*.whl)
-          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
-          echo "WXPYTHON_WHEEL_NAME=$(basename "$WXPYTHON_IDENTIFIED_WHEEL")" >> $GITHUB_ENV
 
           deactivate
 
       - name: Upload wxPython to Release
         if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.get_release.outputs.upload_url }}
-          asset_path: ${{ env.WXPYTHON_IDENTIFIED_WHEEL }}
-          asset_name: ${{ env.WXPYTHON_WHEEL_NAME }}
-          asset_content_type: application/octet-stream
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @"${{ env.WXPYTHON_IDENTIFIED_WHEEL }}" \
+          "${{ env.upload_url }}?name=${{ env.WXPYTHON_WHEEL_NAME }}"
 
       - name: Create and Record Result Table
         if: env.SKIP_PROCESS == 'false'
@@ -397,7 +398,6 @@ jobs:
         with:
           path: ./artifacts/results
           name: result-*
-          #if-no-files-found: ignore
 
       - name: Create and save result table
         run: |
@@ -409,13 +409,13 @@ jobs:
           |---|---|---|
           EOF
 
-          cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
+                  cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
 
-          if [ -s results.md ]; then
-            cp results.md .github/build_results.md
-          else
-            echo "::warning::results.md is empty; skipping save."
-          fi
+                  if [ -s results.md ]; then
+                    cp results.md .github/build_results.md
+                  else
+                    echo "::warning::results.md is empty; skipping save."
+                  fi
 
       - name: Commit and push changes
         run: |
