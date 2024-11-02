@@ -179,7 +179,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
-          PYTHON_VERSION=""${{ matrix.python_version }}"
+          PYTHON_VERSION="${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
           if [ -z "$PYTHON_FULL_VERSION" ]; then
             echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
