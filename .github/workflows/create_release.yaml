@@ -386,8 +386,8 @@ jobs:
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}
-          path: /tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md
+          name: result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md
 
       - name: Cleanup
         if: always()
