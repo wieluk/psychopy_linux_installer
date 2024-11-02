@@ -218,15 +218,29 @@ jobs:
 
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+          
+          ASSET_NAMES=""
+          PAGE=1
+          while :; do
+              # Fetch a page of assets, up to 100 per page
+              PAGE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100&page=$PAGE")
+              
+              # Check if the response is empty or an empty array
+              if [ "$(echo "$PAGE_RESPONSE" | jq '. | length')" -eq 0 ]; then
+                  break
+              fi
 
-          ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")
+              # Append names from this page to ASSET_NAMES
+              ASSET_NAMES+=$(echo "$PAGE_RESPONSE" | jq -r '.[].name')
+              ASSET_NAMES+=$'\n'  # Newline separator for readability
 
-          ASSET_NAMES=$(echo "$ASSETS_RESPONSE" | jq -r '.[].name')
+              # Increment the page number for the next iteration
+              PAGE=$((PAGE + 1))
+          done
 
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
           for ASSET_NAME in $ASSET_NAMES; do
-          echo $ASSET_NAME
               if [ "$ASSET_NAME" = "$PYTHON_TARBALL_NAME" ]; then
                   PYTHON_EXISTS=true
               fi
