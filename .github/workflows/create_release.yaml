@@ -85,13 +85,33 @@ jobs:
         python_version: ['3.8', '3.9', '3.10']
       fail-fast: false
 
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
+          if command -v jq >/dev/null 2>&1; then
+            echo "jq is already installed"
+          else
+            if command -v apt-get > /dev/null; then
+              sudo apt-get update || true
+              sudo apt-get install -y jq || true
+            elif command -v pacman > /dev/null; then
+              sudo pacman -Sy --noconfirm jq || true
+            elif command -v dnf > /dev/null; then
+              sudo dnf install -y jq || true
+            elif command -v yum > /dev/null; then
+              sudo yum install -y jq || true
+            elif command -v zypper > /dev/null; then
+              sudo zypper install -y jq || true
+            else
+              echo "Unsupported package manager"
+              exit 1
+            fi
+          fi
 
       - name: Extract version from script
         id: extract_version
@@ -239,10 +259,10 @@ jobs:
           elif command -v pacman > /dev/null; then
             sudo pacman -Syu --noconfirm || true
             packages=(
-                git curl jq python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu 
-                libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 
-                readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut 
-                libtiff libnotify make
+              git curl jq python python-devel gtk3 webkit2gtk libxcb mesa sdl2 glu 
+              libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 
+              readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut 
+              libtiff libnotify make
             )
             for pkg in "${packages[@]}"; do
               sudo pacman -S --noconfirm "$pkg" || true
