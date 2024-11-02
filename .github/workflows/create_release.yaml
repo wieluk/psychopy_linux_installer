@@ -102,6 +102,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo mkdir /tmp_dir
+          sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           if command -v jq >/dev/null 2>&1; then
             echo "jq is already installed"
           else
@@ -223,7 +225,6 @@ jobs:
 
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
-          echo "wxpython file name: $WXPYTHON_WHEEL_NAME"
           for ASSET_NAME in $ASSET_NAMES; do
           echo $ASSET_NAME
               if [ "$ASSET_NAME" = "$PYTHON_TARBALL_NAME" ]; then
@@ -242,8 +243,6 @@ jobs:
             echo "SKIP_PROCESS=false" >> $GITHUB_ENV
           fi
 
-          echo "Python exists: $PYTHON_EXISTS"
-          echo "WXPython exists: $WXPYTHON_EXISTS"
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
