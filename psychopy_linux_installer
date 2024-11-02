@@ -377,7 +377,7 @@ build_python() {
 
 # Function to download prebuilt Python from GitHub release
 python_github_install() {
-    local asset_name api_url assets_json asset_download_url temp_file temp_dir
+    local asset_name api_url assets_json temp_file temp_dir github_download_url
 
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
     
@@ -397,17 +397,17 @@ python_github_install() {
 
     asset_name=$(echo "$available_assets" | sort -V | tail -n 1)
 
-    asset_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
+    github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
-    if [ -z "$asset_download_url" ]; then
+    if [ -z "$github_download_url" ]; then
         log_message "Warning: Could not find download URL for asset $asset_name."
         return 1
     fi
 
     temp_file="${asset_name}"
     temp_dir="${asset_name%.tar.gz}_temp"
-
-    if log curl -L -o "${temp_file}" "${asset_download_url}"; then
+    log_message "Info: Downloading $asset_name from Github."
+    if curl -L -o "${temp_file}" "${github_download_url}"; then
         log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${script_version}. Making an altinstall ..."
         mkdir -p "${temp_dir}"
         tar -xf "${temp_file}" -C "${temp_dir}"
@@ -485,7 +485,7 @@ wxpython_wheelurl_install() {
 
 # Function to install wxPython from GitHub release
 wxpython_github_install() {
-    local asset_name api_url assets_json asset_download_url wheel_file
+    local api_url assets_json wheel_file wheel_name github_download_url
 
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
 
@@ -496,30 +496,32 @@ wxpython_github_install() {
     fi
 
     python_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
-    asset_name="wxPython-${wxpython_version}-cp${python_major_minor}-cp${python_major_minor}-${processor_structure}-${os_version}.whl"
+    wheel_name="wxPython-${wxpython_version}-cp${python_major_minor}-cp${python_major_minor}-${processor_structure}-${os_version}.whl"
 
-    asset_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
+    github_download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
-    if [ -z "$asset_download_url" ]; then
+    if [ -z "$github_download_url" ]; then
         log_message "Warning: No matching wxPython wheel found in release v${script_version} for wxPython ${wxpython_version}."
         return 1
     fi
 
-    wheel_file="${asset_name}"
-
-    if log curl -L -o "$wheel_file" "$asset_download_url"; then
-        log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_file..."
-        if log pip install "$wheel_file"; then
-            log_message "Info: Installed wxPython from $wheel_file"
-            rm "$wheel_file"
+    log_message "Info: Downloading $wheel_name from Github."
+    if curl -L -o "$wheel_name" "$github_download_url"; then
+        log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name..."
+        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
+        mv "$wheel_name" "$wx_python_file"
+        log_message "Info: Download from Github successful. Installing wxPython from $wx_python_file"
+        if log pip install "$wx_python_file"; then
+            log_message "Info: Installed wxPython from $wx_python_file"
+            rm "$wx_python_file"
             return 0
         else
-            log_message "Warning: Installing wxPython from $wheel_file failed."
-            rm "$wheel_file"
+            log_message "Warning: Installing wxPython from $wx_python_file failed."
+            rm "$wx_python_file"
             return 1
         fi
     else
-        log_message "Warning: Downloading $wheel_file failed."
+        log_message "Warning: Downloading $wheel_name failed."
         return 1
     fi
 }
