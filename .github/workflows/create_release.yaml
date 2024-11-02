@@ -192,7 +192,7 @@ jobs:
             echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
             exit 1
           fi
-
+          
           detect_os_version() {
               if [ -f /etc/os-release ]; then
                   . /etc/os-release
@@ -201,7 +201,34 @@ jobs:
                       return
                   fi
               fi
-              echo "unknown"
+
+              if command -v lsb_release > /dev/null 2>&1; then
+                  version=$(lsb_release -sr | cut -d. -f1)
+                  echo "$(lsb_release -si)-$version"
+                  return
+              fi
+
+              if [ -f /etc/lsb-release ]; then
+                  . /etc/lsb-release
+                  version=$(echo "$DISTRIB_RELEASE" | cut -d. -f1)
+                  echo "${DISTRIB_ID}-$version"
+                  return
+              fi
+
+              if [ -f /etc/debian_version ]; then
+                  version=$(cut -d. -f1 < /etc/debian_version)
+                  echo "debian-$version"
+                  return
+              fi
+
+              if [ -f /etc/redhat-release ]; then
+                  version=$(sed 's/.*release \([0-9]*\).*/\1/' < /etc/redhat-release)
+                  echo "$(sed 's/release [0-9]*.*//' < /etc/redhat-release)$version"
+                  return
+              fi
+
+              log_message "Error: Unable to detect OS version."
+              exit 1
           }
 
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
