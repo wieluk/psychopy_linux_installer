@@ -13,7 +13,20 @@ jobs:
     runs-on: [self-hosted, "${{ matrix.os }}"]
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, debian-12, debian-11, fedora-39, fedora-40, pop-22.04, rocky-9.4, centos-9, manjarolinux-24, opensuse-leap-15.6, linuxmint-22]
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - debian-12
+          - debian-11
+          - fedora-39
+          - fedora-40
+          - pop-22.04
+          - rocky-9.4
+          - centos-9
+          - manjarolinux-24
+          - opensuse-leap-15.6
+          - linuxmint-22
         python_version: ['3.10']
         psychopy_version: ['latest']
       fail-fast: false
@@ -27,7 +40,6 @@ jobs:
           PYTHON_VERSION: ${{ matrix.python_version }}
           PSYCHOPY_VERSION: ${{ matrix.psychopy_version }}
         run: |
-          # Determine PsychoPy version
           if [ "$PSYCHOPY_VERSION" == "latest" ]; then
             PSYCHOPY_VERSION_CLEAN=$(curl -s https://pypi.org/pypi/psychopy/json | jq -r .info.version)
           else
@@ -36,14 +48,12 @@ jobs:
           PSYCHOPY_VERSION_CLEAN=$(echo "$PSYCHOPY_VERSION_CLEAN" | tr -d ',;')
           echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
           
-          # Prepare environment
           sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
           sudo rm -rf /tmp_dir ~/.cache/pip
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
           
-          # Run installer
           ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --build=both --sudo-mode=auto -f -v"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 

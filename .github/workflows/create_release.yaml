@@ -2,7 +2,6 @@ name: Build Python/wxPython and upload to GitHub Releases
 
 on:
   push:
-    branches: [gh-binaries] #only for testing REMOVE later
     tags: ['v*.*.*']
   workflow_dispatch:
 
@@ -29,7 +28,6 @@ jobs:
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
           echo "Installer Version extracted: $INSTALLER_VERSION"
 
-
       - name: Create release if not exists
         id: create_release
         env:
@@ -38,32 +36,41 @@ jobs:
         run: |
           RELEASE_TAG="v${INSTALLER_VERSION}"
           API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
           if echo "$RESPONSE" | grep -q '"id":'; then
             echo "Release ${RELEASE_TAG} already exists."
             echo "release_exists=true" >> $GITHUB_ENV
           else
             echo "Release ${RELEASE_TAG} does not exist. Creating release."
+            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%an)" --no-merges)
+            
+            if [ -z "$CHANGELOG" ]; then
+              CHANGELOG="No new changes since last release."
+            fi
+  
             CREATE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -d @- "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" <<EOF
               {
                 "tag_name": "${RELEASE_TAG}",
                 "name": "${RELEASE_TAG}",
-                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}",
+                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}\n\n### Changelog:\n${CHANGELOG}",
                 "draft": false,
                 "prerelease": false
               }
           EOF
-                      )
-                      if echo "$CREATE_RESPONSE" | grep -q '"id":'; then
-                        echo "Release ${RELEASE_TAG} created."
-                        echo "release_exists=false" >> $GITHUB_ENV
-                      else
-                        echo "Failed to create release."
-                        echo "Error response: $CREATE_RESPONSE"
-                        exit 1
-                      fi
-                    fi
-
+            )
+            
+            if echo "$CREATE_RESPONSE" | grep -q '"id":'; then
+              echo "Release ${RELEASE_TAG} created."
+              echo "release_exists=false" >> $GITHUB_ENV
+            else
+              echo "Failed to create release."
+              echo "Error response: $CREATE_RESPONSE"
+              exit 1
+            fi
+          fi
+  
   build:
     needs: create-release
     runs-on: [self-hosted, "${{ matrix.os }}"]
