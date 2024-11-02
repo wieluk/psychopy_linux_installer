@@ -107,15 +107,15 @@ jobs:
           else
             if command -v apt-get > /dev/null; then
               sudo apt-get update || true
-              sudo apt-get install -y jq || true
+              sudo apt-get install -y jq curl || true
             elif command -v pacman > /dev/null; then
-              sudo pacman -Sy --noconfirm jq || true
+              sudo pacman -Sy --noconfirm jq curl || true
             elif command -v dnf > /dev/null; then
-              sudo dnf install -y jq || true
+              sudo dnf install -y jq curl || true
             elif command -v yum > /dev/null; then
-              sudo yum install -y jq || true
+              sudo yum install -y jq curl || true
             elif command -v zypper > /dev/null; then
-              sudo zypper install -y jq || true
+              sudo zypper install -y jq curl || true
             else
               echo "Unsupported package manager"
               exit 1
@@ -157,29 +157,6 @@ jobs:
           fi
           echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
           echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
-
-      - name: Setup environment and install dependencies
-        run: |
-          sudo rm -rf /tmp_dir ~/.cache/pip && sudo mkdir /tmp_dir && sudo chmod -R 750 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
-          if command -v apt-get > /dev/null; then
-            sudo apt-get update || true
-            sudo apt-get install -y curl
-          elif command -v pacman > /dev/null; then
-            sudo pacman -Sy --noconfirm
-            sudo pacman -S --noconfirm curl
-          elif command -v dnf > /dev/null; then
-            sudo dnf check-update || true
-            sudo dnf install -y curl
-          elif command -v yum > /dev/null; then
-            sudo yum check-update || true
-            sudo yum install -y curl
-          elif command -v zypper > /dev/null; then
-            sudo zypper refresh || true
-            sudo zypper install -y curl
-          else
-            echo "Unsupported package manager"
-            exit 1
-          fi
 
       - name: Check existing files and set variables
         id: check-files
@@ -263,6 +240,8 @@ jobs:
             echo "SKIP_PROCESS=false" >> $GITHUB_ENV
           fi
 
+          echo "Python exists: $PYTHON_EXISTS"
+          
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
