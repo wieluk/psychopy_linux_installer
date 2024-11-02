@@ -217,7 +217,8 @@ jobs:
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
 
-          ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets")
+          ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100")
+
           ASSET_NAMES=$(echo "$ASSETS_RESPONSE" | jq -r '.[].name')
 
           PYTHON_EXISTS=false
