@@ -198,7 +198,7 @@ jobs:
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
 
           # Use a fixed wxPython version or fetch as needed
-          WXPYTHON_VERSION="4.2.1"
+          WXPYTHON_VERSION="4.2.2"
 
           # Define asset names
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
