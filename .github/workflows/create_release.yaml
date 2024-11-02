@@ -15,7 +15,7 @@ jobs:
       - name: Extract version from script
         id: extract_version
         run: |
-          VERSION=$(grep -Po '(?<=^#  Version:\s*)\S+' psychopy_linux_installer)
+          VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
           if [ -z "$VERSION" ]; then
             echo "Failed to extract version from script."
             exit 1
@@ -88,7 +88,7 @@ jobs:
       - name: Extract version from script
         id: extract_version
         run: |
-          VERSION=$(grep -Po '(?<=^#  Version:\s*)\S+' psychopy_linux_installer)
+          VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
           if [ -z "$VERSION" ]; then
             echo "Failed to extract version from script."
             exit 1

@@ -736,7 +736,7 @@ main() {
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    script_version=$(grep -Po '(?<=^#  Version:\s*)\S+' "$0")
+    script_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
     log_message "Info: Initiating PsychoPy(${psychopy_version}) installation using psychopy_linux_installer v${script_version} on ${os_version} (${processor_structure})."
 
     # Detect package manager
