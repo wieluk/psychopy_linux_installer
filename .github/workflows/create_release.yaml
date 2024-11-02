@@ -17,25 +17,26 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Extract version from script
-        id: extract_version
+      - name: Extract installer version from script
+        id: extract_installer_version
         run: |
-          VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
-          if [ -z "$VERSION" ]; then
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          if [ -z "$INSTALLER_VERSION" ]; then
             echo "Failed to extract version from script."
             exit 1
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Version extracted: $VERSION"
+
+          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
+          echo "Installer Version extracted: $INSTALLER_VERSION"
+
 
       - name: Create release if not exists
         id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ env.VERSION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          RELEASE_TAG="v${VERSION}"
+          RELEASE_TAG="v${INSTALLER_VERSION}"
           API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
           if echo "$RESPONSE" | grep -q '"id":'; then
@@ -47,7 +48,7 @@ jobs:
               {
                 "tag_name": "${RELEASE_TAG}",
                 "name": "${RELEASE_TAG}",
-                "body": "PsychoPy Linux Installer version ${VERSION}",
+                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}",
                 "draft": false,
                 "prerelease": false
               }
@@ -113,25 +114,31 @@ jobs:
             fi
           fi
 
-      - name: Extract version from script
-        id: extract_version
+      - name: Extract versions from script
+        id: extract_versions
         run: |
-          VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
-          if [ -z "$VERSION" ]; then
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          if [ -z "$INSTALLER_VERSION" ]; then
             echo "Failed to extract version from script."
             exit 1
           fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Version extracted: $VERSION"
+          WXPYTHON_VERSION=$(grep -m1 '^\s*wxpython_version=' psychopy_linux_installer | sed 's/^[^=]*=//;s/"//g')
+          if [ -z "$WXPYTHON_VERSION" ]; then
+            echo "Failed to extract wxpython_version from script."
+            exit 1
+          fi
+          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
+          echo "Insteller Version extracted: $INSTALLER_VERSION"
+          echo "wxPython version extracted: $WXPYTHON_VERSION"
 
       - name: Get release info
         id: get_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ env.VERSION }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          RELEASE_TAG="v${VERSION}"
+          RELEASE_TAG="v${INSTALLER_VERSION}"
           API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
@@ -172,9 +179,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
-          major_minor_version="${{ matrix.python_version }}"
-          PYTHON_VERSION="${major_minor_version}"
-          # We'll use the latest patch version available from python.org
+          PYTHON_VERSION=""${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
           if [ -z "$PYTHON_FULL_VERSION" ]; then
             echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
@@ -196,9 +201,6 @@ jobs:
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
           PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
-
-          # Use a fixed wxPython version or fetch as needed
-          WXPYTHON_VERSION="4.2.2"
 
           # Define asset names
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
@@ -231,12 +233,9 @@ jobs:
           fi
 
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
-          echo "WXPYTHON_VERSION=${WXPYTHON_VERSION}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_FULL_VERSION=${PYTHON_FULL_VERSION}" >> $GITHUB_ENV
-          echo "PYTHON_MAJOR=${PYTHON_MAJOR}" >> $GITHUB_ENV
-          echo "PYTHON_MINOR=${PYTHON_MINOR}" >> $GITHUB_ENV
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
 
@@ -333,8 +332,8 @@ jobs:
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/gzip" \
-          --data-binary @"${{ env.PYTHON_TARBALL_PATH }}" \
-          "${{ env.upload_url }}?name=${{ env.PYTHON_TARBALL_NAME }}"
+          --data-binary @"${PYTHON_TARBALL_PATH}" \
+          "${upload_url}?name=${PYTHON_TARBALL_NAME}"
 
       - name: Build wxPython
         if: env.SKIP_PROCESS == 'false'
@@ -362,7 +361,7 @@ jobs:
           python -m pip wheel .
       
           # Identify and copy the built wheel
-          WXPYTHON_WHEEL=$(ls dist/wxPython-*.whl)
+          WXPYTHON_WHEEL=$(ls wxPython-*.whl)
           WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
@@ -375,8 +374,8 @@ jobs:
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
-          --data-binary @"${{ env.WXPYTHON_IDENTIFIED_WHEEL }}" \
-          "${{ env.upload_url }}?name=${{ env.WXPYTHON_WHEEL_NAME }}"
+          --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
+          "${upload_url}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Create and Record Result Table
         if: env.SKIP_PROCESS == 'false'
@@ -400,8 +399,8 @@ jobs:
       - name: Upload result artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md
+          name: result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}
+          path: /tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION }-${WXPYTHON_VERSION}.md
 
       - name: Cleanup
         if: always()
@@ -425,10 +424,22 @@ jobs:
           path: ./artifacts/results
           name: result-*
 
+      - name: Extract installer version from script
+        id: extract_installer_version
+        run: |
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          if [ -z "$INSTALLER_VERSION" ]; then
+            echo "Failed to extract version from script."
+            exit 1
+          fi
+
+          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
+          echo "Installer Version extracted: $INSTALLER_VERSION"
+      
       - name: Create and save result table
         run: |
           cat << EOF > results.md
-          ### Report generated on $(date '+%Y-%m-%d')
+          ### Report generated on $(date '+%Y-%m-%d') for Installer Version ${INSTALLER_VERSION}
           ### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
           | OS | Python Version | WxPython Version |
