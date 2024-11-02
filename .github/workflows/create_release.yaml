@@ -2,6 +2,7 @@ name: Build Python/wxPython and upload to GitHub Releases
 
 on:
   push:
+    branches: [gh-binaries] #only for testing REMOVE later
     tags: ['v*.*.*']
   workflow_dispatch:
 
