@@ -1,6 +1,6 @@
-### Report generated on 2024-10-30
+### Report generated on 2024-11-02
 ### All runners used the flag `--build=both`
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11578721764)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11618449984)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
