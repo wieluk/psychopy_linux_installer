@@ -2,7 +2,7 @@ name: Build Python/wxPython and upload to GitHub Releases
 
 on:
   push:
-    branches: [gh-binaries] #only for testin REMOVE later
+    branches: [gh-binaries] #only for testing REMOVE later
     tags: ['v*.*.*']
   workflow_dispatch:
 
@@ -308,7 +308,7 @@ jobs:
             exit 1
           fi
 
-      - name: Download, build, and upload Python
+      - name: Build Python
         if: env.SKIP_PROCESS == 'false'
         id: build-python
         continue-on-error: true
@@ -328,7 +328,7 @@ jobs:
           # Install Python
           sudo make altinstall
 
-      - name: Upload Python to Release
+      - name: Upload Python
         if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -336,33 +336,38 @@ jobs:
           --data-binary @"${{ env.PYTHON_TARBALL_PATH }}" \
           "${{ env.upload_url }}?name=${{ env.PYTHON_TARBALL_NAME }}"
 
-      - name: Build and upload wxPython
+      - name: Build wxPython
         if: env.SKIP_PROCESS == 'false'
         id: build-wxpython
         continue-on-error: true
         run: |
-          export PATH=/usr/local/psychopy_python/bin:$PATH
+          # Use the installed Python to create a virtual environment
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
+          # Activate the virtual environment
           source /tmp_dir/psychopy_venv/bin/activate
-
-          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+      
+          # Install necessary build tools
           pip install -U pip distro sip six setuptools wheel
-
+      
+          # Download wxPython source
+          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
           cd "$WXPYTHON_DIR"
-
-          # Build wxPython
-          python build.py bdist_wheel --python=${{ matrix.python_version }}
-
+      
+          # Build wxPython using the virtual environment's Python
+          python build.py bdist_wheel
+      
+          # Identify and copy the built wheel
           WXPYTHON_WHEEL=$(ls dist/wxPython-*.whl)
           WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
-
+      
           deactivate
+        
 
       - name: Upload wxPython to Release
         if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
