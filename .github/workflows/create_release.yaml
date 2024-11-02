@@ -1,20 +1,422 @@
-name: Auto Create Release
+name: create release
 
 on:
   push:
     tags: ['v*.*.*']
+  workflow_dispatch:
 
 jobs:
-  release:
+  create-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+
+      - name: Extract version from script
+        id: extract_version
+        run: |
+          VERSION=$(grep -Po '(?<=^#  Version:\s*)\S+' psychopy_linux_installer)
+          if [ -z "$VERSION" ]; then
+            echo "Failed to extract version from script."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version extracted: $VERSION"
+
+      - name: Create release if not exists
+        id: create_release
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const scriptVersion = process.env.VERSION;
+            const releaseTag = 'v' + scriptVersion;
+
+            try {
+              // Check if the release already exists
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: releaseTag
+              });
+              core.info(`Release ${releaseTag} already exists.`);
+              core.setOutput('release_exists', 'true');
+            } catch (error) {
+              if (error.status === 404) {
+                // Release does not exist, create it
+                const newRelease = await github.rest.repos.createRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  tag_name: releaseTag,
+                  name: releaseTag,
+                  body: `PsychoPy Linux Installer version ${scriptVersion}`,
+                  draft: false,
+                  prerelease: false
+                });
+                core.info(`Release ${releaseTag} created.`);
+                core.setOutput('release_exists', 'false');
+              } else {
+                throw error;
+              }
+            }
+
+  build:
+    needs: create-release
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - debian-12
+          - debian-11
+          - fedora-39
+          - fedora-40
+          - pop-22.04
+          - rocky-9.4
+          - centos-9
+          - manjarolinux-24
+          - opensuse-leap-15.6
+          - linuxmint-22
+        python_version: ['3.8', '3.9', '3.10']
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from script
+        id: extract_version
+        run: |
+          VERSION=$(grep -Po '(?<=^#  Version:\s*)\S+' psychopy_linux_installer)
+          if [ -z "$VERSION" ]; then
+            echo "Failed to extract version from script."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Version extracted: $VERSION"
+
+      - name: Get release info
+        id: get_release
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const releaseTag = 'v' + process.env.VERSION;
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: releaseTag
+            });
+            core.setOutput('release_id', release.data.id);
+            core.setOutput('upload_url', release.data.upload_url);
+
+      - name: Setup environment and install dependencies
+        run: |
+          sudo rm -rf /tmp_dir ~/.cache/pip && sudo mkdir /tmp_dir && sudo chmod -R 777 /tmp_dir && sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          if command -v apt-get > /dev/null; then
+            sudo apt-get update || true
+            sudo apt-get install -y curl
+          elif command -v pacman > /dev/null; then
+            sudo pacman -Sy --noconfirm
+            sudo pacman -S --noconfirm curl
+          elif command -v dnf > /dev/null; then
+            sudo dnf check-update || true
+            sudo dnf install -y curl
+          elif command -v yum > /dev/null; then
+            sudo yum check-update || true
+            sudo yum install -y curl
+          elif command -v zypper > /dev/null; then
+            sudo zypper refresh || true
+            sudo zypper install -y curl
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+      - name: Check existing files and set variables
+        id: check-files
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.get_release.outputs.release_id }}
+        run: |
+          major_minor_version="${{ matrix.python_version }}"
+          PYTHON_VERSION="${major_minor_version}"
+          # We'll use the latest patch version available in the release assets
+          # Assume the assets are named with the full version
+
+          detect_os_version() {
+              if [ -f /etc/os-release ]; then
+                  . /etc/os-release
+                  if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
+                      echo "$ID-$VERSION_ID"
+                      return
+                  fi
+              fi
+              echo "unknown"
+          }
+
+          OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
+          PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
+          PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
+          PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
+
+          # Use a fixed wxPython version or fetch as needed
+          WXPYTHON_VERSION="4.2.1"
+
+          # Define asset name patterns
+          PYTHON_TARBALL_PATTERN="python-${PYTHON_VERSION}\.[0-9]+-${PROCESSOR_STRUCTURE}-${OS_VERSION}\.tar\.gz"
+          WXPYTHON_WHEEL_PATTERN="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}\.whl"
+
+          # Get the list of assets in the release
+          ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets")
+          ASSET_NAMES=$(echo "$ASSETS_RESPONSE" | jq -r '.[].name')
+
+          PYTHON_EXISTS=false
+          WXPYTHON_EXISTS=false
+
+          for ASSET_NAME in $ASSET_NAMES; do
+              if [[ "$ASSET_NAME" =~ $PYTHON_TARBALL_PATTERN ]]; then
+                  PYTHON_EXISTS=true
+                  PYTHON_TARBALL_NAME="$ASSET_NAME"
+              fi
+              if [[ "$ASSET_NAME" =~ $WXPYTHON_WHEEL_PATTERN ]]; then
+                  WXPYTHON_EXISTS=true
+                  WXPYTHON_WHEEL_NAME="$ASSET_NAME"
+              fi
+          done
+
+          # Set SKIP_PROCESS based on asset existence
+          if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
+            echo "SKIP_PROCESS=true" >> $GITHUB_ENV
+
+            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
+            echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
+          else
+            echo "SKIP_PROCESS=false" >> $GITHUB_ENV
+          fi
+
+          echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=${WXPYTHON_VERSION}" >> $GITHUB_ENV
+          echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
+          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
+          echo "PYTHON_MAJOR=${PYTHON_MAJOR}" >> $GITHUB_ENV
+          echo "PYTHON_MINOR=${PYTHON_MINOR}" >> $GITHUB_ENV
+          echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
+          echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
+
+      - name: Set up dependencies
+        if: env.SKIP_PROCESS == 'false'
+        run: |
+          # Install dependencies based on the package manager
+          if command -v apt-get > /dev/null; then
+            sudo apt-get update || true
+            packages=(
+              git curl jq python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 
+              libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev 
+              libasound2-dev build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev 
+              libreadline-dev xz-utils libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools 
+              gstreamer1.0-x freeglut3-dev libtiff-dev libnotify-dev libsm-dev make
+            )
+            for pkg in "${packages[@]}"; do
+              sudo apt-get install -y "$pkg" || true
+            done
+          elif command -v pacman > /dev/null; then
+            sudo pacman -Syu --noconfirm || true
+            packages=(
+                git curl jq python-dev python gtk3 webkit2gtk libxcb mesa sdl2 glu 
+                libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 
+                readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut 
+                libtiff libnotify make
+            )
+            for pkg in "${packages[@]}"; do
+              sudo pacman -S --noconfirm "$pkg" || true
+            done
+          elif command -v dnf > /dev/null; then
+            sudo dnf check-update || true
+            packages=(
+              git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama 
+              mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
+              gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
+              xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
+              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel make
+            )
+            for pkg in "${packages[@]}"; do
+              sudo dnf install -y "$pkg" || true
+            done
+          elif command -v yum > /dev/null; then
+            sudo yum check-update || true
+            packages=(
+              git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama 
+              mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
+              gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
+              xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
+              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel make
+            )
+            for pkg in "${packages[@]}"; do
+              sudo yum install -y "$pkg" || true
+            done
+          elif command -v zypper > /dev/null; then
+            sudo zypper refresh || true
+            packages=(
+              git curl jq python3-pip python3-devel gtk3-devel webkit2gtk3-devel libxcb1 libxcb-xinerama0 
+              Mesa-libEGL-devel SDL2-devel Mesa-libGLU-devel libusb-1_0-devel portaudio-devel alsa-devel 
+              gcc-c++ libopenssl-devel libbz2-devel libffi-devel zlib-devel sqlite3-devel readline-devel 
+              xz-devel libjpeg-devel libpng16-compat-devel libSM-devel gstreamer-plugins-base-devel 
+              gstreamer-devel freeglut-devel libtiff-devel libnotify-devel make
+            )
+            for pkg in "${packages[@]}"; do
+              sudo zypper install -y "$pkg" || true
+            done
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+      - name: Download, make and upload Python
+        if: env.SKIP_PROCESS == 'false'
+        id: build-python
+        continue-on-error: true
+        run: |
+          cd /tmp_dir
+          # Download the latest patch version of Python for the specified major.minor version
+          PYTHON_TARBALL_URL=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1)
+          if [ -z "$PYTHON_TARBALL_URL" ]; then
+            echo "Failed to find Python source for version ${PYTHON_VERSION}."
+            exit 1
+          fi
+          PYTHON_FULL_VERSION="${PYTHON_TARBALL_URL%/}"
+          curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
+          tar -xf "Python-${PYTHON_FULL_VERSION}.tgz"
+          cd "Python-${PYTHON_FULL_VERSION}"
+          ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
+          make -j "$(nproc)"
+
+          # Create tarball
+          PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
+          PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
+          tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${PYTHON_FULL_VERSION}/" .
+          echo "PYTHON_TARBALL_PATH=$PYTHON_TARBALL_PATH" >> $GITHUB_ENV
+          echo "PYTHON_TARBALL_NAME=$PYTHON_TARBALL_NAME" >> $GITHUB_ENV
+
+          # Install Python
+          sudo make altinstall
+
+      - name: Upload Python to Release
+        if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
+        uses: actions/upload-release-asset@v1
         with:
-          files: |
-            ./psychopy_linux_installer
-            ./README.md
-          generate_release_notes: true
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ${{ env.PYTHON_TARBALL_PATH }}
+          asset_name: ${{ env.PYTHON_TARBALL_NAME }}
+          asset_content_type: application/gzip
+
+      - name: Build and upload wxPython
+        if: env.SKIP_PROCESS == 'false'
+        id: build-wxpython
+        continue-on-error: true
+        run: |
+          export PATH=/usr/local/psychopy_python/bin:$PATH
+          /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
+          source /tmp_dir/psychopy_venv/bin/activate
+
+          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+          pip install -U pip distro sip six setuptools wheel
+
+          pip download wxPython==$WXPYTHON_VERSION
+          WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
+          tar -xzf "$WXPYTHON_TARBALL"
+          WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
+          cd "$WXPYTHON_DIR"
+
+          # Build wxPython
+          python build.py bdist_wheel --python=${{ matrix.python_version }}
+
+          PYTHON_MAJOR=$(python -c "import sys; print(sys.version_info.major)")
+          PYTHON_MINOR=$(python -c "import sys; print(sys.version_info.minor)")
+          WXPYTHON_WHEEL=$(ls dist/wxPython-*.whl)
+          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+          cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
+          echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
+          echo "WXPYTHON_WHEEL_NAME=$(basename "$WXPYTHON_IDENTIFIED_WHEEL")" >> $GITHUB_ENV
+
+          deactivate
+
+      - name: Upload wxPython to Release
+        if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ${{ env.WXPYTHON_IDENTIFIED_WHEEL }}
+          asset_name: ${{ env.WXPYTHON_WHEEL_NAME }}
+          asset_content_type: application/octet-stream
+
+      - name: Create and Record Result Table
+        if: env.SKIP_PROCESS == 'false'
+        run: |
+          PYTHON_STATUS="❌"
+          WXPYTHON_STATUS="❌"
+
+          if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
+            PYTHON_STATUS="${PYTHON_VERSION}"
+          fi
+
+          if [[ "${{ steps.build-wxpython.outcome }}" == "success" ]]; then
+            WXPYTHON_STATUS="${WXPYTHON_VERSION}"
+          fi
+
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
+          echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
+
+          cat $RESULT_FILE
+
+      - name: Upload result artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}
+          path: /tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp_dir ~/.cache/pip /usr/local/psychopy_python
+          sleep 10
+
+  update-readme:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Git and download artifacts
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git fetch origin && git reset --hard origin/${{ github.ref_name }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts/results
+          name: result-*
+          #if-no-files-found: ignore
+
+      - name: Create and save result table
+        run: |
+          cat << EOF > results.md
+          ### Report generated on $(date '+%Y-%m-%d')
+          ### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+          | OS | Python Version | WxPython Version |
+          |---|---|---|
+          EOF
+
+          cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
+
+          if [ -s results.md ]; then
+            cp results.md .github/build_results.md
+          else
+            echo "::warning::results.md is empty; skipping save."
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git add -f .github/build_results.md
+          git diff-index --quiet HEAD || (git commit -m "Update build results" && git push --force)
