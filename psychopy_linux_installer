@@ -361,7 +361,7 @@ build_python() {
     temp_file="Python-${latest_patch_version}.tgz"
     temp_dir="Python-${latest_patch_version}_temp"
     
-    log curl -s -O "${official_url}"
+    curl -L -o "${official_url}"
     mkdir -p "${temp_dir}"
     tar -xf "${temp_file}" -C "${temp_dir}"
     
@@ -558,7 +558,7 @@ create_desktop_shortcut() {
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            log curl -o "${icon_path}" "${icon_url}"
+            log curl -s -o "${icon_path}" "${icon_url}"
         else
             log_message "Warning: Icon file ${icon_url} not found, skipping..."
         fi
