@@ -357,8 +357,9 @@ jobs:
           WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
           cd "$WXPYTHON_DIR"
       
-          # Build wxPython using the virtual environment's Python
-          python build.py bdist_wheel
+          # Use the specific Python version for building wxPython
+          python --version
+          python -m pip wheel .
       
           # Identify and copy the built wheel
           WXPYTHON_WHEEL=$(ls dist/wxPython-*.whl)
