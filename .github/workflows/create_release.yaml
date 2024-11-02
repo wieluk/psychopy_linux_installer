@@ -238,8 +238,6 @@ jobs:
               PAGE=$((PAGE + 1))
           done
 
-          echo -e "ASSET_NAMES:\n$ASSET_NAMES"
-          
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
           for ASSET_NAME in $ASSET_NAMES; do
