@@ -202,11 +202,9 @@ jobs:
           PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
 
-          # Define asset names
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
 
-          # Get the list of assets in the release
           ASSETS_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets")
           ASSET_NAMES=$(echo "$ASSETS_RESPONSE" | jq -r '.[].name')
 
@@ -222,10 +220,8 @@ jobs:
               fi
           done
 
-          # Set SKIP_PROCESS based on asset existence
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_PROCESS=true" >> $GITHUB_ENV
-
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
             echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
           else
@@ -242,7 +238,6 @@ jobs:
       - name: Set up dependencies
         if: env.SKIP_PROCESS == 'false'
         run: |
-          # Install dependencies based on the package manager
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
             packages=(
@@ -319,12 +314,10 @@ jobs:
           ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
           make -j "$(nproc)"
 
-          # Create tarball
           PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
           tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${PYTHON_FULL_VERSION}/" .
           echo "PYTHON_TARBALL_PATH=$PYTHON_TARBALL_PATH" >> $GITHUB_ENV
 
-          # Install Python
           sudo make altinstall
 
       - name: Upload Python
@@ -340,15 +333,12 @@ jobs:
         id: build-wxpython
         continue-on-error: true
         run: |
-          # Use the installed Python to create a virtual environment
+          export PATH=/usr/local/psychopy_python/bin:$PATH
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
-          # Activate the virtual environment
           source /tmp_dir/psychopy_venv/bin/activate
       
-          # Install necessary build tools
           pip install -U pip distro sip six setuptools wheel
       
-          # Download wxPython source
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
@@ -356,11 +346,9 @@ jobs:
           WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
           cd "$WXPYTHON_DIR"
       
-          # Use the specific Python version for building wxPython
           python --version
           python -m pip wheel .
       
-          # Identify and copy the built wheel
           WXPYTHON_WHEEL=$(ls wxPython-*.whl)
           WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
@@ -368,7 +356,6 @@ jobs:
       
           deactivate
         
-
       - name: Upload wxPython to Release
         if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
         run: |
@@ -446,13 +433,13 @@ jobs:
           |---|---|---|
           EOF
 
-                  cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
+          cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
 
-                  if [ -s results.md ]; then
-                    cp results.md .github/build_results.md
-                  else
-                    echo "::warning::results.md is empty; skipping save."
-                  fi
+          if [ -s results.md ]; then
+            cp results.md .github/build_results.md
+          else
+            echo "::warning::results.md is empty; skipping save."
+          fi
 
       - name: Commit and push changes
         run: |

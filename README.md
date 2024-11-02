@@ -22,8 +22,8 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 - PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
 - Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python` if not available via package manager.
 - A directory is created in the specified directory (default: `$HOME`): `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
-- The script first attempts to install python via package manager then tries download a pre-packaged Python .tar.gz file from [Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK). If a suitable version isn't found, it will download from python.org and build it from source.
-- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to [Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs) or, if necessary, builds wxPython from source.
+- The script first attempts to install python via package manager then tries download a pre-packaged Python .tar.gz file from github releases. If a suitable version isn't found, it will download from python.org and build it from source.
+- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to github releases or, if necessary, builds wxPython from source.
 - If the downloads fail, building Python and wxPython may take a some time.
 - The script provides minimal output by default. Use the --verbose option for detailed logging.
 
@@ -67,7 +67,7 @@ Execute script; see options below for more information.
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
 | `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
 | `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
-| `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. |
+| `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
 | `--disable-path` | Disable adding psychopy to system path. |
 | `-f`, `--force` | Force overwrite of the existing installation directory. |
@@ -119,12 +119,6 @@ All commands, along with the installed versions and set paths, as well as the co
 [View the latest installation test results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/installation_results.md)
 
 [View the build results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md)
-
-### Builds
-
-[wxPython on Nextcloud](https://cloud.uni-graz.at/s/YtX33kbasHMZdgs)
-
-[Python on Nextcloud](https://cloud.uni-graz.at/s/o4tnQgN6gjDs3CK)
 
 ## Links
 
