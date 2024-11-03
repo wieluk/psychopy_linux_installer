@@ -129,7 +129,7 @@ By default, PsychoPy installs its files in the following directories:
 To uninstall PsychoPy, delete both of these directories:
 
 ```bash
-rm -rf {install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}
+#rm -rf {install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION} #use your version and install_dir default is $home directory
 sudo rm -rf /usr/local/psychopy_python
 ```
 
@@ -139,7 +139,7 @@ PsychoPy creates desktop shortcuts that you can safely delete. To remove all Psy
 
 ```bash
 rm ~/.local/share/applications/PsychoPy*.desktop
-rm ~/Desktop/PsychoPy*.desktop
+#rm ~/Desktop/PsychoPy*.desktop #might be different if you do not have your language set to english
 ```
 
 ### (Optional): Remove Dependencies
