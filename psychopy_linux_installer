@@ -482,6 +482,7 @@ wxpython_wheelurl_install() {
         log_message "Info: Download from extras.wxpython.org successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Info: Installed wxPython from $wheel_file"
+            pip cache add "$wheel_file" 
             rm "$wheel_file"
             return 0
         else
@@ -530,6 +531,7 @@ wxpython_github_install() {
         log_message "Info: Download from GitHub successful. Installing wxPython from $renamed_wheel"
         if log pip install "$renamed_wheel"; then
             log_message "Info: Installed wxPython from $renamed_wheel"
+            pip cache add "$renamed_wheel"
             rm "$renamed_wheel"
             return 0
         else
