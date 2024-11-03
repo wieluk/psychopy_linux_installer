@@ -532,7 +532,7 @@ wxpython_github_install() {
         if log pip install "$renamed_wheel"; then
             log_message "Info: Installed wxPython from $renamed_wheel"
             sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
-            sudo_wrapper mv "$wheel_file" /usr/local/psychopy_python/wx_wheels/
+            sudo_wrapper mv "$renamed_wheel" /usr/local/psychopy_python/wx_wheels/
             return 0
         else
             log_message "Warning: Installing wxPython from $renamed_wheel failed."
