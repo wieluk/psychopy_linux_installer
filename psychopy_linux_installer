@@ -453,7 +453,7 @@ build_wxpython() {
 
 # Function install wxPython using pip without building
 wxpython_pip_install() {
-    if log pip install --only-binary=:all: "wxpython==$wxpython_version"; then
+    if log pip install --only-binary=:all: "wxpython==$wxpython_version" --find-links /usr/local/psychopy_python/wx_wheels/; then
         log_message "Info: Successfully installed wxPython version $wxpython_version using a pip wheel."
         return 0
     else
@@ -482,8 +482,8 @@ wxpython_wheelurl_install() {
         log_message "Info: Download from extras.wxpython.org successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Info: Installed wxPython from $wheel_file"
-            pip cache add "$wheel_file" 
-            rm "$wheel_file"
+            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
+            sudo_wrapper mv "$wheel_file" /usr/local/psychopy_python/wx_wheels/
             return 0
         else
             log_message "Warning: Installing wxPython from $wheel_file failed."
@@ -531,8 +531,8 @@ wxpython_github_install() {
         log_message "Info: Download from GitHub successful. Installing wxPython from $renamed_wheel"
         if log pip install "$renamed_wheel"; then
             log_message "Info: Installed wxPython from $renamed_wheel"
-            pip cache add "$renamed_wheel"
-            rm "$renamed_wheel"
+            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
+            sudo_wrapper mv "$wheel_file" /usr/local/psychopy_python/wx_wheels/
             return 0
         else
             log_message "Warning: Installing wxPython from $renamed_wheel failed."
