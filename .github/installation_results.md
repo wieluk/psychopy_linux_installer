@@ -1,5 +1,5 @@
 ### Report generated on 2024-11-03
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11645308463)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11650513364)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
@@ -26,7 +26,10 @@
 | debian-12 | 3.10 | 2024.2.4 | ✅ |
 | debian-12 | 3.8 | 2023.2.3 | ✅ |
 | debian-12 | 3.8 | 2024.1.4 | ✅ |
+| debian-12 | 3.8 | 2024.2.4 | ✅ |
 | debian-12 | 3.9 | 2023.2.3 | ✅ |
+| debian-12 | 3.9 | 2024.1.4 | ✅ |
+| debian-12 | 3.9 | 2024.2.4 | ✅ |
 | fedora-39 | 3.10 | 2023.2.3 | ✅ |
 | fedora-39 | 3.10 | 2024.1.4 | ✅ |
 | fedora-39 | 3.10 | 2024.2.4 | ✅ |
@@ -112,3 +115,8 @@
 | ubuntu-24.04 | 3.10 | 2024.1.4 | ✅ |
 | ubuntu-24.04 | 3.10 | 2024.2.4 | ✅ |
 | ubuntu-24.04 | 3.8 | 2023.2.3 | ✅ |
+| ubuntu-24.04 | 3.8 | 2024.1.4 | ✅ |
+| ubuntu-24.04 | 3.8 | 2024.2.4 | ✅ |
+| ubuntu-24.04 | 3.9 | 2023.2.3 | ✅ |
+| ubuntu-24.04 | 3.9 | 2024.1.4 | ✅ |
+| ubuntu-24.04 | 3.9 | 2024.2.4 | ✅ |
