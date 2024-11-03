@@ -360,7 +360,7 @@ build_python() {
     temp_file="Python-${latest_patch_version}.tgz"
     temp_dir="Python-${latest_patch_version}_temp"
     
-    if ! curl -L -o "${temp_file}" "${official_url}"; then
+    if ! log curl -L -o "${temp_file}" "${official_url}"; then
         log_message "Error: Failed to download Python-${latest_patch_version} from python.org"
         exit 1
     fi
@@ -414,8 +414,8 @@ python_github_install() {
         return 1
     fi
 
-    log_message "Info: Downloading $asset_name from GitHub."
-    if curl -L -o "$asset_name" "$github_download_url"; then
+    log_message "Info: Downloading $asset_name from GitHub ..."
+    if log curl -L -o "$asset_name" "$github_download_url"; then
         log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${script_version}. Making an altinstall ..."
         temp_dir="${asset_name%.tar.gz}_temp"
         mkdir -p "$temp_dir" || { log_message "Error: Failed to create temp directory."; return 1; }
@@ -523,12 +523,11 @@ wxpython_github_install() {
         return 1
     fi
 
-    log_message "Info: Downloading $wheel_name from GitHub."
-    if curl -L -o "$wheel_name" "$download_url"; then
+    log_message "Info: Downloading $wheel_name from GitHub ..."
+    if log curl -L -o "$wheel_name" "$download_url"; then
         log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name..."
         renamed_wheel="${wheel_name%-"${os_version}".whl}.whl"
         mv "$wheel_name" "$renamed_wheel"
-        log_message "Info: Download from GitHub successful. Installing wxPython from $renamed_wheel"
         if log pip install "$renamed_wheel"; then
             log_message "Info: Installed wxPython from $renamed_wheel"
             sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
