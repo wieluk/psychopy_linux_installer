@@ -140,7 +140,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp_dir ~/.cache/pip ~/Desktop/* ~/.local/share/applications/* /usr/local/psychopy_python
+          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
           sleep 60
 
   update-readme:
