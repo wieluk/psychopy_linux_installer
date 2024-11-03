@@ -440,7 +440,8 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: ./artifacts/results
-          name: result-*
+          pattern: 'result*'
+          merge-multiple: true
 
       - name: Extract installer version from script
         id: extract_installer_version
