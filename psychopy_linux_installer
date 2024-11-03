@@ -362,9 +362,19 @@ build_python() {
     temp_dir="Python-${latest_patch_version}_temp"
     
     curl -L -o "${official_url}"
+
+    if ! curl -L -o "${temp_file}" "${official_url}"; then
+        echo "Error: Failed to download Python-${latest_patch_version} from python.org"
+        exit 1
+    fi
+
     mkdir -p "${temp_dir}"
-    tar -xf "${temp_file}" -C "${temp_dir}"
-    
+
+    if ! tar -xf "${temp_file}" -C "${temp_dir}"; then
+        echo "Error: Failed to extract ${temp_file}."
+        exit 1
+    fi
+
     cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
     log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
     log make -j "$(nproc)"
@@ -501,6 +511,11 @@ wxpython_github_install() {
         return 1
     fi
 
+    if [ -z "$assets_json" ]; then
+        log_message "Warning: Empty response from GitHub API."
+        return 1
+    fi
+    
     python_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
     wheel_name="wxPython-${wxpython_version}-cp${python_major_minor}-cp${python_major_minor}-${processor_structure}-${os_version}.whl"
 
