@@ -114,7 +114,7 @@ You can also launch PsychoPy directly using the absolute path:
 Please reboot to apply security limits and to refresh system path.
 
 **Note:**
-All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
+All commands, along with the installed versions and set paths will be displayed at the end of the script.
 
 ## Uninstalling PsychoPy
 
