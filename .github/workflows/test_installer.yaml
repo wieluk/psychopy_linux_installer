@@ -65,6 +65,12 @@ jobs:
           
           ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --sudo-mode=auto"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
+
+          if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
+            echo "changed to curl to use github token"
+            echo 'curl() { command curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$@"; }' >> ~/.bashrc
+            source ~/.bashrc
+          fi
           
       - name: Verify PsychoPy installation and version
         id: verify-psychopy
