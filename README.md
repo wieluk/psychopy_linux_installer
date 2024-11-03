@@ -12,7 +12,8 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - OpenSuse 16
 - Manjaro 22
 
-Additional distributions may be working.
+These distributions are tested with runners.
+Additional ones are probably working aswell.
 
 **Note:**
 Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
@@ -106,7 +107,6 @@ After installation, desktop icons for PsychoPy will be created automatically, an
 
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
-
 You can also launch PsychoPy directly using the absolute path:
 
 `${PSYCHOPY_DIR}/bin/psychopy`
@@ -156,11 +156,12 @@ Locate and edit the configuration file for your shell to remove this line:
 - **Bash**: `$HOME/.bashrc`
 - **Zsh**: `$HOME/.zshrc`
 - **Fish**: `$HOME/.config/fish/config.fish`
-- **Csh/Tcsh**: `$HOME/.${shell_name}rc`
+- **Csh**: `$HOME/.Cshrc`
+- **Csh/Tcsh**: `$HOME/.Tcshrc`
 
 ### (Optional): Remove Dependencies
 
-We installed dependencies specifically for PsychoPy and for building Python/WxPython.
+The installer installed dependencies for PsychoPy and for building Python/WxPython.
 
 **Warning**: Removing dependencies can affect other applications. If you’re unsure, do not touch them.
 
