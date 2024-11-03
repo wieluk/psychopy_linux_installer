@@ -350,47 +350,45 @@ check_python_env() {
 
 # Function to build Python from source
 build_python() {
-    local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
+    local official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Info: Building Python ${python_version} from source this might take a while ..."
-    major_minor_version="${python_version}"
     official_base_url="https://www.python.org/ftp/python/"
     
-    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
+    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${python_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
     temp_file="Python-${latest_patch_version}.tgz"
     temp_dir="Python-${latest_patch_version}_temp"
     
-    curl -L -o "${official_url}"
-
     if ! curl -L -o "${temp_file}" "${official_url}"; then
-        echo "Error: Failed to download Python-${latest_patch_version} from python.org"
+        log_message "Error: Failed to download Python-${latest_patch_version} from python.org"
         exit 1
     fi
 
-    mkdir -p "${temp_dir}"
+    mkdir -p "${temp_dir}" || { log_message "Error: Failed to create temp directory."; exit 1; }
 
     if ! tar -xf "${temp_file}" -C "${temp_dir}"; then
-        echo "Error: Failed to extract ${temp_file}."
+        log_message "Error: Failed to extract ${temp_file}."
         exit 1
     fi
 
-    cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
+    cd "${temp_dir}/Python-${latest_patch_version}" || { log_message "Error: Failed to change directory."; exit 1; }
     log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
     log make -j "$(nproc)"
     sudo_wrapper make altinstall
-    cd "${psychopy_dir}" || exit
-    
+    cd "${psychopy_dir}" || { log_message "Error: Failed to return to psychopy directory."; exit 1; }
+
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
     return 0
 }
 
 # Function to download prebuilt Python from GitHub release
 python_github_install() {
-    local asset_name api_url assets_json temp_file temp_dir github_download_url
+    local asset_name api_url assets_json temp_file temp_dir github_download_url python_version_pattern
 
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
     assets_json=$(curl -s "$api_url")
+
     if echo "$assets_json" | grep -q '"message": "Not Found"'; then
         log_message "Warning: Release v${script_version} not found on GitHub."
         return 1
@@ -402,14 +400,12 @@ python_github_install() {
     fi
 
     python_version_pattern="python-${python_version}\.[0-9]+-${processor_structure}-${os_version}\.tar\.gz"
-    available_assets=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern")
+    asset_name=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
 
-    if [ -z "$available_assets" ]; then
+    if [ -z "$asset_name" ]; then
         log_message "Warning: No matching Python version found in release v${script_version} for Python ${python_version}."
         return 1
     fi
-
-    asset_name=$(echo "$available_assets" | sort -V | tail -n 1)
 
     github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
@@ -418,21 +414,21 @@ python_github_install() {
         return 1
     fi
 
-    temp_file="${asset_name}"
-    temp_dir="${asset_name%.tar.gz}_temp"
-    log_message "Info: Downloading $asset_name from Github."
-    if curl -L -o "${temp_file}" "${github_download_url}"; then
+    log_message "Info: Downloading $asset_name from GitHub."
+    if curl -L -o "$asset_name" "$github_download_url"; then
         log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${script_version}. Making an altinstall ..."
-        mkdir -p "${temp_dir}"
-        if tar -xf "${temp_file}" -C "${temp_dir}"; then
-            cd "${temp_dir}" || exit
+        temp_dir="${asset_name%.tar.gz}_temp"
+        mkdir -p "$temp_dir" || { log_message "Error: Failed to create temp directory."; return 1; }
+
+        if tar -xf "$asset_name" -C "$temp_dir"; then
+            cd "$temp_dir" || { log_message "Error: Failed to change directory."; return 1; }
             sudo_wrapper make altinstall
-            cd "${psychopy_dir}" || exit
-            sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+            cd "${psychopy_dir}" || { log_message "Error: Failed to return to psychopy directory."; return 1; }
+            sudo_wrapper rm -rf "$temp_dir" "$asset_name"
             return 0
         else
-            sudo_wrapper rm -rf "${temp_dir}"
-            log_message "Error: Failed to extract ${temp_file}."
+            log_message "Error: Failed to extract $asset_name."
+            sudo_wrapper rm -rf "$temp_dir"
             return 1
         fi
     else
@@ -501,7 +497,7 @@ wxpython_wheelurl_install() {
 
 # Function to install wxPython from GitHub release
 wxpython_github_install() {
-    local api_url assets_json wheel_file wheel_name github_download_url
+    local api_url assets_json wheel_name renamed_wheel download_url python_version_major_minor
 
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
 
@@ -516,29 +512,29 @@ wxpython_github_install() {
         return 1
     fi
     
-    python_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
-    wheel_name="wxPython-${wxpython_version}-cp${python_major_minor}-cp${python_major_minor}-${processor_structure}-${os_version}.whl"
+    python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
+    wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
 
-    github_download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
+    download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
-    if [ -z "$github_download_url" ]; then
+    if [ -z "$download_url" ]; then
         log_message "Warning: No matching wxPython wheel found in release v${script_version} for wxPython ${wxpython_version}."
         return 1
     fi
 
-    log_message "Info: Downloading $wheel_name from Github."
-    if curl -L -o "$wheel_name" "$github_download_url"; then
+    log_message "Info: Downloading $wheel_name from GitHub."
+    if curl -L -o "$wheel_name" "$download_url"; then
         log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name..."
-        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
-        mv "$wheel_name" "$wx_python_file"
-        log_message "Info: Download from Github successful. Installing wxPython from $wx_python_file"
-        if log pip install "$wx_python_file"; then
-            log_message "Info: Installed wxPython from $wx_python_file"
-            rm "$wx_python_file"
+        renamed_wheel="${wheel_name%-"${os_version}".whl}.whl"
+        mv "$wheel_name" "$renamed_wheel"
+        log_message "Info: Download from GitHub successful. Installing wxPython from $renamed_wheel"
+        if log pip install "$renamed_wheel"; then
+            log_message "Info: Installed wxPython from $renamed_wheel"
+            rm "$renamed_wheel"
             return 0
         else
-            log_message "Warning: Installing wxPython from $wx_python_file failed."
-            rm "$wx_python_file"
+            log_message "Warning: Installing wxPython from $renamed_wheel failed."
+            rm "$renamed_wheel"
             return 1
         fi
     else
