@@ -19,13 +19,14 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 
 ## Important Information
 
-- PsychoPy is compatible with Python versions 3.8, 3.9, and 3.10.
+- PsychoPy supports Python versions 3.8, 3.9, and 3.10.
 - Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python` if not available via package manager.
 - A directory is created in the specified directory (default: `$HOME`): `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`.
-- The script first attempts to install python via package manager then tries download a pre-packaged Python .tar.gz file from github releases. If a suitable version isn't found, it will download from python.org and build it from source.
-- For wxPython, the script tries to download from their [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/). If this fails, it falls back to github releases or, if necessary, builds wxPython from source.
+- The script attempts to install Python via the package manager; if not found, it downloads a pre-packaged .tar.gz from GitHub releases or, if unavailable, from python.org to build from source.
+- wxPython is downloaded from the [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/); if this fails, the script tries GitHub releases or builds from source.
+- After successful wxPython installation, the downloaded .whl file is cached in `/usr/local/psychopy_python/wx_wheels`.
 - If the downloads fail, building Python and wxPython may take a some time.
-- The script provides minimal output by default. Use the --verbose option for detailed logging.
+- The script provides minimal output by default. Use the `--verbose` option for detailed logging.
 
 ## Usage
 
@@ -113,6 +114,75 @@ You can also launch PsychoPy directly using the absolute path:
 
 **Note:**
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
+
+## Uninstalling PsychoPy
+
+To completely uninstall PsychoPy, you’ll need to remove the application files, shortcuts, and (optionally) dependencies installed for PsychoPy.
+
+### Remove PsychoPy Application Files
+
+By default, PsychoPy installs its files in the following directories:
+
+- **PsychoPy installation directory**: `~/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`
+- **Python and wxPython packages**: `/usr/local/psychopy_python`
+
+To uninstall PsychoPy, delete both of these directories:
+
+```bash
+rm -rf {install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}
+sudo rm -rf /usr/local/psychopy_python
+```
+
+### Remove Desktop Shortcuts
+
+PsychoPy creates desktop shortcuts that you can safely delete. To remove all PsychoPy shortcuts, use:
+
+```bash
+rm ~/.local/share/applications/PsychoPy*.desktop
+rm ~/Desktop/PsychoPy*.desktop
+```
+
+### (Optional): Remove Dependencies
+
+We installed dependencies specifically for PsychoPy and for building python/wxpython. 
+
+**Warning**: Removing dependencies can affect other applications. If you’re unsure, do not touch them.
+
+<details>
+  <summary>Uninstall dependencies by package manager</summary>
+
+Each package manager requires different dependencies. **Note**: Depending on the installation not all dependencies are installed. `script_deps` and `psychopy_deps` are always installed.
+
+```bash
+apt-get)
+    script_deps=(git curl jq)
+    psychopy_deps=(libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libxcb-cursor0 libxkbcommon-x11-0)
+    python_build_deps=(build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils make)
+    wxpython_deps=(libjpeg-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libpng-dev libtiff-dev libnotify-dev libsm-dev libgtk2.0-dev g++ make libglib2.0-dev)
+    python_with_venv=(python3 python3-venv python3-pip python3-dev)
+    ;;
+yum|dnf)
+    script_deps=(git curl jq)
+    psychopy_deps=(gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel)
+    python_build_deps=(gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel make)
+    wxpython_deps=(libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base gstreamer1-devel freeglut-devel libjpeg-turbo-devel libpng-devel libtiff-devel libnotify-devel gtk2-devel make glib2-devel)
+    python_with_venv=(python3 python3-venv python3-pip python3-devel)
+    ;;
+pacman)
+    script_deps=(git curl jq)
+    psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib)
+    python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
+    wxpython_deps=(libjpeg libpng libsm mesa gstreamer gstreamer-base freeglut libtiff libnotify gtk2 gcc make glib2)
+    python_with_venv=(python python-virtualenv python-pip)
+    ;;
+zypper)
+    script_deps=(git curl jq)
+    psychopy_deps=(gtk3-devel libxcb-xinerama0 libSDL2-devel libusb-1_0-devel portaudio-devel alsa-devel)
+    python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel bzip2-devel readline-devel xz-devel make)
+    wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel gtk2-devel gcc-c++ make glib2-devel)
+    python_with_venv=(python3 python3-virtualenv python3-pip python3-devel)
+```
+</details>
 
 ## Automated Installation, Test and build Results
 
