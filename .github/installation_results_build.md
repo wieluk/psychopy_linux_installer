@@ -1,6 +1,6 @@
-### Report generated on 2024-11-02
+### Report generated on 2024-11-03
 ### All runners used the flag `--build=both`
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11618449984)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11653136191)
 
 | OS | Python Version | PsychoPy Version | Status |
 |---|---|---|---|
@@ -15,4 +15,3 @@
 | rocky-9.4 | 3.10 | 2024.2.4 | ✅ |
 | ubuntu-20.04 | 3.10 | 2024.2.4 | ✅ |
 | ubuntu-22.04 | 3.10 | 2024.2.4 | ✅ |
-| ubuntu-24.04 | 3.10 | 2024.2.4 | ✅ |
