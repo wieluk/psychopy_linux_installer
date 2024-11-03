@@ -150,7 +150,7 @@ jobs:
         if: always()
         run: | 
           sudo rm -rf /tmp_dir ~/.cache/pip ~/Desktop/* ~/.local/share/applications/* /usr/local/psychopy_python
-          sleep 30
+          sleep 60
 
   update-readme:
     needs: run-installer

@@ -380,10 +380,14 @@ python_github_install() {
     local asset_name api_url assets_json temp_file temp_dir github_download_url
 
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
-    
     assets_json=$(curl -s "$api_url")
     if echo "$assets_json" | grep -q '"message": "Not Found"'; then
         log_message "Warning: Release v${script_version} not found on GitHub."
+        return 1
+    fi
+
+    if [ -z "$assets_json" ]; then
+        log_message "Warning: Empty response from GitHub API."
         return 1
     fi
 
@@ -410,20 +414,22 @@ python_github_install() {
     if curl -L -o "${temp_file}" "${github_download_url}"; then
         log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${script_version}. Making an altinstall ..."
         mkdir -p "${temp_dir}"
-        tar -xf "${temp_file}" -C "${temp_dir}"
-
-        cd "${temp_dir}" || exit
-        sudo_wrapper make altinstall
-        cd "${psychopy_dir}" || exit
-
-        sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-        return 0
+        if tar -xf "${temp_file}" -C "${temp_dir}"; then
+            cd "${temp_dir}" || exit
+            sudo_wrapper make altinstall
+            cd "${psychopy_dir}" || exit
+            sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+            return 0
+        else
+            sudo_wrapper rm -rf "${temp_dir}"
+            log_message "Error: Failed to extract ${temp_file}."
+            return 1
+        fi
     else
-        log_message "Warning: Failed to download from GitHub release. No matching Python version found."
+        log_message "Warning: Failed to download from GitHub release."
         return 1
     fi
 }
-
 
 # Function to build wxPython from source
 build_wxpython() {
