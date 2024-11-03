@@ -143,9 +143,24 @@ rm ~/.local/share/applications/PsychoPy*.desktop
 #rm ~/Desktop/PsychoPy*.desktop #might be different if you do not have your language set to english
 ```
 
+### Remove PsychoPy from the System Path
+
+During installation, PsychoPy adds a line to the end of your shell’s configuration file. Remove this line. The line typically looks like:
+
+```bash
+export PATH="{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}/.bin:$PATH"
+```
+
+Locate and edit the configuration file for your shell to remove this line:
+
+- **Bash**: `$HOME/.bashrc`
+- **Zsh**: `$HOME/.zshrc`
+- **Fish**: `$HOME/.config/fish/config.fish`
+- **Csh/Tcsh**: `$HOME/.${shell_name}rc`
+
 ### (Optional): Remove Dependencies
 
-We installed dependencies specifically for PsychoPy and for building python/wxpython. 
+We installed dependencies specifically for PsychoPy and for building Python/WxPython.
 
 **Warning**: Removing dependencies can affect other applications. If you’re unsure, do not touch them.
 
