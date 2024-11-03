@@ -106,11 +106,12 @@ After installation, desktop icons for PsychoPy will be created automatically, an
 
 `psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
 
-Refreshing your system's PATH is necessary.
 
 You can also launch PsychoPy directly using the absolute path:
 
 `${PSYCHOPY_DIR}/bin/psychopy`
+
+Please reboot to apply security limits and to refresh system path.
 
 **Note:**
 All commands, along with the installed versions and set paths, as well as the command to refresh your system's PATH, will be displayed at the end of the script.
