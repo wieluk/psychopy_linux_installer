@@ -35,13 +35,9 @@ Install curl with your package manger. On most distros curl is already installed
 Download and execute the script:
 
 ```bash
- curl -o- https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | bash
-```
-
-Using arguments:
-
-```bash
- curl -o- https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | bash -s -- --sudo-mode=auto
+ curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
+ chmod +x psychopy_linux_installer
+ ./psychopy_linux_installer
 ```
 
 ## Options
@@ -70,7 +66,7 @@ Using arguments:
 ## Example
 
 ```bash
-curl -o https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | bash -s -- --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force
+./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force
 ```
 
 ## Script Details
