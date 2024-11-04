@@ -12,8 +12,7 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - OpenSuse 16
 - Manjaro 22
 
-These distributions are tested with runners.
-Additional ones are probably working aswell.
+These distributions have been tested for compatibility, but the script may also work on other Linux distributions.
 
 **Note:**
 Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
@@ -31,31 +30,18 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 
 ## Usage
 
-(Optional) Update and upgrade packages; change `apt-get` to your package manager.
+Install curl with your package manger. On most distros curl is already installed.
+
+Download and execute the script:
 
 ```bash
-sudo apt-get update
-sudo apt-get upgrade -y
+curl -o- https://github.com/psychopy/psychopy/blob/release/linux_installer | bash
 ```
 
-Install Git
+Using arguments:
 
 ```bash
-sudo apt-get install git -y
-```
-
-Clone the repository and allow execution:
-
-```bash
-git clone https://github.com/wieluk/psychopy_linux_installer.git
-cd psychopy_linux_installer
-chmod +x psychopy_linux_installer
-```
-
-Execute script; see options below for more information.
-
-```bash
-./psychopy_linux_installer
+curl -o https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | bash -s -- --sudo-mode=auto
 ```
 
 ## Options
@@ -83,7 +69,9 @@ Execute script; see options below for more information.
 
 ## Example
 
-- `./psychopy_linux_installer --psychopy-version=2024.1.4 --python-version=3.10 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force`
+```bash
+curl -o https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | bash -s -- --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/user1 --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force
+```
 
 ## Script Details
 
@@ -96,7 +84,7 @@ The script performs the following steps:
 - Creates and activates a virtual environment for PsychoPy.
 - Installs/builds wxPython.
 - Upgrades pip and some pip packages.
-- Install specified PsychoPy version.
+- Installs specified PsychoPy version.
 - Adds the current user to a `psychopy` group and sets security limits.
 - Creates a symbolic link to the PsychoPy executable in `.bin`.
 - Creates a desktop shortcut.
@@ -145,7 +133,7 @@ rm ~/.local/share/applications/PsychoPy*.desktop
 
 ### Remove PsychoPy from the System Path
 
-During installation, PsychoPy adds a line to the end of your shell’s configuration file. Remove this line. The line typically looks like:
+During installation, a line is added to the end of your shell’s configuration file. The line typically looks like:
 
 ```bash
 export PATH="{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}/.bin:$PATH"
@@ -161,14 +149,16 @@ Locate and edit the configuration file for your shell to remove this line:
 
 ### (Optional): Remove Dependencies
 
-The installer installed dependencies for PsychoPy and for building Python/WxPython.
+Dependencies for PsychoPy and for building Python/WxPython are installed via package manager.
 
 **Warning**: Removing dependencies can affect other applications. If you’re unsure, do not touch them.
 
 <details>
   <summary>Uninstall dependencies by package manager</summary>
 
-Each package manager requires different dependencies. **Note**: Depending on the installation not all dependencies are installed. `script_deps` and `psychopy_deps` are always installed.
+Depending on the installation not all dependencies are installed. `script_deps` and `psychopy_deps` are always installed.
+
+Here are all dependencies listed that might be installed:
 
 ```bash
 apt-get)
