@@ -1,15 +1,14 @@
-name: Merge and tag
+name: Reusable Merge and Tag Workflow
 
 on:
-    workflow_run:
-      workflows: ["Run PsychoPy Installer on Multiple Linux OS with build option"]
-      types:
-        - completed
+  workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: true
 
 jobs:
   merge:
     runs-on: ubuntu-22.04
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,4 +34,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git tag -a "v${{ steps.get_version.outputs.version }}" -m "Release v${{ steps.get_version.outputs.version }}"
-          git push origin "v${{ steps.get_version.outputs.version }}"
+          git push origin "v${{ steps.get_version.outputs.version }}" 

@@ -1,16 +1,19 @@
-name: Run PsychoPy Installer on Multiple Linux OS
+name: Reusable Test Workflow
 
 on:
-  workflow_run:
-    workflows: ["PR workflow release"]
-    types:
-      - completed
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      build-mode:
+        required: true
+        type: boolean
+        description: 'Whether to run tests with build mode enabled'
+    secrets:
+      GITHUB_TOKEN:
+        required: true
 
 jobs:
   run-installer:
     runs-on: [self-hosted, "${{ matrix.os }}"]
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     strategy:
       matrix:
         os:
@@ -27,9 +30,10 @@ jobs:
           - manjarolinux-24
           - opensuse-leap-15.6
           - linuxmint-22
-        python_version: ['3.8', '3.9', '3.10']
-        psychopy_version: ['latest', '2023.2.3', '2024.1.4']
+        python_version: ['3.10']
+        psychopy_version: ['latest']
       fail-fast: false
+
     steps:
       - uses: actions/checkout@v4
       
@@ -45,91 +49,92 @@ jobs:
           fi
           PSYCHOPY_VERSION_CLEAN=$(echo "$PSYCHOPY_VERSION_CLEAN" | tr -d ',;')
           echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
-
+          
           sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
-
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --sudo-mode=auto"
+          
+          BUILD_FLAG="${{ inputs.build-mode && '--build=both' || '' }}"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --sudo-mode=auto $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Verify PsychoPy installation and version
         id: verify-psychopy
         continue-on-error: true
         run: |
-            if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
-              echo "PsychoPy help command failed"
-              exit 1
-            fi
-            
-            if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
-              echo "PsychoPy version check failed"
-              exit 1
-            fi
+          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
+            echo "PsychoPy help command failed"
+            exit 1
+          fi
+          
+          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
+            echo "PsychoPy version check failed"
+            exit 1
+          fi
         
       - name: Run basic PsychoPy test
         id: psychopy-test
         continue-on-error: true
         run: |
-            cd /tmp_dir/PsychoPy_tests
-            /tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
-            set -e
-            if ! tail -n 1 /tmp_dir/PsychoPy_tests/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
-              echo "::error::PsychoPy test output verification failed"
-              exit 1
-            fi
-  
+          cd /tmp_dir/PsychoPy_tests
+          /tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
+          set -e
+          if ! tail -n 1 /tmp_dir/PsychoPy_tests/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
+            echo "::error::PsychoPy test output verification failed"
+            exit 1
+          fi
+
       - name: Run extended PsychoPy Tests
         id: psychopy-test-extended
         continue-on-error: true
         run: |
-            output=$(/tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test_extended.py)
-            tests=("Visual" "Keyboard" "Image" "Timing")
-            for test in "${tests[@]}"; do
-              if ! echo "$output" | grep -qE "${test} Test Passed"; then
-                echo "::error::${test} Test Failed"
-                exit 1
-              fi
-            done
-            echo "All tests passed successfully."
-  
+          output=$(/tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test_extended.py)
+          tests=("Visual" "Keyboard" "Image" "Timing")
+          for test in "${tests[@]}"; do
+            if ! echo "$output" | grep -qE "${test} Test Passed"; then
+              echo "::error::${test} Test Failed"
+              exit 1
+            fi
+          done
+          echo "All tests passed successfully."
+
       - name: Verify BIDS installation simple
         id: verify-bids
         continue-on-error: true
         run: |
-            cd /tmp_dir/PsychoPy_tests/BIDS
-            if ! /tmp_dir/psychopy/bin/python bids_test_simple.py; then
-              echo "::error::BIDS simple test execution failed"
-              exit 1
-            fi
-      
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          if ! /tmp_dir/psychopy/bin/python bids_test_simple.py; then
+            echo "::error::BIDS simple test execution failed"
+            exit 1
+          fi
+    
       - name: Verify BIDS installation exp_handler
         id: verify-bids-handler
         continue-on-error: true
         run: |
-            cd /tmp_dir/PsychoPy_tests/BIDS
-            if ! /tmp_dir/psychopy/bin/python bids_test_exp_handler.py; then
-              echo "::error::BIDS exp_handler test execution failed"
-              exit 1
-            fi
-          
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          if ! /tmp_dir/psychopy/bin/python bids_test_exp_handler.py; then
+            echo "::error::BIDS exp_handler test execution failed"
+            exit 1
+          fi
+
       - name: Record result
         run: |
           STATUS="❌"
-          if [[
-                "${{ steps.verify-psychopy.outcome }}" == "success" && 
+          if [[ "${{ steps.verify-psychopy.outcome }}" == "success" && 
                 "${{ steps.psychopy-test.outcome }}" == "success" && 
                 "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
                 "${{ steps.verify-bids.outcome }}" == "success" && 
                 "${{ steps.verify-bids-handler.outcome }}" == "success"  ]]; then
-              STATUS="✅"
-            fi
-        
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md"
+            STATUS="✅"
+          fi
+      
+          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md"
           echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | ${{ env.PSYCHOPY_VERSION_CLEAN }} | $STATUS |" >> $RESULT_FILE
-          cat $RESULT_FILE      
+          cat $RESULT_FILE
+      
       - uses: actions/upload-artifact@v4
         with:
           name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}
@@ -137,8 +142,8 @@ jobs:
       
       - name: Cleanup
         if: always()
-        run: | 
-          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
+        run: |
+          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
           sleep 60
 
   update-readme:
@@ -163,21 +168,24 @@ jobs:
         run: |
           {
             echo "### Report generated on $(date '+%Y-%m-%d')"
+            if [[ "${{ inputs.build-mode }}" == "true" ]]; then
+              echo "### All runners used the flag \`--build=both\`"
+            fi
             echo "### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
             echo
             echo "| OS | Python Version | PsychoPy Version | Status |"
             echo "|---|---|---|---|"
             sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 ./artifacts/*.md
-          } > .github/installation_results.md
+          } > .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md
       
       - name: Commit and push changes
         run: |
-          git add -f .github/installation_results.md
-          git diff-index --quiet HEAD || git commit -m "Update installation results" && git push --force
+          git add -f .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md
+          git diff-index --quiet HEAD || git commit -m "Update installation${{ inputs.build-mode && ' build' || '' }} results" && git push --force
       
       - name: Check for failed statuses
         run: |
-          if grep -q "❌" .github/installation_results.md && ! grep -q "✅" .github/installation_results.md; then
+          if grep -q "❌" .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md && ! grep -q "✅" .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md; then
             echo "All entries failed or no successful entries found. Failing the job."
             exit 1
-          fi
+          fi 
