@@ -121,4 +121,3 @@ jobs:
         if: always()
         run: |
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
-          sleep 60
