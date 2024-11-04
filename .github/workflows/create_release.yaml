@@ -162,10 +162,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
-          LATEST_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest")
+          # Get all releases
+          RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
           
-          PREVIOUS_RELEASE_ID=$(echo "$LATEST_RELEASE" | jq -r '.id')
+          # Get current version and find previous version
+          CURRENT_VERSION="${INSTALLER_VERSION}"
+          echo "Current version: v${CURRENT_VERSION}"
+          
+          # Find the previous release ID (the one right before current version)
+          PREVIOUS_RELEASE_ID=$(echo "$RELEASES" | jq -r "
+            map(select(.tag_name != \"v${CURRENT_VERSION}\"))
+            | sort_by(.created_at)
+            | reverse
+            | .[0].id
+          ")
+          
+          echo "Found previous release ID: $PREVIOUS_RELEASE_ID"
           
           PYTHON_VERSION="${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
