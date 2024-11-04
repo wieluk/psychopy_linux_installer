@@ -244,8 +244,11 @@ jobs:
               
               [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
               
-              assets+=$(echo "$response" | jq -r '.[].name')$'\n'
-              assets+=$(echo "$response" | jq -r '.[].browser_download_url')$'\n'
+              # Store name and browser_download_url as pairs
+              while read -r name && read -r url; do
+                assets+="$name"$'\n'"$url"$'\n'
+              done < <(echo "$response" | jq -r '.[] | (.name, .browser_download_url)')
+              
               page=$((page + 1))
             done
             echo "$assets"
@@ -273,13 +276,15 @@ jobs:
             if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
               read -r url
               PYTHON_EXISTS=true
-              PYTHON_URL=$url
+              PYTHON_URL="$url"
               FOUND_IN_CURRENT=true
+              echo "Found Python URL in current: $url"
             elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
               read -r url
               WXPYTHON_EXISTS=true
-              WXPYTHON_URL=$url
+              WXPYTHON_URL="$url"
               FOUND_IN_CURRENT=true
+              echo "Found wxPython URL in current: $url"
             fi
           done <<< "$CURRENT_ASSETS"
 
@@ -288,16 +293,22 @@ jobs:
               if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
                 read -r url
                 PYTHON_EXISTS=true
-                PYTHON_URL=$url
+                PYTHON_URL="$url"
                 FOUND_IN_PREVIOUS=true
+                echo "Found Python URL in previous: $url"
               elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
                 read -r url
                 WXPYTHON_EXISTS=true
-                WXPYTHON_URL=$url
+                WXPYTHON_URL="$url"
                 FOUND_IN_PREVIOUS=true
+                echo "Found wxPython URL in previous: $url"
               fi
             done <<< "$PREVIOUS_ASSETS"
           fi
+
+          # Add debug output
+          echo "Python URL: $PYTHON_URL"
+          echo "wxPython URL: $WXPYTHON_URL"
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_PROCESS=true" >> $GITHUB_ENV
@@ -326,18 +337,21 @@ jobs:
       - name: Transfer assets from previous release
         if: env.TRANSFER_FROM_PREVIOUS == 'true'
         run: |
+          echo "Downloading from Python URL: ${{ env.PYTHON_URL }}"
+          echo "Downloading from wxPython URL: ${{ env.WXPYTHON_URL }}"
+          
           # Download Python tarball
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
             "${{ env.PYTHON_URL }}"
-
+          
           # Download wxPython wheel
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
             "${{ env.WXPYTHON_URL }}"
-
+          
           # Upload Python tarball to new release
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/gzip" \
