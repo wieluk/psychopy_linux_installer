@@ -1,0 +1,38 @@
+name: Merge and tag
+
+on:
+    workflow_run:
+      workflows: ["Run PsychoPy Installer on Multiple Linux OS with build option"]
+      types:
+        - completed
+
+jobs:
+  merge:
+    runs-on: ubuntu-22.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Auto-merge PR
+        uses: pascalgn/automerge-action@v0.15.6
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+          MERGE_LABELS: "automerge"
+          MERGE_METHOD: "squash"
+          MERGE_DELETE_BRANCH: "true"
+
+      - name: Get installer version
+        id: get_version
+        run: |
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          echo "version=${INSTALLER_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a "v${{ steps.get_version.outputs.version }}" -m "Release v${{ steps.get_version.outputs.version }}"
+          git push origin "v${{ steps.get_version.outputs.version }}"

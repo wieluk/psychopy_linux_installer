@@ -1,27 +1,16 @@
 name: Run PsychoPy Installer on Multiple Linux OS
 
 on:
-  push:
-    branches: [main, dev]
-    paths:
-      - psychopy_linux_installer
-      - .github/workflows/test_installer.yaml
+  workflow_run:
+    workflows: ["PR workflow release"]
+    types:
+      - completed
   workflow_dispatch:
 
 jobs:
-  syntax-check:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run ShellCheck
-        run: |
-          sudo apt-get install -y shellcheck
-          bash -n $GITHUB_WORKSPACE/psychopy_linux_installer
-          shellcheck -e SC1017 -e SC1091 $GITHUB_WORKSPACE/psychopy_linux_installer
-
   run-installer:
-    needs: syntax-check
     runs-on: [self-hosted, "${{ matrix.os }}"]
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     strategy:
       matrix:
         os:
