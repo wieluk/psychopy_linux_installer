@@ -35,13 +35,13 @@ Install curl with your package manger. On most distros curl is already installed
 Download and execute the script:
 
 ```bash
-curl -o https://github.com/wieluk/psychopy_linux_installer/raw/main/psychopy_linux_installer | bash
+ curl -o- https://github.com/wieluk/psychopy_linux_installer/blob/main/psychopy_linux_installer | bash
 ```
 
 Using arguments:
 
 ```bash
-curl -o https://github.com/wieluk/psychopy_linux_installer/raw/main/psychopy_linux_installer | bash -s -- --sudo-mode=auto
+ curl -o- https://github.com/wieluk/psychopy_linux_installer/blob/main/psychopy_linux_installer | bash -s -- --sudo-mode=auto
 ```
 
 ## Options
