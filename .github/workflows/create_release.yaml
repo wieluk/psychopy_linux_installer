@@ -47,21 +47,11 @@ jobs:
           else
             echo "Release ${RELEASE_TAG} does not exist. Creating release."
             
-            CHANGELOG=""
-            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
-              # If we have at least one previous commit, get changes since then
-              RECENT_CHANGES=$(git log --pretty=format:"- %s (%an)" --no-merges -n 10)
-              if [ ! -z "$RECENT_CHANGES" ]; then
-                CHANGELOG="\n\n### Recent Changes:\n${RECENT_CHANGES}"
-              fi
-            fi
-            
-            # Create new release
             CREATE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -d @- "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" <<EOF
               {
                 "tag_name": "${RELEASE_TAG}",
                 "name": "${RELEASE_TAG}",
-                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}\n\n${CHANGELOG}",
+                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}",
                 "draft": false,
                 "prerelease": false
               }
@@ -172,11 +162,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
-          PREVIOUS_RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${PREVIOUS_TAG}" | \
-            jq -r '.id')
-
+          LATEST_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest")
+          
+          PREVIOUS_RELEASE_ID=$(echo "$LATEST_RELEASE" | jq -r '.id')
+          
           PYTHON_VERSION="${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
           if [ -z "$PYTHON_FULL_VERSION" ]; then
@@ -248,8 +238,15 @@ jobs:
             echo "$assets"
           }
 
-          CURRENT_ASSETS=$(check_assets "$RELEASE_ID")
-          PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
+          CURRENT_ASSETS=""
+          if [ ! -z "$RELEASE_ID" ]; then
+            CURRENT_ASSETS=$(check_assets "$RELEASE_ID")
+          fi
+          
+          PREVIOUS_ASSETS=""
+          if [ ! -z "$PREVIOUS_RELEASE_ID" ] && [ "$PREVIOUS_RELEASE_ID" != "null" ]; then
+            PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
+          fi
 
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
