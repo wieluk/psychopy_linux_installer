@@ -13,22 +13,22 @@ on:
 jobs:
   # Initial syntax check and release creation
   syntax-check:
-    uses: ./.github/workflows/reuseable/reusable_syntax_check.yaml
+    uses: ./.github/workflows/reusable/reusable_syntax_check.yaml
 
   create-release:
     needs: syntax-check
-    uses: ./.github/workflows/reuseable/reusable_release.yaml
+    uses: ./.github/workflows/reusable/reusable_release.yaml
 
   # Build binaries
   build-binaries:
     needs: create-release
-    uses: ./.github/workflows/reuseable/reusable_build.yaml
+    uses: ./.github/workflows/reusable/reusable_build.yaml
 
   # Test installation without build
   test-installation:
     needs: build-binaries
     if: success()
-    uses: ./.github/workflows/reuseable/reusable_test.yaml
+    uses: ./.github/workflows/reusable/reusable_test.yaml
     with:
       build-mode: false
 
@@ -36,7 +36,7 @@ jobs:
   test-installation-build:
     needs: test-installation
     if: success()
-    uses: ./.github/workflows/reuseable/reusable_test.yaml
+    uses: ./.github/workflows/reusable/reusable_test.yaml
     with:
       build-mode: true
 
@@ -47,5 +47,5 @@ jobs:
       success() && 
       github.event_name == 'pull_request' && 
       contains(github.event.pull_request.labels.*.name, 'automerge')
-    uses: ./.github/workflows/reuseable/reusable_merge_tag.yaml 
+    uses: ./.github/workflows/reusable/reusable_merge_tag.yaml 
     
