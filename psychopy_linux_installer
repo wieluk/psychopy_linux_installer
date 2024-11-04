@@ -353,7 +353,7 @@ build_python() {
     local official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Info: Building Python ${python_version} from source this might take a while ..."
     official_base_url="https://www.python.org/ftp/python/"
- 
+
     latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${python_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
