@@ -46,18 +46,22 @@ jobs:
             echo "release_exists=true" >> $GITHUB_ENV
           else
             echo "Release ${RELEASE_TAG} does not exist. Creating release."
-            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
-            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%an)" --no-merges)
             
-            if [ -z "$CHANGELOG" ]; then
-              CHANGELOG="No new changes since last release."
+            CHANGELOG=""
+            if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              # If we have at least one previous commit, get changes since then
+              RECENT_CHANGES=$(git log --pretty=format:"- %s (%an)" --no-merges -n 10)
+              if [ ! -z "$RECENT_CHANGES" ]; then
+                CHANGELOG="\n\n### Recent Changes:\n${RECENT_CHANGES}"
+              fi
             fi
-  
+            
+            # Create new release
             CREATE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -d @- "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" <<EOF
               {
                 "tag_name": "${RELEASE_TAG}",
                 "name": "${RELEASE_TAG}",
-                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}\n\n### Changelog:\n${CHANGELOG}",
+                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}\n\n${CHANGELOG}",
                 "draft": false,
                 "prerelease": false
               }
