@@ -10,7 +10,7 @@ on:
 
 jobs:
   syntax-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Run ShellCheck
@@ -155,7 +155,7 @@ jobs:
   update-readme:
     needs: run-installer
     if: ${{ failure() || success() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Configure Git and pull changes

@@ -1,0 +1,541 @@
+name: Pull Request Workflow
+
+on:
+  push:
+    branches: [gh-binaries]
+    paths:
+      - psychopy_linux_installer
+      - .github/workflows/pr_workflow.yaml
+  pull_request:
+    branches: [main]
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        run: |
+          sudo apt-get install -y shellcheck
+          bash -n $GITHUB_WORKSPACE/psychopy_linux_installer
+          shellcheck -e SC1017 -e SC1091 $GITHUB_WORKSPACE/psychopy_linux_installer
+
+  create-release:
+    needs: syntax-check
+    runs-on: ubuntu-22.04
+    outputs:
+      installer_version: ${{ env.INSTALLER_VERSION }}
+      upload_url: ${{ env.upload_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create release if not exists
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          if [ -z "$INSTALLER_VERSION" ]; then
+            echo "Failed to extract version from script."
+            exit 1
+          fi
+
+          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
+
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          if echo "$RESPONSE" | grep -q '"id":'; then
+            echo "Release ${RELEASE_TAG} already exists."
+            echo "release_exists=true" >> $GITHUB_ENV
+            UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+            echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+          else
+            echo "Release ${RELEASE_TAG} does not exist. Creating release."
+            
+            CREATE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" -d @- "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" <<EOF
+              {
+                "tag_name": "${RELEASE_TAG}",
+                "name": "${RELEASE_TAG}",
+                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}",
+                "draft": false,
+                "prerelease": false
+              }
+          EOF
+            )
+            
+            if echo "$CREATE_RESPONSE" | grep -q '"id":'; then
+              echo "release_exists=false" >> $GITHUB_ENV
+              UPLOAD_URL=$(echo "$CREATE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+              echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+            else
+              echo "Failed to create release."
+              echo "Error response: $CREATE_RESPONSE"
+              exit 1
+            fi
+          fi
+
+          if [ -f "README.md" ]; then
+            curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: text/markdown" \
+              --data-binary @README.md \
+              "${UPLOAD_URL}?name=README.md"
+          fi
+
+          if [ -f "psychopy_linux_installer" ]; then
+            curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/x-shellscript" \
+              --data-binary @psychopy_linux_installer \
+              "${UPLOAD_URL}?name=psychopy_linux_installer"
+          fi
+
+  build:
+    needs: create-release
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - debian-12
+          - debian-11
+          - fedora-39
+          - fedora-40
+          - pop-22.04
+          - rocky-9.4
+          - centos-9
+          - manjarolinux-24
+          - opensuse-leap-15.6
+          - linuxmint-22
+        python_version: ['3.8', '3.9', '3.10']
+      fail-fast: false
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo mkdir /tmp_dir
+          sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          if command -v jq >/dev/null 2>&1; then
+            echo "jq is already installed"
+          else
+            if command -v apt-get > /dev/null; then
+              sudo apt-get update || true
+              sudo apt-get install -y jq curl || true
+            elif command -v pacman > /dev/null; then
+              sudo pacman -Sy --noconfirm jq curl || true
+            elif command -v dnf > /dev/null; then
+              sudo dnf install -y jq curl || true
+            elif command -v yum > /dev/null; then
+              sudo yum install -y jq curl || true
+            elif command -v zypper > /dev/null; then
+              sudo zypper install -y jq curl || true
+            else
+              echo "Unsupported package manager"
+              exit 1
+            fi
+          fi
+
+      - name: Extract versions from script
+        id: extract_versions
+        run: |
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          if [ -z "$INSTALLER_VERSION" ]; then
+            exit 1
+          fi
+          WXPYTHON_VERSION=$(grep -m1 '^\s*wxpython_version=' psychopy_linux_installer | sed 's/^[^=]*=//;s/"//g')
+          if [ -z "$WXPYTHON_VERSION" ]; then
+            exit 1
+          fi
+          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
+          echo "Installer Version extracted: $INSTALLER_VERSION"
+          echo "wxPython version extracted: $WXPYTHON_VERSION"
+
+      - name: Get release info
+        id: get_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
+            exit 1
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
+          echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+
+      - name: Set Python variables
+        run: |
+          PYTHON_FULL_VERSION="${{ matrix.python_version }}.10"
+          PYTHON_TARBALL_NAME="python-${{ matrix.python_version }}-${{ matrix.os }}.tar.gz"
+          WXPYTHON_WHEEL_NAME="wxPython-${{ env.WXPYTHON_VERSION }}-${{ matrix.python_version }}-${{ matrix.os }}.whl"
+          echo "PYTHON_FULL_VERSION=$PYTHON_FULL_VERSION" >> $GITHUB_ENV
+          echo "PYTHON_TARBALL_NAME=$PYTHON_TARBALL_NAME" >> $GITHUB_ENV
+          echo "WXPYTHON_WHEEL_NAME=$WXPYTHON_WHEEL_NAME" >> $GITHUB_ENV
+          echo "SKIP_PROCESS=false" >> $GITHUB_ENV
+
+      - name: Build Python
+        if: env.SKIP_PROCESS == 'false'
+        id: build-python
+        continue-on-error: true
+        run: |
+          cd /tmp_dir
+          curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
+          tar -xf "Python-${PYTHON_FULL_VERSION}.tgz"
+          cd "Python-${PYTHON_FULL_VERSION}"
+          ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
+          make -j "$(nproc)"
+
+          PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
+          tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${PYTHON_FULL_VERSION}/" .
+          echo "PYTHON_TARBALL_PATH=$PYTHON_TARBALL_PATH" >> $GITHUB_ENV
+
+          sudo make altinstall
+
+      - name: Upload Python
+        if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
+        continue-on-error: true
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/gzip" \
+          --data-binary @"${PYTHON_TARBALL_PATH}" \
+          "${upload_url}?name=${PYTHON_TARBALL_NAME}"
+
+      - name: Build wxPython
+        if: env.SKIP_PROCESS == 'false'
+        id: build-wxpython
+        continue-on-error: true
+        run: |
+          export PATH=/usr/local/psychopy_python/bin:$PATH
+          /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
+          source /tmp_dir/psychopy_venv/bin/activate
+      
+          pip install -U pip distro sip six setuptools wheel
+      
+          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+          pip download wxPython==$WXPYTHON_VERSION
+          WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
+          tar -xzf "$WXPYTHON_TARBALL"
+          WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
+          cd "$WXPYTHON_DIR"
+      
+          python --version
+          python -m pip wheel .
+      
+          WXPYTHON_WHEEL=$(ls wxPython-*.whl)
+          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
+          cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
+          echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
+      
+          deactivate
+
+      - name: Upload wxPython to Release
+        if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
+        continue-on-error: true
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
+          "${upload_url}?name=${WXPYTHON_WHEEL_NAME}"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp_dir ~/.cache/pip /usr/local/psychopy_python
+          sleep 30
+
+  test-installer:
+    needs: build
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - debian-12
+          - debian-11
+          - fedora-39
+          - fedora-40
+          - pop-22.04
+          - rocky-9.4
+          - centos-9
+          - manjarolinux-24
+          - opensuse-leap-15.6
+          - linuxmint-22
+        python_version: ['3.8', '3.9', '3.10']
+        psychopy_version: ['latest', '2023.2.3', '2024.1.4']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup environment and install
+        env:
+          PYTHON_VERSION: ${{ matrix.python_version }}
+          PSYCHOPY_VERSION: ${{ matrix.psychopy_version }}
+        run: |
+          if [ "$PSYCHOPY_VERSION" == "latest" ]; then
+            PSYCHOPY_VERSION_CLEAN=$(curl -s https://pypi.org/pypi/psychopy/json | jq -r .info.version)
+          else
+            PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION
+          fi
+          PSYCHOPY_VERSION_CLEAN=$(echo "$PSYCHOPY_VERSION_CLEAN" | tr -d ',;')
+          echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
+
+          sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
+          sudo rm -rf /tmp_dir
+          sudo mkdir /tmp_dir
+          sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
+
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --sudo-mode=auto"
+          $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
+
+      - name: Verify PsychoPy installation and version
+        id: verify-psychopy
+        continue-on-error: true
+        run: |
+          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
+            echo "PsychoPy help command failed"
+            exit 1
+          fi
+          
+          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
+            echo "PsychoPy version check failed"
+            exit 1
+          fi
+        
+      - name: Run basic PsychoPy test
+        id: psychopy-test
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests
+          /tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
+          set -e
+          if ! tail -n 1 /tmp_dir/PsychoPy_tests/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
+            echo "::error::PsychoPy test output verification failed"
+            exit 1
+          fi
+
+      - name: Run extended PsychoPy Tests
+        id: psychopy-test-extended
+        continue-on-error: true
+        run: |
+          output=$(/tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test_extended.py)
+          tests=("Visual" "Keyboard" "Image" "Timing")
+          for test in "${tests[@]}"; do
+            if ! echo "$output" | grep -qE "${test} Test Passed"; then
+              echo "::error::${test} Test Failed"
+              exit 1
+            fi
+          done
+          echo "All tests passed successfully."
+
+      - name: Verify BIDS installation simple
+        id: verify-bids
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          if ! /tmp_dir/psychopy/bin/python bids_test_simple.py; then
+            echo "::error::BIDS simple test execution failed"
+            exit 1
+          fi
+    
+      - name: Verify BIDS installation exp_handler
+        id: verify-bids-handler
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          if ! /tmp_dir/psychopy/bin/python bids_test_exp_handler.py; then
+            echo "::error::BIDS exp_handler test execution failed"
+            exit 1
+          fi
+
+      - name: Record test status
+        id: test-status
+        run: |
+          if [[ "${{ steps.verify-psychopy.outcome }}" == "success" && 
+                "${{ steps.psychopy-test.outcome }}" == "success" && 
+                "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
+                "${{ steps.verify-bids.outcome }}" == "success" && 
+                "${{ steps.verify-bids-handler.outcome }}" == "success" ]]; then
+            echo "All tests passed"
+            echo "tests_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Some tests failed"
+            echo "tests_passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
+          sleep 60
+
+  test-build:
+    needs: test-installer
+    runs-on: [self-hosted, "${{ matrix.os }}"]
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - debian-12
+          - debian-11
+          - fedora-39
+          - fedora-40
+          - pop-22.04
+          - rocky-9.4
+          - centos-9
+          - manjarolinux-24
+          - opensuse-leap-15.6
+          - linuxmint-22
+        python_version: ['3.10']
+        psychopy_version: ['latest']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup environment and install
+        env:
+          PYTHON_VERSION: ${{ matrix.python_version }}
+          PSYCHOPY_VERSION: ${{ matrix.psychopy_version }}
+        run: |
+          if [ "$PSYCHOPY_VERSION" == "latest" ]; then
+            PSYCHOPY_VERSION_CLEAN=$(curl -s https://pypi.org/pypi/psychopy/json | jq -r .info.version)
+          else
+            PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION
+          fi
+          PSYCHOPY_VERSION_CLEAN=$(echo "$PSYCHOPY_VERSION_CLEAN" | tr -d ',;')
+          echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
+          
+          sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
+          sudo rm -rf /tmp_dir ~/.cache/pip
+          sudo mkdir /tmp_dir
+          sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
+          
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --build=both --sudo-mode=auto -f -v"
+          $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
+
+      - name: Verify PsychoPy installation and version
+        id: verify-psychopy
+        continue-on-error: true
+        run: |
+          if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
+            echo "PsychoPy help command failed"
+            exit 1
+          fi
+          
+          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version [0-9]+\.[0-9]+\.[0-9]+"; then
+            echo "PsychoPy version check failed"
+            exit 1
+          fi
+
+      - name: Run basic PsychoPy test
+        id: psychopy-test
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests
+          /tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
+          set -e
+          if ! tail -n 1 /tmp_dir/PsychoPy_tests/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
+            echo "::error::PsychoPy test output verification failed"
+            exit 1
+          fi
+
+      - name: Run extended PsychoPy Tests
+        id: psychopy-test-extended
+        continue-on-error: true
+        run: |
+          output=$(/tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test_extended.py)
+          tests=("Visual" "Keyboard" "Image" "Timing")
+          for test in "${tests[@]}"; do
+            if ! echo "$output" | grep -qE "${test} Test Passed"; then
+              echo "::error::${test} Test Failed"
+              exit 1
+            fi
+          done
+
+      - name: Verify BIDS installation simple
+        id: verify-bids
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          if ! /tmp_dir/psychopy/bin/python bids_test_simple.py; then
+            echo "::error::BIDS simple test execution failed"
+            exit 1
+          fi
+    
+      - name: Verify BIDS installation exp_handler
+        id: verify-bids-handler
+        continue-on-error: true
+        run: |
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          if ! /tmp_dir/psychopy/bin/python bids_test_exp_handler.py; then
+            echo "::error::BIDS exp_handler test execution failed"
+            exit 1
+          fi
+
+      - name: Record test status
+        id: test-status
+        run: |
+          if [[ "${{ steps.verify-psychopy.outcome }}" == "success" && 
+                "${{ steps.psychopy-test.outcome }}" == "success" && 
+                "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
+                "${{ steps.verify-bids.outcome }}" == "success" && 
+                "${{ steps.verify-bids-handler.outcome }}" == "success" ]]; then
+            echo "All tests passed"
+            echo "tests_passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Some tests failed"
+            echo "tests_passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
+          sleep 60
+
+  merge-and-tag:
+    needs: [create-release, test-installer, test-build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Merge PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr merge $PR_NUMBER --merge --auto
+
+      - name: Create Tag
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git tag "v${{ needs.create-release.outputs.installer_version }}"
+          git push origin "v${{ needs.create-release.outputs.installer_version }}"
