@@ -2,6 +2,9 @@ name: Build Python/wxPython and upload to GitHub Releases
 
 on:
   push:
+    branches: [gh-binaries]
+    paths:
+      - .github/workflows/create_release.yaml
     tags: ['v*.*.*']
   workflow_dispatch:
 
@@ -165,6 +168,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^)
+          PREVIOUS_RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${PREVIOUS_TAG}" | \
+            jq -r '.id')
+
           PYTHON_VERSION="${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
           if [ -z "$PYTHON_FULL_VERSION" ]; then
@@ -218,42 +226,80 @@ jobs:
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
           
-          ASSET_NAMES=""
-          PAGE=1
-          while :; do
-              # Fetch a page of assets, up to 100 per page
-              PAGE_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100&page=$PAGE")
+          check_assets() {
+            local release_id=$1
+            local page=1
+            local assets=""
+            
+            while :; do
+              local response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100&page=$page")
               
-              # Check if the response is empty or an empty array
-              if [ "$(echo "$PAGE_RESPONSE" | jq '. | length')" -eq 0 ]; then
-                  break
-              fi
+              [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
+              
+              assets+=$(echo "$response" | jq -r '.[].name')$'\n'
+              assets+=$(echo "$response" | jq -r '.[].url')$'\n'
+              page=$((page + 1))
+            done
+            echo "$assets"
+          }
 
-              # Append names from this page to ASSET_NAMES
-              ASSET_NAMES+=$(echo "$PAGE_RESPONSE" | jq -r '.[].name')
-              ASSET_NAMES+=$'\n'  # Newline separator for readability
-
-              # Increment the page number for the next iteration
-              PAGE=$((PAGE + 1))
-          done
+          CURRENT_ASSETS=$(check_assets "$RELEASE_ID")
+          PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
 
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
-          for ASSET_NAME in $ASSET_NAMES; do
-              if [ "$ASSET_NAME" = "$PYTHON_TARBALL_NAME" ]; then
-                  PYTHON_EXISTS=true
+          PYTHON_URL=""
+          WXPYTHON_URL=""
+
+          FOUND_IN_CURRENT=false
+          FOUND_IN_PREVIOUS=false
+
+          while IFS= read -r line; do
+            if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
+              read -r url
+              PYTHON_EXISTS=true
+              PYTHON_URL=$url
+              FOUND_IN_CURRENT=true
+            elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
+              read -r url
+              WXPYTHON_EXISTS=true
+              WXPYTHON_URL=$url
+              FOUND_IN_CURRENT=true
+            fi
+          done <<< "$CURRENT_ASSETS"
+
+          if [ "$PYTHON_EXISTS" = false ] || [ "$WXPYTHON_EXISTS" = false ]; then
+            while IFS= read -r line; do
+              if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
+                read -r url
+                PYTHON_EXISTS=true
+                PYTHON_URL=$url
+                FOUND_IN_PREVIOUS=true
+              elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
+                read -r url
+                WXPYTHON_EXISTS=true
+                WXPYTHON_URL=$url
+                FOUND_IN_PREVIOUS=true
               fi
-              if [ "$ASSET_NAME" = "$WXPYTHON_WHEEL_NAME" ]; then
-                  WXPYTHON_EXISTS=true
-              fi
-          done
+            done <<< "$PREVIOUS_ASSETS"
+          fi
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_PROCESS=true" >> $GITHUB_ENV
+            # Only set TRANSFER_FROM_PREVIOUS if assets were found in previous release
+            if [ "$FOUND_IN_PREVIOUS" = true ]; then
+              echo "TRANSFER_FROM_PREVIOUS=true" >> $GITHUB_ENV
+            else
+              echo "TRANSFER_FROM_PREVIOUS=false" >> $GITHUB_ENV
+            fi
+            echo "PYTHON_URL=$PYTHON_URL" >> $GITHUB_ENV
+            echo "WXPYTHON_URL=$WXPYTHON_URL" >> $GITHUB_ENV
             RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
             echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
           else
             echo "SKIP_PROCESS=false" >> $GITHUB_ENV
+            echo "TRANSFER_FROM_PREVIOUS=false" >> $GITHUB_ENV
           fi
 
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
@@ -262,6 +308,33 @@ jobs:
           echo "PYTHON_FULL_VERSION=${PYTHON_FULL_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
+
+      - name: Transfer assets from previous release
+        if: env.TRANSFER_FROM_PREVIOUS == 'true'
+        run: |
+          # Download Python tarball
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
+            "${{ env.PYTHON_URL }}"
+
+          # Download wxPython wheel
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            -o "/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
+            "${{ env.WXPYTHON_URL }}"
+
+          # Upload Python tarball to new release
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/gzip" \
+            --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
+            "${upload_url}?name=${PYTHON_TARBALL_NAME}"
+
+          # Upload wxPython wheel to new release
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
+            "${upload_url}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Set up dependencies
         if: env.SKIP_PROCESS == 'false'
