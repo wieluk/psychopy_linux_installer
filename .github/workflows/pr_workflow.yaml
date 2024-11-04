@@ -28,8 +28,6 @@ jobs:
     needs: build-binaries
     if: success()
     uses: ./.github/workflows/reusable_test.yaml
-    with:
-      build-mode: false
 
   # Test installation with build
   test-installation-build:
