@@ -8,9 +8,25 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Install ShellCheck and other tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck shfmt python3-pip
+          sudo pip3 install bashate
+
+      - name: Run Bash Syntax Check
+        run: |
+          bash -n $GITHUB_WORKSPACE/psychopy_linux_installer
+
       - name: Run ShellCheck
         run: |
-          sudo apt-get install -y shellcheck
-          bash -n $GITHUB_WORKSPACE/psychopy_linux_installer
           shellcheck -e SC1017 -e SC1091 $GITHUB_WORKSPACE/psychopy_linux_installer 
+
+      - name: Run shfmt
+        run: |
+          shfmt -d $GITHUB_WORKSPACE/psychopy_linux_installer
+
+      - name: Run bashate
+        run: |
+          bashate $GITHUB_WORKSPACE/psychopy_linux_installer
