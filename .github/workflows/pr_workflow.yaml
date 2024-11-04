@@ -118,6 +118,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           if command -v jq >/dev/null 2>&1; then
