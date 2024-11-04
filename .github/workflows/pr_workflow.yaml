@@ -1,15 +1,14 @@
 name: PsychoPy Linux Installer pull request workflow
 
 on:
-  push:
-    branches: [gh-binaries]
+  pull_request:
+    branches: [main]
     paths:
       - psychopy_linux_installer
       - .github/workflows/**
-  pull_request:
-    branches: [main]
+      - .github/PsychoPy_tests/**
   workflow_dispatch:
-#rerun
+
 jobs:
   # Initial syntax check and release creation
   syntax-check:
