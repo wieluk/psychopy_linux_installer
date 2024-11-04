@@ -1,5 +1,5 @@
 ### Report generated on 2024-11-04 for Installer Version 1.3.0
-### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11658864801)
+### [Link to run results](https://github.com/wieluk/psychopy_linux_installer/actions/runs/11664855943)
 
 | OS | Python Version | WxPython Version |
 |---|---|---|
