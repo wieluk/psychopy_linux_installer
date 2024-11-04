@@ -204,11 +204,13 @@ jobs:
               PYTHON_EXISTS=true
               PYTHON_URL="$url"
               FOUND_IN_CURRENT=true
+              "PYTHON_EXISTS_CURRENT=true" >> $GITHUB_ENV
             elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
               read -r url
               WXPYTHON_EXISTS=true
               WXPYTHON_URL="$url"
               FOUND_IN_CURRENT=true
+              "WXPYTHON_EXISTS_CURRENT=true" >> $GITHUB_ENV
             fi
           done <<< "$CURRENT_ASSETS"
 
@@ -344,7 +346,6 @@ jobs:
       - name: Build Python
         if: env.SKIP_PROCESS == 'false'
         id: build-python
-        continue-on-error: true
         run: |
           cd /tmp_dir
           curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
@@ -360,8 +361,7 @@ jobs:
           sudo make altinstall
 
       - name: Upload Python
-        if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success'
-        continue-on-error: true
+        if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success' && env.PYTHON_EXISTS_CURRENT != 'true'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/gzip" \
@@ -371,7 +371,6 @@ jobs:
       - name: Build wxPython
         if: env.SKIP_PROCESS == 'false'
         id: build-wxpython
-        continue-on-error: true
         run: |
           export PATH=/usr/local/psychopy_python/bin:$PATH
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
@@ -397,92 +396,15 @@ jobs:
           deactivate
         
       - name: Upload wxPython to Release
-        if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
-        continue-on-error: true
+        if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success' && env.WXPYTHON_EXISTS_CURRENT != 'true'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
           --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
           "${upload_url}?name=${WXPYTHON_WHEEL_NAME}"
 
-      - name: Create and Record Result Table
-        if: env.SKIP_PROCESS == 'false'
-        run: |
-          PYTHON_STATUS="❌"
-          WXPYTHON_STATUS="❌"
-
-          if [[ "${{ steps.build-python.outcome }}" == "success" ]]; then
-            PYTHON_STATUS="${PYTHON_VERSION}"
-          fi
-
-          if [[ "${{ steps.build-wxpython.outcome }}" == "success" ]]; then
-            WXPYTHON_STATUS="${WXPYTHON_VERSION}"
-          fi
-
-          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
-          echo "| ${{ matrix.os }} | $PYTHON_STATUS | $WXPYTHON_STATUS |" >> $RESULT_FILE
-
-          cat $RESULT_FILE
-
-      - name: Upload result artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ env.PYTHON_VERSION }}-${{ env.WXPYTHON_VERSION }}.md
-
       - name: Cleanup
         if: always()
         run: |
           sudo rm -rf /tmp_dir ~/.cache/pip /usr/local/psychopy_python
           sleep 30
-
-  update-readme:
-    needs: build
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure Git and download artifacts
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git fetch origin && git reset --hard origin/${{ github.ref_name }}
-
-      - uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts/results
-          pattern: 'result*'
-          merge-multiple: true
-
-      - name: Extract installer version from script
-        id: extract_installer_version
-        run: |
-          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
-          if [ -z "$INSTALLER_VERSION" ]; then
-            exit 1
-          fi
-
-          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
-          echo "Installer Version extracted: $INSTALLER_VERSION"
-      
-      - name: Create and save result table
-        run: |
-          cat << EOF > results.md
-          ### Report generated on $(date '+%Y-%m-%d') for Installer Version ${INSTALLER_VERSION}
-          ### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
-
-          | OS | Python Version | WxPython Version |
-          |---|---|---|
-          EOF
-
-          cat ./artifacts/results/*.md | sort -t'|' -k2,2 -k3,3 -k4,4 >> results.md
-
-          if [ -s results.md ]; then
-            cp results.md .github/build_results.md
-          else
-            echo "::warning::results.md is empty; skipping save."
-          fi
-
-      - name: Commit and push changes
-        run: |
-          git add -f .github/build_results.md
-          git diff-index --quiet HEAD || (git commit -m "Update build results" && git push --force) 

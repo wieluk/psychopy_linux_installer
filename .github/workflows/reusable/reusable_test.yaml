@@ -27,8 +27,8 @@ jobs:
           - manjarolinux-24
           - opensuse-leap-15.6
           - linuxmint-22
-        python_version: ['3.10']
-        psychopy_version: ['latest']
+        python_version: ${{ inputs.build-mode == 'true' && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
+        psychopy_version: ${{ inputs.build-mode == 'true' && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.1.4"]') }}
       fail-fast: false
 
     steps:
@@ -116,73 +116,9 @@ jobs:
             echo "::error::BIDS exp_handler test execution failed"
             exit 1
           fi
-
-      - name: Record result
-        run: |
-          STATUS="❌"
-          if [[ "${{ steps.verify-psychopy.outcome }}" == "success" && 
-                "${{ steps.psychopy-test.outcome }}" == "success" && 
-                "${{ steps.psychopy-test-extended.outcome }}" == "success" && 
-                "${{ steps.verify-bids.outcome }}" == "success" && 
-                "${{ steps.verify-bids-handler.outcome }}" == "success"  ]]; then
-            STATUS="✅"
-          fi
-      
-          RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md"
-          echo "| ${{ matrix.os }} | ${{ matrix.python_version }} | ${{ env.PSYCHOPY_VERSION_CLEAN }} | $STATUS |" >> $RESULT_FILE
-          cat $RESULT_FILE
-      
-      - uses: actions/upload-artifact@v4
-        with:
-          name: result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}
-          path: /tmp_dir/result-${{ matrix.os }}-${{ matrix.python_version }}-${{ env.PSYCHOPY_VERSION_CLEAN }}.md
       
       - name: Cleanup
         if: always()
         run: |
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
           sleep 60
-
-  update-readme:
-    needs: run-installer
-    if: ${{ failure() || success() }}
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure Git and pull changes
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git fetch origin
-          git reset --hard origin/${{ github.ref_name }}
-      
-      - uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-          merge-multiple: true
-      
-      - name: Create and save result table
-        run: |
-          {
-            echo "### Report generated on $(date '+%Y-%m-%d')"
-            if [[ "${{ inputs.build-mode }}" == "true" ]]; then
-              echo "### All runners used the flag \`--build=both\`"
-            fi
-            echo "### [Link to run results](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-            echo
-            echo "| OS | Python Version | PsychoPy Version | Status |"
-            echo "|---|---|---|---|"
-            sort -t'|' -k2,2 -k3,3 -k4,4 -k5,5 ./artifacts/*.md
-          } > .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md
-      
-      - name: Commit and push changes
-        run: |
-          git add -f .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md
-          git diff-index --quiet HEAD || git commit -m "Update installation${{ inputs.build-mode && ' build' || '' }} results" && git push --force
-      
-      - name: Check for failed statuses
-        run: |
-          if grep -q "❌" .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md && ! grep -q "✅" .github/installation_results${{ inputs.build-mode && '_build' || '' }}.md; then
-            echo "All entries failed or no successful entries found. Failing the job."
-            exit 1
-          fi 

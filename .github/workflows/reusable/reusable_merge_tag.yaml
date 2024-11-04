@@ -19,6 +19,7 @@ jobs:
           MERGE_LABELS: "automerge"
           MERGE_METHOD: "squash"
           MERGE_DELETE_BRANCH: "true"
+          required_approvals: 1
 
       - name: Get installer version
         id: get_version
