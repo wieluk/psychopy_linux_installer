@@ -54,7 +54,7 @@ sudo_wrapper() {
         local error_output=$2
 
         case $exit_code in
-            0) return 1 ;;  
+            0) return 1 ;;
             1|2|5|10|13|77|100|126|127) return 0 ;;
             *)
                 log_message "Warning: Unhandled exit code $exit_code. Error output: $error_output. Trying to continue ..."
@@ -120,7 +120,7 @@ sudo_wrapper() {
         log sudo "${command[@]}"
         return
     fi
-    
+
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
 
@@ -201,7 +201,7 @@ update_package_manager() {
 # Function to install packages using the package manager
 install_packages() {
     local packages=("$@")
-    
+
     for package in "${packages[@]}"; do
         case $pkg_manager in
             apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
@@ -268,7 +268,7 @@ install_dependencies() {
 # Function to check if python version is available in package manager
 check_python_pkg_manager() {
     local available_version
-    
+
     case $pkg_manager in
         apt-get)
             available_version=$(apt-cache policy python3 | grep -m 1 "Candidate:" | awk '{print $2}' | cut -d'.' -f1,2)
@@ -291,10 +291,10 @@ check_python_pkg_manager() {
     esac
 
     if [ "$available_version" == "$python_version" ]; then
-        return 0  
+        return 0
     else
         log_message "Warning: Python $python_version not available in $pkg_manager."
-        return 1 
+        return 1
     fi
 }
 
@@ -353,13 +353,13 @@ build_python() {
     local official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Info: Building Python ${python_version} from source this might take a while ..."
     official_base_url="https://www.python.org/ftp/python/"
-    
+ 
     latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${python_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
     temp_file="Python-${latest_patch_version}.tgz"
     temp_dir="Python-${latest_patch_version}_temp"
-    
+
     if ! log curl -L -o "${temp_file}" "${official_url}"; then
         log_message "Error: Failed to download Python-${latest_patch_version} from python.org"
         exit 1
@@ -512,7 +512,7 @@ wxpython_github_install() {
         log_message "Warning: Empty response from GitHub API."
         return 1
     fi
-    
+
     python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
     wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
 
@@ -551,9 +551,9 @@ create_desktop_shortcut() {
     local desktop_dir="${HOME}/.local/share/applications/"
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
     local resources_dir="${psychopy_dir}/Resources"
-    
+
     desktop_shortcut="$(xdg-user-dir DESKTOP)"
-    
+
     local shortcuts=(
         "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
         "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
@@ -799,7 +799,7 @@ main() {
         log_message "Error: Failed to access or change directory to ${psychopy_dir}. Exiting."
         exit 1
     fi
-    
+
     # Install python and create vnev
     if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
@@ -814,7 +814,7 @@ main() {
                 install_dependencies python_build_deps
                 if python_github_install; then
                     :
-                else   
+                else
                     build_python
                 fi
             fi
