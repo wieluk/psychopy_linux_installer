@@ -1,5 +1,5 @@
 name: PsychoPy Linux Installer pull request workflow
-#rerun
+
 on:
   pull_request:
     branches: [main]
