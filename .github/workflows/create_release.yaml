@@ -2,9 +2,6 @@ name: Build Python/wxPython and upload to GitHub Releases
 
 on:
   push:
-    branches: [gh-binaries]
-    paths:
-      - .github/workflows/create_release.yaml
     tags: ['v*.*.*']
   workflow_dispatch:
 
@@ -19,8 +16,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Extract installer version from script
-        id: extract_installer_version
+      - name: Create release if not exists
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
           if [ -z "$INSTALLER_VERSION" ]; then
@@ -29,14 +29,7 @@ jobs:
           fi
 
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
-          echo "Installer Version extracted: $INSTALLER_VERSION"
 
-      - name: Create release if not exists
-        id: create_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: |
           RELEASE_TAG="v${INSTALLER_VERSION}"
           API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
           
@@ -59,7 +52,6 @@ jobs:
             )
             
             if echo "$CREATE_RESPONSE" | grep -q '"id":'; then
-              echo "Release ${RELEASE_TAG} created."
               echo "release_exists=false" >> $GITHUB_ENV
             else
               echo "Failed to create release."
@@ -125,12 +117,10 @@ jobs:
         run: |
           INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
           if [ -z "$INSTALLER_VERSION" ]; then
-            echo "Failed to extract version from script."
             exit 1
           fi
           WXPYTHON_VERSION=$(grep -m1 '^\s*wxpython_version=' psychopy_linux_installer | sed 's/^[^=]*=//;s/"//g')
           if [ -z "$WXPYTHON_VERSION" ]; then
-            echo "Failed to extract wxpython_version from script."
             exit 1
           fi
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
@@ -150,7 +140,6 @@ jobs:
           RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
           UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
           if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
-            echo "Failed to get release ID for tag ${RELEASE_TAG}."
             exit 1
           fi
           echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
@@ -162,23 +151,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
-          # Get all releases
           RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
           
-          # Get current version and find previous version
           CURRENT_VERSION="${INSTALLER_VERSION}"
-          echo "Current version: v${CURRENT_VERSION}"
           
-          # Find the previous release ID (the one right before current version)
           PREVIOUS_RELEASE_ID=$(echo "$RELEASES" | jq -r "
             map(select(.tag_name != \"v${CURRENT_VERSION}\"))
             | sort_by(.created_at)
             | reverse
             | .[0].id
           ")
-          
-          echo "Found previous release ID: $PREVIOUS_RELEASE_ID"
           
           PYTHON_VERSION="${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
@@ -244,7 +227,6 @@ jobs:
               
               [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
               
-              # Store name and browser_download_url as pairs
               while read -r name && read -r url; do
                 assets+="$name"$'\n'"$url"$'\n'
               done < <(echo "$response" | jq -r '.[] | (.name, .browser_download_url)')
@@ -278,13 +260,11 @@ jobs:
               PYTHON_EXISTS=true
               PYTHON_URL="$url"
               FOUND_IN_CURRENT=true
-              echo "Found Python URL in current: $url"
             elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
               read -r url
               WXPYTHON_EXISTS=true
               WXPYTHON_URL="$url"
               FOUND_IN_CURRENT=true
-              echo "Found wxPython URL in current: $url"
             fi
           done <<< "$CURRENT_ASSETS"
 
@@ -295,20 +275,14 @@ jobs:
                 PYTHON_EXISTS=true
                 PYTHON_URL="$url"
                 FOUND_IN_PREVIOUS=true
-                echo "Found Python URL in previous: $url"
               elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
                 read -r url
                 WXPYTHON_EXISTS=true
                 WXPYTHON_URL="$url"
                 FOUND_IN_PREVIOUS=true
-                echo "Found wxPython URL in previous: $url"
               fi
             done <<< "$PREVIOUS_ASSETS"
           fi
-
-          # Add debug output
-          echo "Python URL: $PYTHON_URL"
-          echo "wxPython URL: $WXPYTHON_URL"
 
           if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_PROCESS=true" >> $GITHUB_ENV
@@ -337,9 +311,6 @@ jobs:
       - name: Transfer assets from previous release
         if: env.TRANSFER_FROM_PREVIOUS == 'true'
         run: |
-          echo "Downloading from Python URL: ${{ env.PYTHON_URL }}"
-          echo "Downloading from wxPython URL: ${{ env.WXPYTHON_URL }}"
-          
           # Download Python tarball
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
@@ -548,7 +519,6 @@ jobs:
         run: |
           INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
           if [ -z "$INSTALLER_VERSION" ]; then
-            echo "Failed to extract version from script."
             exit 1
           fi
 
