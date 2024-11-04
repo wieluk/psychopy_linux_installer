@@ -7,9 +7,6 @@ on:
         required: true
         type: boolean
         description: 'Whether to run tests with build mode enabled'
-    secrets:
-      GITHUB_TOKEN:
-        required: true
 
 jobs:
   run-installer:
