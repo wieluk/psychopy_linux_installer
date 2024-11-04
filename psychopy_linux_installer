@@ -10,7 +10,7 @@
 # ==============================================================================
 
 show_help() {
-    cat << EOF
+    cat <<EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
   --psychopy-version=VERSION                    Specify PsychoPy version (default: latest).
