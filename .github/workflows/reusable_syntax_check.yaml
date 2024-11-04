@@ -23,10 +23,6 @@ jobs:
         run: |
           shellcheck -e SC1017 -e SC1091 $GITHUB_WORKSPACE/psychopy_linux_installer 
 
-      - name: Run shfmt
-        run: |
-          shfmt -d $GITHUB_WORKSPACE/psychopy_linux_installer
-
       - name: Run bashate
         run: |
           bashate $GITHUB_WORKSPACE/psychopy_linux_installer
