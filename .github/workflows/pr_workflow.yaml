@@ -38,13 +38,3 @@ jobs:
     uses: ./.github/workflows/reusable_test.yaml
     with:
       build-mode: true
-
-  # Final merge and tag if all tests pass
-  merge-and-tag:
-    needs: [test-installation, test-installation-build]
-    if: |
-      success() && 
-      github.event_name == 'pull_request' && 
-      contains(github.event.pull_request.labels.*.name, 'automerge')
-    uses: ./.github/workflows/reusable_merge_tag.yaml 
-    
