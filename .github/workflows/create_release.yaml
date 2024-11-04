@@ -245,7 +245,7 @@ jobs:
               [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
               
               assets+=$(echo "$response" | jq -r '.[].name')$'\n'
-              assets+=$(echo "$response" | jq -r '.[].url')$'\n'
+              assets+=$(echo "$response" | jq -r '.[].browser_download_url')$'\n'
               page=$((page + 1))
             done
             echo "$assets"
