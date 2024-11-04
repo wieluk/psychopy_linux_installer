@@ -24,7 +24,6 @@ jobs:
           - linuxmint-22
         python_version: ['3.8', '3.9', '3.10']
       fail-fast: false
-
     permissions:
       contents: write
 
@@ -93,6 +92,7 @@ jobs:
         id: check-files
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           RELEASE_ID: ${{ env.release_id }}
         run: |
           RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
@@ -190,60 +190,74 @@ jobs:
             PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
           fi
 
+          # Initialize variables
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
           PYTHON_URL=""
           WXPYTHON_URL=""
+          FOUND_PYTHON_IN_CURRENT=false
+          FOUND_WXPYTHON_IN_CURRENT=false
+          FOUND_PYTHON_IN_PREVIOUS=false
+          FOUND_WXPYTHON_IN_PREVIOUS=false
 
-          FOUND_IN_CURRENT=false
-          FOUND_IN_PREVIOUS=false
-
+          # Check in current release
           while IFS= read -r line; do
             if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
               read -r url
               PYTHON_EXISTS=true
               PYTHON_URL="$url"
-              FOUND_IN_CURRENT=true
-              "PYTHON_EXISTS_CURRENT=true" >> $GITHUB_ENV
+              FOUND_PYTHON_IN_CURRENT=true
             elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
               read -r url
               WXPYTHON_EXISTS=true
               WXPYTHON_URL="$url"
-              FOUND_IN_CURRENT=true
-              "WXPYTHON_EXISTS_CURRENT=true" >> $GITHUB_ENV
+              FOUND_WXPYTHON_IN_CURRENT=true
             fi
           done <<< "$CURRENT_ASSETS"
 
+          # Check in previous release if not found in current
           if [ "$PYTHON_EXISTS" = false ] || [ "$WXPYTHON_EXISTS" = false ]; then
             while IFS= read -r line; do
-              if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
+              if [ "$line" = "$PYTHON_TARBALL_NAME" ] && [ "$PYTHON_EXISTS" = false ]; then
                 read -r url
                 PYTHON_EXISTS=true
                 PYTHON_URL="$url"
-                FOUND_IN_PREVIOUS=true
-              elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
+                FOUND_PYTHON_IN_PREVIOUS=true
+              elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ] && [ "$WXPYTHON_EXISTS" = false ]; then
                 read -r url
                 WXPYTHON_EXISTS=true
                 WXPYTHON_URL="$url"
-                FOUND_IN_PREVIOUS=true
+                FOUND_WXPYTHON_IN_PREVIOUS=true
               fi
             done <<< "$PREVIOUS_ASSETS"
           fi
 
-          if [ "$PYTHON_EXISTS" = true ] && [ "$WXPYTHON_EXISTS" = true ]; then
-            echo "SKIP_PROCESS=true" >> $GITHUB_ENV
-            if [ "$FOUND_IN_PREVIOUS" = true ]; then
-              echo "TRANSFER_FROM_PREVIOUS=true" >> $GITHUB_ENV
+          # Set environment variables for Python
+          if [ "$PYTHON_EXISTS" = true ]; then
+            echo "SKIP_PYTHON_PROCESS=true" >> $GITHUB_ENV
+            if [ "$FOUND_PYTHON_IN_PREVIOUS" = true ]; then
+              echo "TRANSFER_PYTHON_FROM_PREVIOUS=true" >> $GITHUB_ENV
             else
-              echo "TRANSFER_FROM_PREVIOUS=false" >> $GITHUB_ENV
+              echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
             fi
             echo "PYTHON_URL=$PYTHON_URL" >> $GITHUB_ENV
-            echo "WXPYTHON_URL=$WXPYTHON_URL" >> $GITHUB_ENV
-            RESULT_FILE="/tmp_dir/result-${{ matrix.os }}-${PYTHON_VERSION}-${WXPYTHON_VERSION}.md"
-            echo "| ${{ matrix.os }} | $PYTHON_VERSION | $WXPYTHON_VERSION |" >> $RESULT_FILE
           else
-            echo "SKIP_PROCESS=false" >> $GITHUB_ENV
-            echo "TRANSFER_FROM_PREVIOUS=false" >> $GITHUB_ENV
+            echo "SKIP_PYTHON_PROCESS=false" >> $GITHUB_ENV
+            echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
+          fi
+
+          # Set environment variables for wxPython
+          if [ "$WXPYTHON_EXISTS" = true ]; then
+            echo "SKIP_WXPYTHON_PROCESS=true" >> $GITHUB_ENV
+            if [ "$FOUND_WXPYTHON_IN_PREVIOUS" = true ]; then
+              echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=true" >> $GITHUB_ENV
+            else
+              echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
+            fi
+            echo "WXPYTHON_URL=$WXPYTHON_URL" >> $GITHUB_ENV
+          else
+            echo "SKIP_WXPYTHON_PROCESS=false" >> $GITHUB_ENV
+            echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
           fi
 
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
@@ -253,31 +267,38 @@ jobs:
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
 
-      - name: Transfer assets from previous release
-        if: env.TRANSFER_FROM_PREVIOUS == 'true'
+      - name: Transfer Python from previous release
+        if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
         run: |
+          # Download Python asset from previous release
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
             "${{ env.PYTHON_URL }}"
-          
+
+          # Upload Python asset to current release
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/gzip" \
+            --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
+            "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
+
+      - name: Transfer wxPython from previous release
+        if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
+        run: |
+          # Download wxPython asset from previous release
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
             "${{ env.WXPYTHON_URL }}"
-          
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/gzip" \
-            --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
-            "${upload_url}?name=${PYTHON_TARBALL_NAME}"
 
+          # Upload wxPython asset to current release
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
-            "${upload_url}?name=${WXPYTHON_WHEEL_NAME}"
+            "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Set up dependencies
-        if: env.SKIP_PROCESS == 'false'
+        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
           if command -v apt-get > /dev/null; then
             sudo apt-get update || true
@@ -344,7 +365,7 @@ jobs:
           fi
 
       - name: Build Python
-        if: env.SKIP_PROCESS == 'false'
+        if: env.SKIP_PYTHON_PROCESS == 'false'
         id: build-python
         run: |
           cd /tmp_dir
@@ -361,15 +382,15 @@ jobs:
           sudo make altinstall
 
       - name: Upload Python
-        if: env.SKIP_PROCESS == 'false' && steps.build-python.outcome == 'success' && env.PYTHON_EXISTS_CURRENT != 'true'
+        if: env.SKIP_PYTHON_PROCESS == 'false' && steps.build-python.outcome == 'success'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/gzip" \
           --data-binary @"${PYTHON_TARBALL_PATH}" \
-          "${upload_url}?name=${PYTHON_TARBALL_NAME}"
+          "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
 
       - name: Build wxPython
-        if: env.SKIP_PROCESS == 'false'
+        if: env.SKIP_WXPYTHON_PROCESS == 'false'
         id: build-wxpython
         run: |
           export PATH=/usr/local/psychopy_python/bin:$PATH
@@ -394,17 +415,18 @@ jobs:
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
       
           deactivate
-        
+
       - name: Upload wxPython to Release
-        if: env.SKIP_PROCESS == 'false' && steps.build-wxpython.outcome == 'success' && env.WXPYTHON_EXISTS_CURRENT != 'true'
+        if: env.SKIP_WXPYTHON_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
           --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
-          "${upload_url}?name=${WXPYTHON_WHEEL_NAME}"
+          "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp_dir ~/.cache/pip /usr/local/psychopy_python
+          sudo rm -rf /tmp_dir ~/.cache/pip
+          sudo rm -rf /usr/local/psychopy_python
           sleep 30
