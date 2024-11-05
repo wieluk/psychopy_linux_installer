@@ -427,5 +427,5 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
+          sudo rm -rf /tmp_dir
 

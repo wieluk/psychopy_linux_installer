@@ -443,7 +443,7 @@ build_wxpython() {
     install_dependencies wxpython_deps
 
     log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
-    if pip install --no-binary=:all: "wxpython==$wxpython_version"; then
+    if pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$wxpython_version"; then
         log_message "Info: Successfully built wxPython from source."
     else
         log_message "Error: Building wxPython from source failed."
