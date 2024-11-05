@@ -46,7 +46,7 @@ jobs:
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
           
           BUILD_FLAG="${{ inputs.build-mode && '--build=both' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --sudo-mode=auto $BUILD_FLAG"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --non-interactive $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Verify PsychoPy installation and version

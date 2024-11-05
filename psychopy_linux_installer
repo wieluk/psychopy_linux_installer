@@ -22,6 +22,7 @@ Options:
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
   --disable-shortcut                            Disable desktop shortcut creation.
+  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
   --disable-path                                Disable adding psychopy to system path.
   -f, --force                                   Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output.
@@ -126,6 +127,24 @@ sudo_wrapper() {
 
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
+    fi
+}
+
+# Function to check for updates
+check_for_updates() {
+    local latest_version
+    local current_version
+    current_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
+    latest_version=$(curl -s https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
+
+    if version_greater_than "$latest_version" "$current_version"; then
+        read -r -p "A new version ($latest_version) of the installer script is available. Would you like to update? (y/n) " response
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            log_message "Updating to version $latest_version..."
+            curl -o "$(dirname "$0")/$(basename "$0")" https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
+            log_message "Update completed. Please re-run the installer."
+            exit 0
+        fi
     fi
 }
 
@@ -658,9 +677,11 @@ main() {
     install_dir_set_by_user=false
     additional_packages=""
     sudo_mode="ask"
+    sudo_mode_set=false
     pkg_manager_permission=false
     disable_shortcut=false
     disable_path=false
+    non_interactive=false
     force_overwrite=false
     verbose=false
 
@@ -719,12 +740,19 @@ main() {
                     echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                     exit 1
                 fi
+                sudo_mode_set=true
                 ;;
             --disable-shortcut)
                 disable_shortcut=true
                 ;;
             --disable-path)
                 disable_path=true
+                ;;
+            --non-interactive)
+                non_interactive=true
+                if [ "$sudo_mode_set" = false ]; then
+                    sudo_mode=auto
+                fi
                 ;;
             -f|--force)
                 force_overwrite=true
@@ -744,6 +772,7 @@ main() {
         esac
     done
 
+
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
@@ -752,14 +781,17 @@ main() {
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
-
     # Update package manager
     log_message "Info: Updating ${pkg_manager} package manager."
     update_package_manager "$pkg_manager"
-
     # Install basic dependencies
     log_message "Info: Installing git, curl, and jq."
     install_dependencies script_deps
+
+    # Check for script update
+    if [ "$non_interactive" = false ]; then
+        check_for_updates
+    fi
 
     # Determine PsychoPy version to install
     if [ "$psychopy_version" == "latest" ]; then
