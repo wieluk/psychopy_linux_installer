@@ -22,7 +22,7 @@ Options:
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
   --disable-shortcut                            Disable desktop shortcut creation.
-  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto.
+  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
   --disable-path                                Disable adding psychopy to system path.
   -f, --force                                   Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output.
@@ -677,6 +677,7 @@ main() {
     install_dir_set_by_user=false
     additional_packages=""
     sudo_mode="ask"
+    sudo_mode_set=false
     pkg_manager_permission=false
     disable_shortcut=false
     disable_path=false
@@ -739,6 +740,7 @@ main() {
                     echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                     exit 1
                 fi
+                sudo_mode_set=true
                 ;;
             --disable-shortcut)
                 disable_shortcut=true
@@ -748,7 +750,9 @@ main() {
                 ;;
             --non-interactive)
                 non_interactive=true
-                sudo_mode=auto
+                if [ "$sudo_mode_set" = false ]; then
+                    sudo_mode=auto
+                fi
                 ;;
             -f|--force)
                 force_overwrite=true
