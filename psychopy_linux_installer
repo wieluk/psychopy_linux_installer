@@ -919,15 +919,11 @@ main() {
     # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
-    else
-        log_message "Info: Desktop shortcut creation disabled by user."
     fi
 
     # Add PsychoPy to PATH
     if [ "$disable_path" = false ]; then
         add_psychopy_to_path
-    else
-        log_message "Info: Adding PsychoPy to system path disabled by user."
     fi
 
     echo
