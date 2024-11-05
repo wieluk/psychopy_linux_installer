@@ -22,6 +22,7 @@ Options:
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
   --disable-shortcut                            Disable desktop shortcut creation.
+  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto.
   --disable-path                                Disable adding psychopy to system path.
   -f, --force                                   Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output.
@@ -126,6 +127,28 @@ sudo_wrapper() {
 
     if needs_sudo "$exit_code" "$error_output"; then
         handle_sudo_request "${command[@]}"
+    fi
+}
+
+# Function to check for updates
+check_for_updates() {
+    local latest_version
+    local current_version
+    current_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
+    latest_version=$(curl -s https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
+
+    if version_greater_than "$latest_version" "$current_version"; then
+        read -r -p "A new version ($latest_version) is available. Would you like to update? (y/n) " response
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            log_message "Updating to version $latest_version..."
+            curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
+            log_message "Update completed. Please re-run the installer."
+            exit 0
+        else
+            log_message "You chose not to update. Continuing with the current version."
+        fi
+    else
+        log_message "You are using the latest version ($current_version)."
     fi
 }
 
@@ -661,6 +684,7 @@ main() {
     pkg_manager_permission=false
     disable_shortcut=false
     disable_path=false
+    non_interactive=false
     force_overwrite=false
     verbose=false
 
@@ -726,6 +750,9 @@ main() {
             --disable-path)
                 disable_path=true
                 ;;
+            --non-interactive)
+                non_interactive=true
+                ;;
             -f|--force)
                 force_overwrite=true
                 ;;
@@ -743,6 +770,13 @@ main() {
                 ;;
         esac
     done
+
+    # Set non-interactive options
+    if [ "$non_interactive" = true ]; then
+        sudo_mode=auto
+    else
+        check_for_updates
+    fi
 
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
