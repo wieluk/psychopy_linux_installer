@@ -54,6 +54,7 @@ Download and execute the script:
 | `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
 | `--disable-path` | Disable adding psychopy to system path. |
+| `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
 | `-f`, `--force` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output. |
 | `-h`, `--help` | Show help message. |
