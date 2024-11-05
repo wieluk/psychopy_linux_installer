@@ -1,0 +1,38 @@
+name: PsychoPy Linux Installer pull request workflow
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - psychopy_linux_installer
+      - .github/workflows/**
+      - .github/PsychoPy_tests/**
+  workflow_dispatch:
+
+jobs:
+  # Initial syntax check and release creation
+  syntax-check:
+    uses: ./.github/workflows/reusable_syntax_check.yaml
+
+  create-release:
+    needs: syntax-check
+    uses: ./.github/workflows/reusable_release.yaml
+
+  # Build binaries
+  build-binaries:
+    needs: create-release
+    uses: ./.github/workflows/reusable_build.yaml
+
+  # Test installation without build
+  test-installation:
+    needs: build-binaries
+    if: success()
+    uses: ./.github/workflows/reusable_test.yaml
+
+  # Test installation with build
+  test-installation-build:
+    needs: test-installation
+    if: success()
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      build-mode: true

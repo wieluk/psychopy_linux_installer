@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-10-31
-#  Version:       1.2.4
+#  Date:          2024-11-03
+#  Version:       1.3.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -20,7 +20,7 @@ Options:
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
   --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
-  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly.
+  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
   --disable-shortcut                            Disable desktop shortcut creation.
   --disable-path                                Disable adding psychopy to system path.
   -f, --force                                   Force overwrite of existing installation directory.
@@ -54,7 +54,7 @@ sudo_wrapper() {
         local error_output=$2
 
         case $exit_code in
-            0) return 1 ;;  
+            0) return 1 ;;
             1|2|5|10|13|77|100|126|127) return 0 ;;
             *)
                 log_message "Warning: Unhandled exit code $exit_code. Error output: $error_output. Trying to continue ..."
@@ -120,7 +120,7 @@ sudo_wrapper() {
         log sudo "${command[@]}"
         return
     fi
-    
+
     error_output=$("${command[@]}" 2>&1)
     exit_code=$?
 
@@ -201,7 +201,7 @@ update_package_manager() {
 # Function to install packages using the package manager
 install_packages() {
     local packages=("$@")
-    
+
     for package in "${packages[@]}"; do
         case $pkg_manager in
             apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
@@ -268,7 +268,7 @@ install_dependencies() {
 # Function to check if python version is available in package manager
 check_python_pkg_manager() {
     local available_version
-    
+
     case $pkg_manager in
         apt-get)
             available_version=$(apt-cache policy python3 | grep -m 1 "Candidate:" | awk '{print $2}' | cut -d'.' -f1,2)
@@ -291,10 +291,10 @@ check_python_pkg_manager() {
     esac
 
     if [ "$available_version" == "$python_version" ]; then
-        return 0  
+        return 0
     else
         log_message "Warning: Python $python_version not available in $pkg_manager."
-        return 1 
+        return 1
     fi
 }
 
@@ -350,67 +350,89 @@ check_python_env() {
 
 # Function to build Python from source
 build_python() {
-    local major_minor_version official_base_url latest_patch_version official_url temp_file temp_dir
+    local official_base_url latest_patch_version official_url temp_file temp_dir
     log_message "Info: Building Python ${python_version} from source this might take a while ..."
-    major_minor_version="${python_version}"
     official_base_url="https://www.python.org/ftp/python/"
-    
-    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${major_minor_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
+
+    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${python_version}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
     temp_file="Python-${latest_patch_version}.tgz"
     temp_dir="Python-${latest_patch_version}_temp"
-    
-    log curl -s -O "${official_url}"
-    mkdir -p "${temp_dir}"
-    tar -xf "${temp_file}" -C "${temp_dir}"
 
-    
-    cd "${temp_dir}/Python-${latest_patch_version}" || exit 1
+    if ! log curl -L -o "${temp_file}" "${official_url}"; then
+        log_message "Error: Failed to download Python-${latest_patch_version} from python.org"
+        exit 1
+    fi
+
+    mkdir -p "${temp_dir}" || { log_message "Error: Failed to create temp directory."; exit 1; }
+
+    if ! tar -xf "${temp_file}" -C "${temp_dir}"; then
+        log_message "Error: Failed to extract ${temp_file}."
+        exit 1
+    fi
+
+    cd "${temp_dir}/Python-${latest_patch_version}" || { log_message "Error: Failed to change directory."; exit 1; }
     log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
     log make -j "$(nproc)"
     sudo_wrapper make altinstall
-    cd "${psychopy_dir}" || exit
-    
+    cd "${psychopy_dir}" || { log_message "Error: Failed to return to psychopy directory."; exit 1; }
+
     sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
     return 0
 }
 
-# Function to download prebuilt Python from Nextcloud
-python_nextcloud_install() {
-    local versions_url temp_versions_file latest_patch_version nextcloud_url temp_file temp_dir
-    versions_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=python_versions.txt"
-    temp_versions_file="/tmp/python_versions.txt"
-    
-    if ! log curl -s -f -X GET "${versions_url}" --output "${temp_versions_file}"; then
-        log_message "Warning: Could not download python_versions.txt from Nextcloud."
+# Function to download prebuilt Python from GitHub release
+python_github_install() {
+    local asset_name api_url assets_json temp_file temp_dir github_download_url python_version_pattern
+
+    api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
+    assets_json=$(curl -s "$api_url")
+
+    if echo "$assets_json" | grep -q '"message": "Not Found"'; then
+        log_message "Warning: Release v${script_version} not found on GitHub."
         return 1
     fi
 
-    latest_patch_version=$(grep -oP "python-${python_version}\.[0-9]+-${processor_structure}-${os_version}.tar.gz" "${temp_versions_file}" | sort -V | tail -n 1)
-
-    if [ -z "${latest_patch_version}" ]; then
-        log_message "Warning: No matching Python version found in python_versions.txt for Python ${python_version}."
+    if [ -z "$assets_json" ]; then
+        log_message "Warning: Empty response from GitHub API."
         return 1
     fi
 
-    nextcloud_url="https://cloud.uni-graz.at/index.php/s/o4tnQgN6gjDs3CK/download?path=${latest_patch_version}"
-    temp_file="${latest_patch_version}"
-    temp_dir="${latest_patch_version%.tar.gz}_temp"
+    python_version_pattern="python-${python_version}\.[0-9]+-${processor_structure}-${os_version}\.tar\.gz"
+    asset_name=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
 
-    if log curl -s -f -X GET "${nextcloud_url}" --output "${temp_file}"; then
-        log_message "Info: Successfully downloaded ${latest_patch_version} from Nextcloud. Making an altinstall ..."
-        mkdir -p "${temp_dir}"
-        tar -xf "${temp_file}" -C "${temp_dir}"
+    if [ -z "$asset_name" ]; then
+        log_message "Warning: No matching Python version found in release v${script_version} for Python ${python_version}."
+        return 1
+    fi
 
-        cd "${temp_dir}" || exit
-        sudo_wrapper make altinstall
-        cd "${psychopy_dir}" || exit
+    github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
-        sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
-        return 0
+    if [ -z "$github_download_url" ]; then
+        log_message "Warning: Could not find download URL for asset $asset_name."
+        return 1
+    fi
+
+    log_message "Info: Downloading $asset_name from GitHub ..."
+    if log curl -L -o "$asset_name" "$github_download_url"; then
+        log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${script_version}. Making an altinstall ..."
+        temp_dir="${asset_name%.tar.gz}_temp"
+        mkdir -p "$temp_dir" || { log_message "Error: Failed to create temp directory."; return 1; }
+
+        if tar -xf "$asset_name" -C "$temp_dir"; then
+            cd "$temp_dir" || { log_message "Error: Failed to change directory."; return 1; }
+            sudo_wrapper make altinstall
+            cd "${psychopy_dir}" || { log_message "Error: Failed to return to psychopy directory."; return 1; }
+            sudo_wrapper rm -rf "$temp_dir" "$asset_name"
+            return 0
+        else
+            log_message "Error: Failed to extract $asset_name."
+            sudo_wrapper rm -rf "$temp_dir"
+            return 1
+        fi
     else
-        log_message "Warning: Failed to download from Nextcloud. No matching Python version found."
+        log_message "Warning: Failed to download from GitHub release."
         return 1
     fi
 }
@@ -421,7 +443,7 @@ build_wxpython() {
     install_dependencies wxpython_deps
 
     log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
-    if pip install --no-binary=:all: "wxpython==$wxpython_version"; then
+    if pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$wxpython_version"; then
         log_message "Info: Successfully built wxPython from source."
     else
         log_message "Error: Building wxPython from source failed."
@@ -431,7 +453,7 @@ build_wxpython() {
 
 # Function install wxPython using pip without building
 wxpython_pip_install() {
-    if log pip install --only-binary=:all: "wxpython==$wxpython_version"; then
+    if log pip install --only-binary=:all: "wxpython==$wxpython_version" --find-links /usr/local/psychopy_python/wx_wheels/; then
         log_message "Info: Successfully installed wxPython version $wxpython_version using a pip wheel."
         return 0
     else
@@ -460,7 +482,8 @@ wxpython_wheelurl_install() {
         log_message "Info: Download from extras.wxpython.org successful. Installing wxPython from $wheel_file..."
         if log pip install "$wheel_file"; then
             log_message "Info: Installed wxPython from $wheel_file"
-            rm "$wheel_file"
+            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
+            sudo_wrapper mv "$wheel_file" /usr/local/psychopy_python/wx_wheels/
             return 0
         else
             log_message "Warning: Installing wxPython from $wheel_file failed."
@@ -473,30 +496,54 @@ wxpython_wheelurl_install() {
     fi
 }
 
-# Function to install wxPython from Nextcloud
-wxpython_nextcloud_install() {
-    local wheel_name wx_python_nextcloud_url wx_python_file
-    wheel_name="wxPython-${wxpython_version}-cp${python_version//./}-cp${python_version//./}-${processor_structure}-${os_version}.whl"
-    wx_python_nextcloud_url="https://cloud.uni-graz.at/index.php/s/YtX33kbasHMZdgs/download?path=${wheel_name}"
+# Function to install wxPython from GitHub release
+wxpython_github_install() {
+    local api_url assets_json wheel_name renamed_wheel download_url python_version_major_minor
 
-    if log curl -f -X GET "$wx_python_nextcloud_url" --output "$wheel_name"; then
-        wx_python_file="${wheel_name%-"${os_version}".whl}.whl"
-        mv "$wheel_name" "$wx_python_file"
-        log_message "Info: Download from Nextcloud successful. Installing wxPython from $wx_python_file"
-        if log pip install "$wx_python_file"; then
-            log_message "Info: Installed wxPython from $wx_python_file"
-            rm "$wx_python_file"
+    api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
+
+    assets_json=$(curl -s "$api_url")
+    if echo "$assets_json" | grep -q '"message": "Not Found"'; then
+        log_message "Warning: Release v${script_version} not found on GitHub."
+        return 1
+    fi
+
+    if [ -z "$assets_json" ]; then
+        log_message "Warning: Empty response from GitHub API."
+        return 1
+    fi
+
+    python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
+    wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
+
+    download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
+
+    if [ -z "$download_url" ]; then
+        log_message "Warning: No matching wxPython wheel found in release v${script_version} for wxPython ${wxpython_version}."
+        return 1
+    fi
+
+    log_message "Info: Downloading $wheel_name from GitHub ..."
+    if log curl -L -o "$wheel_name" "$download_url"; then
+        log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name..."
+        renamed_wheel="${wheel_name%-"${os_version}".whl}.whl"
+        mv "$wheel_name" "$renamed_wheel"
+        if log pip install "$renamed_wheel"; then
+            log_message "Info: Installed wxPython from $renamed_wheel"
+            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
+            sudo_wrapper mv "$renamed_wheel" /usr/local/psychopy_python/wx_wheels/
             return 0
         else
-            log_message "Warning: Installing wxPython from Nextcloud failed."
-            rm "$wx_python_file"
+            log_message "Warning: Installing wxPython from $renamed_wheel failed."
+            rm "$renamed_wheel"
             return 1
         fi
     else
-        log_message "Warning: Downloading from Nextcloud failed."
+        log_message "Warning: Downloading $wheel_name failed."
         return 1
     fi
 }
+
 
 # Function to create a desktop shortcut file
 create_desktop_shortcut() {
@@ -504,9 +551,9 @@ create_desktop_shortcut() {
     local desktop_dir="${HOME}/.local/share/applications/"
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
     local resources_dir="${psychopy_dir}/Resources"
-    
+
     desktop_shortcut="$(xdg-user-dir DESKTOP)"
-    
+
     local shortcuts=(
         "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
         "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
@@ -529,7 +576,7 @@ create_desktop_shortcut() {
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            log curl -o "${icon_path}" "${icon_url}"
+            log curl -s -o "${icon_path}" "${icon_url}"
         else
             log_message "Warning: Icon file ${icon_url} not found, skipping..."
         fi
@@ -700,7 +747,8 @@ main() {
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
     processor_structure=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "Info: Initiating PsychoPy(${psychopy_version}) installation using psychopy_linux_installer v$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g') on ${os_version} (${processor_structure})."
+    script_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
+    log_message "Info: Initiating PsychoPy(${psychopy_version}) installation using psychopy_linux_installer v${script_version} on ${os_version} (${processor_structure})."
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
@@ -751,7 +799,7 @@ main() {
         log_message "Error: Failed to access or change directory to ${psychopy_dir}. Exiting."
         exit 1
     fi
-    
+
     # Install python and create vnev
     if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
@@ -764,9 +812,9 @@ main() {
             else
                 log_message "Info: Installing python build dependencies ..."
                 install_dependencies python_build_deps
-                if python_nextcloud_install; then
+                if python_github_install; then
                     :
-                else   
+                else
                     build_python
                 fi
             fi
@@ -819,7 +867,7 @@ main() {
             :
         elif wxpython_wheelurl_install; then
             :
-        elif wxpython_nextcloud_install; then
+        elif wxpython_github_install; then
             :
         else
             build_wxpython
@@ -871,15 +919,11 @@ main() {
     # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
-    else
-        log_message "Info: Desktop shortcut creation disabled by user."
     fi
 
     # Add PsychoPy to PATH
     if [ "$disable_path" = false ]; then
         add_psychopy_to_path
-    else
-        log_message "Info: Adding PsychoPy to system path disabled by user."
     fi
 
     echo
