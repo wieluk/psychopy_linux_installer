@@ -51,7 +51,6 @@ jobs:
 
       - name: Verify PsychoPy installation and version
         id: verify-psychopy
-        continue-on-error: true
         run: |
           if ! /tmp_dir/psychopy/bin/psychopy -h &> /dev/null; then
             echo "PsychoPy help command failed"
@@ -65,7 +64,7 @@ jobs:
         
       - name: Run basic PsychoPy test
         id: psychopy-test
-        continue-on-error: true
+        if: ${{ !inputs.quick-mode }}
         run: |
           cd /tmp_dir/PsychoPy_tests
           /tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
@@ -77,7 +76,7 @@ jobs:
 
       - name: Run extended PsychoPy Tests
         id: psychopy-test-extended
-        continue-on-error: true
+        if: ${{ !inputs.quick-mode }}
         run: |
           output=$(/tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test_extended.py)
           tests=("Visual" "Keyboard" "Image" "Timing")
@@ -91,7 +90,6 @@ jobs:
 
       - name: Verify BIDS installation simple
         id: verify-bids
-        continue-on-error: true
         run: |
           cd /tmp_dir/PsychoPy_tests/BIDS
           if ! /tmp_dir/psychopy/bin/python bids_test_simple.py; then
@@ -101,7 +99,7 @@ jobs:
     
       - name: Verify BIDS installation exp_handler
         id: verify-bids-handler
-        continue-on-error: true
+        if: ${{ !inputs.quick-mode }}
         run: |
           cd /tmp_dir/PsychoPy_tests/BIDS
           if ! /tmp_dir/psychopy/bin/python bids_test_exp_handler.py; then
