@@ -752,6 +752,7 @@ main() {
                 ;;
             --non-interactive)
                 non_interactive=true
+                sudo_mode=auto
                 ;;
             -f|--force)
                 force_overwrite=true
@@ -771,12 +772,6 @@ main() {
         esac
     done
 
-    # Set non-interactive options
-    if [ "$non_interactive" = true ]; then
-        sudo_mode=auto
-    else
-        check_for_updates
-    fi
 
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
@@ -786,14 +781,17 @@ main() {
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
-
     # Update package manager
     log_message "Info: Updating ${pkg_manager} package manager."
     update_package_manager "$pkg_manager"
-
     # Install basic dependencies
     log_message "Info: Installing git, curl, and jq."
     install_dependencies script_deps
+
+    # Check for script update
+    if [ "$non_interactive" = true ]; then
+        check_for_updates
+    fi
 
     # Determine PsychoPy version to install
     if [ "$psychopy_version" == "latest" ]; then
