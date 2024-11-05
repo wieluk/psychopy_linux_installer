@@ -144,11 +144,7 @@ check_for_updates() {
             curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
             log_message "Update completed. Please re-run the installer."
             exit 0
-        else
-            log_message "You chose not to update. Continuing with the current version."
         fi
-    else
-        log_message "You are using the latest version ($current_version)."
     fi
 }
 
