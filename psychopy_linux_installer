@@ -785,7 +785,7 @@ main() {
     install_dependencies script_deps
 
     # Check for script update
-    if [ "$non_interactive" = true ]; then
+    if [ "$non_interactive" = false ]; then
         check_for_updates
     fi
 
