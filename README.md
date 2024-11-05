@@ -141,7 +141,7 @@ Locate and edit the configuration file for your shell to remove this line:
 - **Zsh**: `$HOME/.zshrc`
 - **Fish**: `$HOME/.config/fish/config.fish`
 - **Csh**: `$HOME/.Cshrc`
-- **Csh/Tcsh**: `$HOME/.Tcshrc`
+- **Tcsh**: `$HOME/.Tcshrc`
 
 ### (Optional): Remove Dependencies
 
