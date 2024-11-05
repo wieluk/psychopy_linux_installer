@@ -187,12 +187,3 @@ zypper)
 ```
 </details>
 
-## Automated Installation, Test and build Results
-
-[View the latest installation test results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/installation_results.md)
-
-[View the build results](https://github.com/wieluk/psychopy_linux_installer/blob/main/.github/build_results.md)
-
-## Links
-
-- [PsychoPy Github](https://github.com/psychopy/psychopy)
