@@ -35,6 +35,7 @@ jobs:
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          
           if command -v jq >/dev/null 2>&1; then
             echo "jq is already installed"
           else
@@ -190,7 +191,6 @@ jobs:
             PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
           fi
 
-          # Initialize variables
           PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
           PYTHON_URL=""
@@ -200,7 +200,6 @@ jobs:
           FOUND_PYTHON_IN_PREVIOUS=false
           FOUND_WXPYTHON_IN_PREVIOUS=false
 
-          # Check in current release
           while IFS= read -r line; do
             if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
               read -r url
@@ -215,7 +214,6 @@ jobs:
             fi
           done <<< "$CURRENT_ASSETS"
 
-          # Check in previous release if not found in current
           if [ "$PYTHON_EXISTS" = false ] || [ "$WXPYTHON_EXISTS" = false ]; then
             while IFS= read -r line; do
               if [ "$line" = "$PYTHON_TARBALL_NAME" ] && [ "$PYTHON_EXISTS" = false ]; then
@@ -232,7 +230,6 @@ jobs:
             done <<< "$PREVIOUS_ASSETS"
           fi
 
-          # Set environment variables for Python
           if [ "$PYTHON_EXISTS" = true ]; then
             echo "SKIP_PYTHON_PROCESS=true" >> $GITHUB_ENV
             if [ "$FOUND_PYTHON_IN_PREVIOUS" = true ]; then
@@ -246,7 +243,6 @@ jobs:
             echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
           fi
 
-          # Set environment variables for wxPython
           if [ "$WXPYTHON_EXISTS" = true ]; then
             echo "SKIP_WXPYTHON_PROCESS=true" >> $GITHUB_ENV
             if [ "$FOUND_WXPYTHON_IN_PREVIOUS" = true ]; then
@@ -270,13 +266,11 @@ jobs:
       - name: Transfer Python from previous release
         if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
         run: |
-          # Download Python asset from previous release
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
             "${{ env.PYTHON_URL }}"
 
-          # Upload Python asset to current release
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/gzip" \
             --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
@@ -285,13 +279,11 @@ jobs:
       - name: Transfer wxPython from previous release
         if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
         run: |
-          # Download wxPython asset from previous release
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
             "${{ env.WXPYTHON_URL }}"
 
-          # Upload wxPython asset to current release
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \

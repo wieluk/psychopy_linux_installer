@@ -30,15 +30,7 @@ jobs:
         env:
           PYTHON_VERSION: ${{ matrix.python_version }}
           PSYCHOPY_VERSION: ${{ matrix.psychopy_version }}
-        run: |
-          if [ "$PSYCHOPY_VERSION" == "latest" ]; then
-            PSYCHOPY_VERSION_CLEAN=$(curl -s https://pypi.org/pypi/psychopy/json | jq -r .info.version)
-          else
-            PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION
-          fi
-          PSYCHOPY_VERSION_CLEAN=$(echo "$PSYCHOPY_VERSION_CLEAN" | tr -d ',;')
-          echo "PSYCHOPY_VERSION_CLEAN=$PSYCHOPY_VERSION_CLEAN" >> $GITHUB_ENV
-          
+        run: |    
           sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
