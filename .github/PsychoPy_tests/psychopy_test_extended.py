@@ -3,15 +3,13 @@ import sys
 import unittest
 from psychopy import prefs, visual, core, event, sound, logging
 
-prefs.hardware['audioLib'] = ['sounddevice', 'dummy']
+prefs.hardware['audioLib'] = ['sounddevice', 'pyo', 'dummy']
 
 class PsychopyTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.script_dir = os.path.dirname(os.path.abspath(__file__))
-        cls.log_file = os.path.join(cls.script_dir, "psychopy_test_extended.log")
         logging.setDefaultClock(core.Clock())
-        logging.LogFile(cls.log_file, level=logging.WARNING)
         logging.console.setLevel(logging.WARNING)
 
     def test_visual(self):
@@ -63,8 +61,11 @@ class PsychopyTests(unittest.TestCase):
             beep.play()
             core.wait(beep.getDuration())
         except Exception as e:
-            if isinstance(e, IndexError) or "list index out of range" in str(e).lower() or "ManagedDeviceError" in str(e):
+            error_message = str(e).lower()
+            if isinstance(e, IndexError) or "list index out of range" in error_message or "manageddeviceerror" in error_message:
                 self.skipTest(f"Audio hardware not available or misconfigured: {str(e)}")
+            elif isinstance(e, AttributeError) and "_masterstream" in error_message and "handle" in error_message:
+                self.skipTest(f"Audio hardware backend error: {str(e)}")
             else:
                 self.fail(f"Unexpected exception during audio test: {str(e)}")
 
