@@ -74,14 +74,14 @@ jobs:
         id: verify-bids
         run: |
           cd /tmp_dir/PsychoPy_tests/BIDS
-          /tmp_dir/psychopy/bin/python -m unittest test_bids_simple -v
+          /tmp_dir/psychopy/bin/python -m unittest bids_simple_simple -v
     
       - name: Verify BIDS installation exp_handler
         id: verify-bids-handler
         if: ${{ !inputs.quick-mode }}
         run: |
           cd /tmp_dir/PsychoPy_tests/BIDS
-          /tmp_dir/psychopy/bin/python -m unittest test_bids_exp_handler -v
+          /tmp_dir/psychopy/bin/python -m unittest bids_test_exp_handler -v
       
       - name: Cleanup
         if: always()
