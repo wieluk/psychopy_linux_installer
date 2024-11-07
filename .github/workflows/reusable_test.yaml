@@ -60,24 +60,28 @@ jobs:
         id: psychopy-test
         if: ${{ !inputs.quick-mode }}
         run: |
-          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/psychopy_test.py -v
+          cd /tmp_dir/PsychoPy_tests
+          /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
 
       - name: Run extended PsychoPy Tests
         id: psychopy-test-extended
         if: ${{ !inputs.quick-mode }}
         run: |
-          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/psychopy_test_extended.py -v
+          cd /tmp_dir/PsychoPy_tests
+          /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
 
       - name: Verify BIDS installation simple
         id: verify-bids
         run: |
-          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/BIDS/test_bids_simple.py -v
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          /tmp_dir/psychopy/bin/python -m unittest test_bids_simple -v
     
       - name: Verify BIDS installation exp_handler
         id: verify-bids-handler
         if: ${{ !inputs.quick-mode }}
         run: |
-          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/BIDS/test_bids_exp_handler.py -v
+          cd /tmp_dir/PsychoPy_tests/BIDS
+          /tmp_dir/psychopy/bin/python -m unittest test_bids_exp_handler -v
       
       - name: Cleanup
         if: always()
