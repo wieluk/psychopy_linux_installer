@@ -8,7 +8,6 @@ logging.setDefaultClock(core.Clock())
 logging.LogFile(log_file, level=logging.WARNING)
 logging.console.setLevel(logging.WARNING)
 
-
 def test_visual():
     try:
         win = visual.Window([800, 600], fullscr=False)
@@ -20,7 +19,6 @@ def test_visual():
         logging.warning("Visual Test Passed")
     except Exception as e:
         logging.error(f"Visual Test Failed: {e}")
-
 
 def test_keyboard():
     try:
@@ -38,7 +36,6 @@ def test_keyboard():
             logging.error("Keyboard Test Failed: No key detected")
     except Exception as e:
         logging.error(f"Keyboard Test Failed: {e}")
-
 
 def test_image():
     try:
@@ -66,6 +63,16 @@ def test_timing():
     except Exception as e:
         logging.error(f"Timing Test Failed: {e}")
 
+def test_audio():
+    try:
+        audio_path = os.path.join(script_dir, 'beep.wav')
+        beep = sound.Sound(audio_path)
+        beep.play()
+        core.wait(beep.getDuration())
+        logging.warning("Audio Test Passed")
+    except Exception as e:
+        logging.error(f"Audio Test Failed: {e}")
+
 def run_tests():
     logging.console.setLevel(logging.WARNING)
     logging.warning("Starting PsychoPy Tests")
@@ -74,8 +81,12 @@ def run_tests():
     test_keyboard()
     test_image()
     test_timing()
+    test_audio()
 
     logging.warning("PsychoPy Tests Completed")
 
 if __name__ == "__main__":
-    run_tests()
+    try:
+        run_tests()
+    except Exception as e:
+        logging.error(f"PsychoPy Tests Failed: {e}")
