@@ -2,7 +2,6 @@ import os
 import sys
 import unittest
 from psychopy import visual, core, event, sound, logging
-from psychopy.hardware.manager import ManagedDeviceError
 
 class PsychopyTests(unittest.TestCase):
     @classmethod
@@ -61,12 +60,12 @@ class PsychopyTests(unittest.TestCase):
             beep = sound.Sound(audio_path)
             beep.play()
             core.wait(beep.getDuration())
-        except (ManagedDeviceError, IndexError) as e:
-            # Skip the test if there is no audio device available
-            # Runners on the VM do not have audio-passthrough ...
-            self.skipTest(f"Audio hardware not available or misconfigured: {str(e)}")
         except Exception as e:
-            self.fail(f"Unexpected exception during audio test: {str(e)}")
+            # Handle specific cases where there is no audio hardware
+            if "no sound card found" in str(e).lower() or "index out of range" in str(e).lower():
+                self.skipTest(f"Audio hardware not available or misconfigured: {str(e)}")
+            else:
+                self.fail(f"Unexpected exception during audio test: {str(e)}")
 
 if __name__ == "__main__":
     # Run tests and collect results
