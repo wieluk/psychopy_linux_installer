@@ -60,46 +60,24 @@ jobs:
         id: psychopy-test
         if: ${{ !inputs.quick-mode }}
         run: |
-          cd /tmp_dir/PsychoPy_tests
-          /tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test.py 2>&1 | tee /tmp_dir/PsychoPy_tests/psychopy_test.log
-          set -e
-          if ! tail -n 1 /tmp_dir/PsychoPy_tests/psychopy_test.log | grep -qE "Trial 3: Elapsed time .* seconds"; then
-            echo "::error::PsychoPy test output verification failed"
-            exit 1
-          fi
+          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/psychopy_test.py -v
 
       - name: Run extended PsychoPy Tests
         id: psychopy-test-extended
         if: ${{ !inputs.quick-mode }}
         run: |
-          output=$(/tmp_dir/psychopy/bin/python /tmp_dir/PsychoPy_tests/psychopy_test_extended.py)
-          tests=("Visual" "Keyboard" "Image" "Timing")
-          for test in "${tests[@]}"; do
-            if ! echo "$output" | grep -qE "${test} Test Passed"; then
-              echo "::error::${test} Test Failed"
-              exit 1
-            fi
-          done
-          echo "All tests passed successfully."
+          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/psychopy_test_extended.py -v
 
       - name: Verify BIDS installation simple
         id: verify-bids
         run: |
-          cd /tmp_dir/PsychoPy_tests/BIDS
-          if ! /tmp_dir/psychopy/bin/python bids_test_simple.py; then
-            echo "::error::BIDS simple test execution failed"
-            exit 1
-          fi
+          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/BIDS/test_bids_simple.py -v
     
       - name: Verify BIDS installation exp_handler
         id: verify-bids-handler
         if: ${{ !inputs.quick-mode }}
         run: |
-          cd /tmp_dir/PsychoPy_tests/BIDS
-          if ! /tmp_dir/psychopy/bin/python bids_test_exp_handler.py; then
-            echo "::error::BIDS exp_handler test execution failed"
-            exit 1
-          fi
+          /tmp_dir/psychopy/bin/python -m unittest /tmp_dir/PsychoPy_tests/BIDS/test_bids_exp_handler.py -v
       
       - name: Cleanup
         if: always()
