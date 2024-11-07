@@ -1,7 +1,9 @@
 import os
 import sys
 import unittest
-from psychopy import visual, core, event, sound, logging
+from psychopy import prefs, visual, core, event, sound, logging
+
+prefs.hardware['audioLib'] = ['sounddevice', 'dummy']
 
 class PsychopyTests(unittest.TestCase):
     @classmethod
@@ -61,16 +63,13 @@ class PsychopyTests(unittest.TestCase):
             beep.play()
             core.wait(beep.getDuration())
         except Exception as e:
-            # Handle specific cases where there is no audio hardware
-            if "no sound card found" in str(e).lower() or "index out of range" in str(e).lower():
+            if isinstance(e, IndexError) or "list index out of range" in str(e).lower() or "ManagedDeviceError" in str(e):
                 self.skipTest(f"Audio hardware not available or misconfigured: {str(e)}")
             else:
                 self.fail(f"Unexpected exception during audio test: {str(e)}")
 
 if __name__ == "__main__":
-    # Run tests and collect results
     suite = unittest.TestLoader().loadTestsFromTestCase(PsychopyTests)
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-    
-    # Exit with appropriate code
+
     sys.exit(not result.wasSuccessful())
