@@ -1,92 +1,68 @@
 import os
-from psychopy import visual, core, event, sound, logging
+import sys
+import unittest
+from psychopy import visual, core, event, logging
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-log_file = os.path.join(script_dir, "psychopy_test_extended.log")
+#from psychopy import prefs, sound
+#prefs.hardware['audioLib'] = ['sounddevice', 'pyo', 'dummy']
 
-logging.setDefaultClock(core.Clock())
-logging.LogFile(log_file, level=logging.WARNING)
-logging.console.setLevel(logging.WARNING)
+class PsychopyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.script_dir = os.path.dirname(os.path.abspath(__file__))
+        logging.setDefaultClock(core.Clock())
+        logging.console.setLevel(logging.WARNING)
 
-def test_visual():
-    try:
+    def test_visual(self):
         win = visual.Window([800, 600], fullscr=False)
         message = visual.TextStim(win, text="Visual Test")
         message.draw()
         win.flip()
         core.wait(1)
         win.close()
-        logging.warning("Visual Test Passed")
-    except Exception as e:
-        logging.error(f"Visual Test Failed: {e}")
 
-def test_keyboard():
-    try:
+    def test_keyboard(self):
         win = visual.Window([800, 600], fullscr=False)
         message = visual.TextStim(win, text="Keyboard Test")
         message.draw()
         win.flip()
-        event._onPygletKey(symbol=ord('a'), modifiers=0)  # Simulate key press
+        event._onPygletKey(symbol=ord('a'), modifiers=0)
         core.wait(1)
         keys = event.getKeys()
         win.close()
-        if keys:
-            logging.warning("Keyboard Test Passed")
-        else:
-            logging.error("Keyboard Test Failed: No key detected")
-    except Exception as e:
-        logging.error(f"Keyboard Test Failed: {e}")
+        self.assertTrue(keys, "No keyboard input detected")
+        self.assertEqual(keys[0], 'a', "Wrong key detected")
 
-def test_image():
-    try:
+    def test_image(self):
+        img_path = os.path.join(self.script_dir, 'test_image.png')
+        self.assertTrue(os.path.exists(img_path), "Test image file not found")
+        
         win = visual.Window([800, 600], fullscr=False)
-        img_path = os.path.join(script_dir, 'test_image.png')
         img = visual.ImageStim(win, image=img_path)
         img.draw()
         win.flip()
         core.wait(1)
         win.close()
-        logging.warning("Image Test Passed")
-    except Exception as e:
-        logging.error(f"Image Test Failed: {e}")
 
-def test_timing():
-    try:
+    def test_timing(self):
         timer = core.Clock()
         timer.reset()
-        core.wait(1)
+        wait_time = 1.0
+        core.wait(wait_time)
         elapsed = timer.getTime()
-        if abs(elapsed - 1) < 0.15:  # Allow a small error margin
-            logging.warning("Timing Test Passed")
-        else:
-            logging.error(f"Timing Test Failed: Elapsed time {elapsed} seconds")
-    except Exception as e:
-        logging.error(f"Timing Test Failed: {e}")
+        self.assertAlmostEqual(elapsed, wait_time, delta=0.15, 
+                             msg=f"Timing inaccurate: expected {wait_time}, got {elapsed}")
 
-def test_audio():
-    try:
-        audio_path = os.path.join(script_dir, 'beep.wav')
-        beep = sound.Sound(audio_path)
-        beep.play()
-        core.wait(beep.getDuration())
-        logging.warning("Audio Test Passed")
-    except Exception as e:
-        logging.error(f"Audio Test Failed: {e}")
-
-def run_tests():
-    logging.console.setLevel(logging.WARNING)
-    logging.warning("Starting PsychoPy Tests")
-    
-    test_visual()
-    test_keyboard()
-    test_image()
-    test_timing()
-    test_audio()
-
-    logging.warning("PsychoPy Tests Completed")
-
+    # def test_audio(self):
+    #     audio_path = os.path.join(self.script_dir, 'beep.wav')
+    #     self.assertTrue(os.path.exists(audio_path), "Audio file not found")
+        
+    #     beep = sound.Sound(audio_path)
+    #     beep.play()
+    #     core.wait(beep.getDuration())
+            
 if __name__ == "__main__":
-    try:
-        run_tests()
-    except Exception as e:
-        logging.error(f"PsychoPy Tests Failed: {e}")
+    suite = unittest.TestLoader().loadTestsFromTestCase(PsychopyTests)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+
+    sys.exit(not result.wasSuccessful())
