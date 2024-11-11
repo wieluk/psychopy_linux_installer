@@ -951,23 +951,24 @@ main() {
     # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
+        log_message "Desktop shortcuts created."
     fi
 
     # Add PsychoPy to PATH
     if [ "$disable_path" = false ]; then
         add_psychopy_to_path
+        echo
+        echo "To start PsychoPy from the system path, use:"
+        echo "psychopy_${psychopy_version}_py${python_version}"
     fi
 
     echo
-    log_message "PsychoPy installation complete!"
-    echo
-    echo "Please reboot to apply security limits and to refresh system path."
-    echo
-    echo "To start PsychoPy from terminal, use:"
-    echo "psychopy_${psychopy_version}_py${python_version}"
-    echo
-    echo "If PsychoPy is not added to system path,use the absolute path:"
+    echo "To start PsychoPy using the absolute path, use:"
     echo "${psychopy_dir}/bin/psychopy"
+    echo
+    echo "Please reboot to apply security limits and refresh the system path."
+    echo
+    log_message "PsychoPy installation complete!"
 }
 
 main "$@"
