@@ -58,7 +58,6 @@ jobs:
         run: |
           cd /tmp_dir/PsychoPy_tests
           if [ "${{ inputs.quick-mode }}" = "true" ]; then
-            echo "Running in quick mode. Installing Xvfb for headless testing."
             sudo apt-get update && sudo apt-get install -y xvfb
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
           else
@@ -69,7 +68,6 @@ jobs:
         run: |
           cd /tmp_dir/PsychoPy_tests
           if [ "${{ inputs.quick-mode }}" = "true" ]; then
-            echo "Running in quick mode. Installing Xvfb for headless testing."
             sudo apt-get update && sudo apt-get install -y xvfb
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
           else
@@ -80,7 +78,6 @@ jobs:
       #   run: |
       #     cd /tmp_dir/PsychoPy_tests
       #     if [ "${{ inputs.quick-mode }}" = "true" ]; then
-      #       echo "Running in quick mode. Installing Xvfb for headless testing."
       #       sudo apt-get update && sudo apt-get install -y xvfb
       #       xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest bids_test -v
       #     else
