@@ -38,7 +38,7 @@ jobs:
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
           
           BUILD_FLAG="${{ inputs.build-mode && '--build=both' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy_bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir --force --non-interactive $BUILD_FLAG"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --additional-packages=psychopy-bids,seedir --install-dir=/tmp_dir/psychopy --no-versioned-install-dir -f --non-interactive $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Verify PsychoPy installation and version
@@ -53,22 +53,41 @@ jobs:
           else
               /tmp_dir/psychopy/bin/psychopy -v
           fi
-      
+    
       - name: Run basic PsychoPy test
         run: |
           cd /tmp_dir/PsychoPy_tests
-          /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
+          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+            echo "Running in quick mode. Installing Xvfb for headless testing."
+            sudo apt-get update && sudo apt-get install -y xvfb
+            xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
+          else
+            /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
+          fi
 
       - name: Run extended PsychoPy Tests
         run: |
           cd /tmp_dir/PsychoPy_tests
-          /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
+          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+            echo "Running in quick mode. Installing Xvfb for headless testing."
+            sudo apt-get update && sudo apt-get install -y xvfb
+            xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
+          else
+            /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
+          fi
 
       # - name: BIDS test
       #   run: |
       #     cd /tmp_dir/PsychoPy_tests
-      #     /tmp_dir/psychopy/bin/python -m unittest bids_test -v
-    
+      #     if [ "${{ inputs.quick-mode }}" = "true" ]; then
+      #       echo "Running in quick mode. Installing Xvfb for headless testing."
+      #       sudo apt-get update && sudo apt-get install -y xvfb
+      #       xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest bids_test -v
+      #     else
+      #       /tmp_dir/psychopy/bin/python -m unittest bids_test -v
+      #     fi
+
+
       - name: Cleanup
         if: always()
         run: |
