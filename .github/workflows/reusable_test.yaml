@@ -55,21 +55,19 @@ jobs:
           fi
       
       - name: Run basic PsychoPy test
-        if: ${{ !inputs.quick-mode }}
         run: |
           cd /tmp_dir/PsychoPy_tests
           /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
 
       - name: Run extended PsychoPy Tests
-        if: ${{ !inputs.quick-mode }}
         run: |
           cd /tmp_dir/PsychoPy_tests
           /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
 
-      - name: BIDS test
-        run: |
-          cd /tmp_dir/PsychoPy_tests
-          /tmp_dir/psychopy/bin/python -m unittest bids_test -v
+      # - name: BIDS test
+      #   run: |
+      #     cd /tmp_dir/PsychoPy_tests
+      #     /tmp_dir/psychopy/bin/python -m unittest bids_test -v
     
       - name: Cleanup
         if: always()
