@@ -1,7 +1,7 @@
-name: PsychoPy Linux Installer pull request workflow
+name: PsychoPy Linux Installer main merge workflow
 
 on:
-  pull_request:
+  push:
     branches: [main]
     paths:
       - psychopy_linux_installer
