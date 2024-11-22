@@ -115,11 +115,13 @@ jobs:
             exit 1
           fi
           
+          # Function to detect OS of machine
           detect_os_version() {
               if [ -f /etc/os-release ]; then
                   . /etc/os-release
                   if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
-                      echo "$ID-$VERSION_ID"
+                      major_version=$(echo "$VERSION_ID" | cut -d. -f1)
+                      echo "$ID-$major_version"
                       return
                   fi
               fi
@@ -145,7 +147,8 @@ jobs:
 
               if [ -f /etc/redhat-release ]; then
                   version=$(sed 's/.*release \([0-9]*\).*/\1/' < /etc/redhat-release)
-                  echo "$(sed 's/release [0-9]*.*//' < /etc/redhat-release)$version"
+                  distro_name=$(sed 's/ release [0-9]*.*//' < /etc/redhat-release | awk '{print tolower($1)}')
+                  echo "$distro_name-$version"
                   return
               fi
 
