@@ -148,9 +148,9 @@ jobs:
                   echo "$(lsb_release -si)-$version"
                   return
               fi
-              
               log_message "Error: Unable to detect OS version."
               exit 1
+          }
 
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
