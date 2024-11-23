@@ -117,9 +117,22 @@ jobs:
           
           # Function to detect OS of machine
           detect_os_version() {
+              local long_version=0
+              if [ "$1" = "--long" ]; then
+                  long_version=1
+              fi
+
               if [ -f /etc/os-release ]; then
                   . /etc/os-release
                   if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
+                      if [ "$long_version" -eq 1 ]; then
+                          echo "$ID-$VERSION_ID"
+                          return
+                      else
+                          major_version=$(echo "$VERSION_ID" | cut -d. -f1)
+                          echo "$ID-$major_version"
+                          return
+                      fi
                       major_version=$(echo "$VERSION_ID" | cut -d. -f1)
                       echo "$ID-$major_version"
                       return
@@ -127,34 +140,17 @@ jobs:
               fi
 
               if command -v lsb_release > /dev/null 2>&1; then
-                  version=$(lsb_release -sr | cut -d. -f1)
+                  if [ "$long_version" -eq 1 ]; then
+                      version=$(lsb_release -sr)
+                  else
+                      version=$(lsb_release -sr | cut -d. -f1)
+                  fi
                   echo "$(lsb_release -si)-$version"
                   return
               fi
-
-              if [ -f /etc/lsb-release ]; then
-                  . /etc/lsb-release
-                  version=$(echo "$DISTRIB_RELEASE" | cut -d. -f1)
-                  echo "${DISTRIB_ID}-$version"
-                  return
-              fi
-
-              if [ -f /etc/debian_version ]; then
-                  version=$(cut -d. -f1 < /etc/debian_version)
-                  echo "debian-$version"
-                  return
-              fi
-
-              if [ -f /etc/redhat-release ]; then
-                  version=$(sed 's/.*release \([0-9]*\).*/\1/' < /etc/redhat-release)
-                  distro_name=$(sed 's/ release [0-9]*.*//' < /etc/redhat-release | awk '{print tolower($1)}')
-                  echo "$distro_name-$version"
-                  return
-              fi
-
+              
               log_message "Error: Unable to detect OS version."
               exit 1
-          }
 
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
