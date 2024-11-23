@@ -1,9 +1,13 @@
-name: Run quick test
+name: Run extended tests (pr)
 
 on:
-  push:
+  pull_request:
+    branches:
+      - main
     paths:
       - psychopy_linux_installer
+      - .github/workflows/**
+      - .github/PsychoPy_tests/**
   workflow_dispatch:
 
 jobs:
@@ -16,5 +20,3 @@ jobs:
     needs: syntax-check
     if: success()
     uses: ./.github/workflows/reusable_test.yaml
-    with:
-      quick-mode: true
