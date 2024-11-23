@@ -164,6 +164,9 @@ detect_os_version() {
                 echo "$ID-$major_version"
                 return
             fi
+            major_version=$(echo "$VERSION_ID" | cut -d. -f1)
+            echo "$ID-$major_version"
+            return
         fi
     fi
 
@@ -176,10 +179,6 @@ detect_os_version() {
         echo "$(lsb_release -si)-$version"
         return
     fi
-
-    log_message "Warning: Unable to detect OS version."
-    echo "Unknown"
-    return
 }
 
 # Function to detect the package manager for the OS

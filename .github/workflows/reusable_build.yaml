@@ -115,6 +115,7 @@ jobs:
             exit 1
           fi
           
+          # Function to detect OS of machine
           detect_os_version() {
               local long_version=0
               if [ "$1" = "--long" ]; then
@@ -132,6 +133,9 @@ jobs:
                           echo "$ID-$major_version"
                           return
                       fi
+                      major_version=$(echo "$VERSION_ID" | cut -d. -f1)
+                      echo "$ID-$major_version"
+                      return
                   fi
               fi
 
@@ -144,7 +148,7 @@ jobs:
                   echo "$(lsb_release -si)-$version"
                   return
               fi
-
+              
               log_message "Error: Unable to detect OS version."
               exit 1
 
