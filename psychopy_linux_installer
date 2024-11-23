@@ -64,8 +64,8 @@ sudo_wrapper() {
     }
 
     handle_sudo_request() {
-        local command=("$@")
         local response
+        local command=("$@")
 
         case "$sudo_mode" in
             ask)
@@ -132,8 +132,7 @@ sudo_wrapper() {
 
 # Function to check for updates
 check_for_updates() {
-    local latest_version
-    local current_version
+    local latest_version current_version
     current_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
     latest_version=$(curl -s https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
 
@@ -148,45 +147,39 @@ check_for_updates() {
     fi
 }
 
-# Function to detect OS of machine
 detect_os_version() {
+    local long_version=0
+    if [ "$1" = "--long" ]; then
+        long_version=1
+    fi
+
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
-            major_version=$(echo "$VERSION_ID" | cut -d. -f1)
-            echo "$ID-$major_version"
-            return
+            if [ "$long_version" -eq 1 ]; then
+                echo "$ID-$VERSION_ID"
+                return
+            else
+                major_version=$(echo "$VERSION_ID" | cut -d. -f1)
+                echo "$ID-$major_version"
+                return
+            fi
         fi
     fi
 
     if command -v lsb_release > /dev/null 2>&1; then
-        version=$(lsb_release -sr | cut -d. -f1)
+        if [ "$long_version" -eq 1 ]; then
+            version=$(lsb_release -sr)
+        else
+            version=$(lsb_release -sr | cut -d. -f1)
+        fi
         echo "$(lsb_release -si)-$version"
         return
     fi
 
-    if [ -f /etc/lsb-release ]; then
-        . /etc/lsb-release
-        version=$(echo "$DISTRIB_RELEASE" | cut -d. -f1)
-        echo "${DISTRIB_ID}-$version"
-        return
-    fi
-
-    if [ -f /etc/debian_version ]; then
-        version=$(cut -d. -f1 < /etc/debian_version)
-        echo "debian-$version"
-        return
-    fi
-
-    if [ -f /etc/redhat-release ]; then
-        version=$(sed 's/.*release \([0-9]*\).*/\1/' < /etc/redhat-release)
-        distro_name=$(sed 's/ release [0-9]*.*//' < /etc/redhat-release | awk '{print tolower($1)}')
-        echo "$distro_name-$version"
-        return
-    fi
-
-    log_message "Error: Unable to detect OS version."
-    exit 1
+    log_message "Warning: Unable to detect OS version."
+    echo "Unknown"
+    return
 }
 
 # Function to detect the package manager for the OS
@@ -330,8 +323,8 @@ version_greater_than() {
 
 # Function to get the latest version of a package from PyPI
 get_latest_pypi_version() {
-    local package_name=$1
     local latest_version
+    local package_name=$1
     latest_version=$(curl -s "https://pypi.org/pypi/${package_name}/json" | jq -r .info.version)
     if [ -z "$latest_version" ]; then
         log_message "Error: Unable to fetch the latest version for package ${package_name}. Exiting."
@@ -484,14 +477,14 @@ wxpython_pip_install() {
 
 # Function to install wxPython from wheel URL
 wxpython_wheelurl_install() {
-    local wheel_dir html wheels latest_wheel wheel_url wheel_file
+    local wheel_dir html wheels latest_wheel wheel_url wheel_file os_version_long
     local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-    wheel_dir="${base_url}${os_version}/"
+    os_version_long=$(detect_os_version --long | tr '[:upper:]' '[:lower:]')
+    wheel_dir="${base_url}${os_version_long}/"
     html=$(curl -s "$wheel_dir")
     wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
-
     if [ -z "$wheels" ]; then
-        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version}, Python ${python_version}, and ${processor_structure} on extras.wxpython.org."
+        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version_long}, Python ${python_version}, and ${processor_structure} on extras.wxpython.org."
         return 1
     fi
 
@@ -783,9 +776,11 @@ main() {
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
+    
     # Update package manager
     log_message "Info: Updating ${pkg_manager} package manager."
     update_package_manager "$pkg_manager"
+    
     # Install basic dependencies
     log_message "Info: Installing git, curl, and jq."
     install_dependencies script_deps
