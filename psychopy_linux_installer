@@ -776,11 +776,11 @@ main() {
 
     # Detect package manager
     pkg_manager=$(detect_package_manager)
-    
+
     # Update package manager
     log_message "Info: Updating ${pkg_manager} package manager."
     update_package_manager "$pkg_manager"
-    
+
     # Install basic dependencies
     log_message "Info: Installing git, curl, and jq."
     install_dependencies script_deps
