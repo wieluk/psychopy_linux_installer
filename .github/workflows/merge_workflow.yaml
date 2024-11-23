@@ -14,14 +14,24 @@ jobs:
   syntax-check:
     uses: ./.github/workflows/reusable_syntax_check.yaml
 
+  # Test installation with build
+  test-installation-build:
+    needs: syntax-check
+    if: success()
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      build-mode: true
+
   # Create a release if it does not exist
   create-release:
-    needs: syntax-check
+    needs: test-installation-build
+    if: success()
     uses: ./.github/workflows/reusable_release.yaml
 
   # Build binaries and upload to release
   build-binaries:
     needs: create-release
+    if: success()
     uses: ./.github/workflows/reusable_build.yaml
 
   # Test installation without build
@@ -30,10 +40,3 @@ jobs:
     if: success()
     uses: ./.github/workflows/reusable_test.yaml
 
-  # Test installation with build
-  test-installation-build:
-    needs: test-installation
-    if: success()
-    uses: ./.github/workflows/reusable_test.yaml
-    with:
-      build-mode: true
