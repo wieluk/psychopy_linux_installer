@@ -179,6 +179,10 @@ detect_os_version() {
         echo "$(lsb_release -si)-$version"
         return
     fi
+
+    log_message "Warning: Unable to detect OS version."
+    echo "unknown"
+    return
 }
 
 # Function to detect the package manager for the OS
