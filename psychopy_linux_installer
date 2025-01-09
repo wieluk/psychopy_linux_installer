@@ -706,8 +706,8 @@ show_gui() {
         psychopy_version=$(zenity --list --title="PsychoPy Version" \
             --text="Select the PsychoPy version:" \
             --radiolist --column="Select" --column="Version" \
-            TRUE "$first_psychopy_version" "$(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {})" | tr -d '"')
-        psychopy_version=$(echo "$psychopy_version" | xargs) 
+            TRUE "$first_psychopy_version" $(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
+        psychopy_version=$(echo "$psychopy_version" | xargs)
         if ! zenity --list --title="PsychoPy Version" >/dev/null; then
             exit 1
         fi
@@ -728,8 +728,8 @@ show_gui() {
         wxpython_version=$(zenity --list --title="wxPython Version" \
             --text="Select the wxPython version:" \
             --radiolist --column="Select" --column="Version" \
-            TRUE "$default_wxpython_version" "$(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {})" | tr -d '"')
-        wxpython_version=$(echo "$wxpython_version" | xargs) 
+            TRUE "$default_wxpython_version" $(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
+        wxpython_version=$(echo "$wxpython_version" | xargs)
         if ! zenity --list --title="wxPython Version" >/dev/null; then
             exit 1
         fi
