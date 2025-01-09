@@ -670,7 +670,7 @@ fetch_versions_from_pypi() {
 }
 
 show_gui() {
-    # Step 1: Select PsychoPy version dynamically
+    # Step 1: Select PsychoPy version
     psychopy_versions=$(fetch_versions_from_pypi psychopy)
     first_psychopy_version=$(echo "$psychopy_versions" | head -1)
     psychopy_version=$(zenity --list --title="PsychoPy Version" \
@@ -692,7 +692,7 @@ show_gui() {
         exit 1
     fi
 
-    # Step 3: Select wxPython version dynamically
+    # Step 3: Select wxPython version
     wxpython_versions=$(fetch_versions_from_pypi wxPython)
     default_wxpython_version="4.2.2"
     wxpython_version=$(zenity --list --title="wxPython Version" \
@@ -759,6 +759,30 @@ show_gui() {
     fi
     if [[ $non_interactive == false ]]; then
         sudo_mode=$(zenity --list --title="Sudo Mode" \
+            --text="Select the desired sudo mode:\n\
+                ask: confirm each sudo usage.\n\
+                auto: auto-confirm sudo if required.\n\
+                error: exit if sudo is needed.\n\
+                continue: skip sudo commands, assuming prerequisites are met.\n\
+                force: use sudo for everything." \
+            --radiolist --column="Select" --column="Mode" \
+            TRUE "ask" FALSE "auto" FALSE "error" FALSE "continue" FALSE "force")
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
+    fi
+
+    # Step 6: Additional packages
+    additional_packages=$(zenity --entry --title="Additional Packages" \
+        --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package" \
+        --entry-text="")
+    if [ $? -ne 0 ]; then
+        additional_packages=""
+    fi
+    additional_packages=$(echo "$additional_packages" | xargs) # Trim spaces
+
+    if [[ $non_interactive == false ]]; then
+        sudo_mode=$(zenity --list --title="Sudo Mode" \
             --text="Select the desired sudo mode:" \
             --radiolist --column="Select" --column="Mode" \
             TRUE "ask" FALSE "auto" FALSE "error" FALSE "continue" FALSE "force")
@@ -780,7 +804,6 @@ process_arguments() {
     additional_packages=""
     sudo_mode="ask"
     sudo_mode_set=false
-    pkg_manager_permission=false
     disable_shortcut=false
     disable_path=false
     non_interactive=false
@@ -877,9 +900,15 @@ process_arguments() {
 
 main() {
     # Detect if arguments are provided
+    pkg_manager_permission=false
     if [ $# -eq 0 ]; then
-        echo "No arguments provided. Falling back to GUI."
-        show_gui
+        if ! command -v zenity &> /dev/null; then
+            log_message "Warning: zenity is not installed or not available in PATH. Defaulting to non-interactive mode with default settings."
+            process_arguments
+            return
+        else
+            show_gui
+        fi
     else
         echo "Processing command-line arguments."
         process_arguments "$@"
