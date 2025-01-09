@@ -16,6 +16,7 @@ Options:
   --psychopy-version=VERSION                    Specify PsychoPy version (default: latest).
   --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
+  --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
   --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
   --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
@@ -42,6 +43,31 @@ log() {
 # Function to print log messages with timestamp
 log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+# Function to parse requirements.txt
+parse_requirements_file() {
+    local file_wxpython_version file_psychopy_version
+    local file=$1 
+    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs || true)
+
+    file_wxpython_version=$(grep -E '^wxPython==' "$file" | cut -d'=' -f2 | xargs || true)
+    if [ -n "$wxpython_version" ] && [ -n "$file_wxpython_version" ] && [ "$wxpython_version" != "$file_wxpython_version" ]; then
+        log_message "Warning: --wxpython-version ($wxpython_version) overrides wxPython version in $file ($file_wxpython_version)."
+    elif [ -z "$wxpython_version" ]; then
+        wxpython_version="$file_wxpython_version"
+    fi
+
+    # Extract PsychoPy version and warn if overridden by the command line
+    file_psychopy_version=$(grep -E '^psychopy==' "$file" | cut -d'=' -f2 | xargs || true)
+    if [ -n "$psychopy_version" ] && [ -n "$file_psychopy_version" ] && [ "$psychopy_version" != "$file_psychopy_version" ]; then
+        echo "Warning: --psychopy-version ($psychopy_version) overrides PsychoPy version in $file ($file_psychopy_version)."
+    elif [ -z "$psychopy_version" ]; then
+        psychopy_version="$file_psychopy_version"
+    fi
+
+    # Collect additional packages, excluding PsychoPy and wxPython
+    additional_packages=$(grep -Ev '^(#|psychopy==|wxPython==)' "$file" | tr '\n' ',' | sed 's/,$//' || true)
 }
 
 # Wrapper function to handle sudo requests and permissions dynamically
@@ -665,15 +691,16 @@ add_psychopy_to_path() {
 }
 
 main() {
-    psychopy_version="latest"
-    python_version="3.10"
-    wxpython_version="4.2.2"
+    psychopy_version=""
+    python_version=""
+    wxpython_version=""
+    additional_packages=""
+    requirements_file=""
     build_python=false
     build_wx=false
     install_dir="$HOME"
     no_versioned_install_dir=false
     install_dir_set_by_user=false
-    additional_packages=""
     sudo_mode="ask"
     sudo_mode_set=false
     pkg_manager_permission=false
@@ -697,6 +724,12 @@ main() {
                 ;;
             --wxpython-version=*)
                 wxpython_version="${arg#*=}"
+                ;;
+            --additional-packages=*)
+                additional_packages="${arg#*=}"
+                ;;
+            --requirements-file=*) 
+                requirements_file="${arg#*=}" 
                 ;;
             --build=*)
                 build_arg="${arg#*=}"
@@ -728,9 +761,6 @@ main() {
                     exit 1
                 fi
                 no_versioned_install_dir=true
-                ;;
-            --additional-packages=*)
-                additional_packages="${arg#*=}"
                 ;;
             --sudo-mode=*)
                 sudo_mode="${arg#*=}"
@@ -769,6 +799,21 @@ main() {
                 ;;
         esac
     done
+
+    if [ -n "$requirements_file" ]; then
+        log_message "Info: Parsing requirements file: $requirements_file..."
+        parse_requirements_file "$requirements_file"
+    fi
+
+    python_version="${python_version:-3.10}"
+    psychopy_version="${psychopy_version:-latest}"
+    wxpython_version="${wxpython_version:-4.2.2}"
+
+    log_message "Configuration:"
+    log_message "Python Version: $python_version"
+    log_message "PsychoPy Version: $psychopy_version"
+    log_message "wxPython Version: $wxpython_version"
+    log_message "Additional Packages: ${additional_packages:-None}"
 
 
     # Detect OS version and architecture
