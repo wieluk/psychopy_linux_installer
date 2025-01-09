@@ -666,7 +666,7 @@ add_psychopy_to_path() {
 
 fetch_versions_from_pypi() {
     package=$1
-    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[]' | sort -Vr | head -10
+    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[] | gsub("\""; "")' | sort -Vr | head -10
 }
 
 show_gui() {
@@ -749,7 +749,7 @@ show_gui() {
     if [[ $options == *"Run in non-interactive mode"* ]]; then
         non_interactive=true
     fi
-}
+}   
 
 process_arguments() {
     psychopy_version="latest"
