@@ -672,11 +672,13 @@ fetch_versions_from_pypi() {
 show_gui() {
     # Step 1: Select PsychoPy version dynamically
     psychopy_versions=$(fetch_versions_from_pypi psychopy)
+    first_psychopy_version=$(echo "$psychopy_versions" | head -1)
     psychopy_version=$(zenity --list --title="PsychoPy Version" \
         --text="Select the PsychoPy version:" \
         --radiolist --column="Select" --column="Version" \
-        TRUE "latest" $(printf "FALSE \"%s\" " $psychopy_versions))
-    if [ $? -ne 0 ]; then
+        TRUE "$first_psychopy_version" $(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
+    psychopy_version=$(echo "$psychopy_version" | xargs) # Trim spaces
+    if [ $? -ne 0 ] || [ -z "$psychopy_version" ]; then
         exit 1
     fi
 
@@ -685,21 +687,27 @@ show_gui() {
         --text="Select the Python version:" \
         --radiolist --column="Select" --column="Version" \
         TRUE "3.10" FALSE "3.9" FALSE "3.8")
-    if [ $? -ne 0 ]; then
+    python_version=$(echo "$python_version" | xargs)
+    if [ $? -ne 0 ] || [ -z "$python_version" ]; then
         exit 1
     fi
 
     # Step 3: Select wxPython version dynamically
     wxpython_versions=$(fetch_versions_from_pypi wxPython)
+    default_wxpython_version="4.2.2"
     wxpython_version=$(zenity --list --title="wxPython Version" \
         --text="Select the wxPython version:" \
         --radiolist --column="Select" --column="Version" \
-        TRUE "default" $(printf "FALSE \"%s\" " $wxpython_versions))
-    wxpython_version=${wxpython_version:-4.2.2}
+        TRUE "$default_wxpython_version" $(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
+    wxpython_version=$(echo "$wxpython_version" | xargs) # Trim spaces
+    if [ -z "$wxpython_version" ]; then
+        wxpython_version="$default_wxpython_version"
+    fi
 
     # Step 4: Installation directory
     install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
-    if [ $? -ne 0 ]; then
+    install_dir=$(echo "$install_dir" | xargs) # Trim spaces
+    if [ $? -ne 0 ] || [ -z "$install_dir" ]; then
         exit 1
     fi
 
