@@ -50,7 +50,7 @@ log_message() {
 parse_requirements_file() {
     local file=$1 
 
-    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs || true)
+    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 || true)
     wxpython_version=$(grep -E '^wxPython==' "$file" | cut -d'=' -f2 | xargs || true)
     psychopy_version=$(grep -E '^psychopy==' "$file" | cut -d'=' -f2 | xargs || true)
     additional_packages=$(grep -Ev '^(#|psychopy==|wxPython==)' "$file" | tr '\n' ',' | sed 's/,$//' || true)
