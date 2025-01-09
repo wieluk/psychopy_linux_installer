@@ -25,7 +25,7 @@ Options:
   --disable-shortcut                            Disable desktop shortcut creation.
   --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
   --disable-path                                Disable adding psychopy to system path.
-  --gui                                         Run the installer with a GUI for setting arguments.
+  --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode.
   -f, --force                                   Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output.
   -h, --help                                    Show this help message.

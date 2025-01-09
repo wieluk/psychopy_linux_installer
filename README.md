@@ -32,13 +32,25 @@ Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy v
 
 Install curl with your package manger. On most distros curl is already installed.
 
-Download and execute the script:
+1. **Download the script:**
+   ```bash
+   curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
+   ```
+2. **Make it executable:**
+   ```bash
+   chmod +x psychopy_linux_installer
+   ```
+3. **Run the installer:**
+   - **GUI Mode**: 
+     ```bash
+     ./psychopy_linux_installer --gui
+     ```
+     `curl` and `zenity` are required for the GUI mode.
+   - **Command-Line Mode**:
+     ```bash
+     ./psychopy_linux_installer
+     ```
 
-```bash
- curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
- chmod +x psychopy_linux_installer
- ./psychopy_linux_installer --gui
-```
 
 ## Options
 
