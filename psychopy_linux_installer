@@ -763,7 +763,7 @@ show_gui() {
         FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
         FALSE "Enable verbose output")
-    if ! zenity --list --checklist --title="Additional Options" >/dev/null; then
+    if [ $? -ne 0 ]; then
         exit 1
     fi
 
