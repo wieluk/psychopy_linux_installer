@@ -48,7 +48,7 @@ log_message() {
 
 # Function to parse requirements.txt
 parse_requirements_file() {
-    local file=$1 
+    local file=$1
 
     python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 || true)
     wxpython_version=$(grep -E '^wxPython==' "$file" | cut -d'=' -f2 | xargs || true)
@@ -698,7 +698,7 @@ show_gui() {
     else
         use_requirements=false
     fi
-    
+
     if [ "$use_requirements" = false ]; then
         # Select PsychoPy version
         psychopy_versions=$(fetch_versions_from_pypi psychopy)
@@ -738,7 +738,7 @@ show_gui() {
         additional_packages=$(zenity --entry --title="Additional Packages" \
             --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave Empty for no additonal packages" \
             --entry-text="")
-        additional_packages=$(echo "$additional_packages" | xargs) 
+        additional_packages=$(echo "$additional_packages" | xargs)
         if [ $? -ne 0 ]; then
             exit 1
         fi
@@ -746,7 +746,7 @@ show_gui() {
 
     # Installation directory
     install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
-    install_dir=$(echo "$install_dir" | xargs) 
+    install_dir=$(echo "$install_dir" | xargs)
     if [ $? -ne 0 ] || [ -z "$install_dir" ]; then
         exit 1
     fi
@@ -830,8 +830,8 @@ process_arguments() {
             --additional-packages=*)
                 additional_packages="${arg#*=}"
                 ;;
-            --requirements-file=*) 
-                requirements_file="${arg#*=}" 
+            --requirements-file=*)
+                requirements_file="${arg#*=}"
                 ;;
             --build=*)
                 build_arg="${arg#*=}"
