@@ -24,6 +24,7 @@ Options:
   --disable-shortcut                            Disable desktop shortcut creation.
   --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
   --disable-path                                Disable adding psychopy to system path.
+  --gui                                         Run the installer with a GUI for setting arguments.
   -f, --force                                   Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output.
   -h, --help                                    Show this help message.
@@ -881,11 +882,18 @@ process_arguments() {
 }
 
 main() {
-    # Detect if arguments are provided
-    if [ $# -eq 0 ]; then
+    use_gui=false
+    for arg in "$@"; do
+        if [[ "$arg" == "--gui" ]]; then
+            use_gui=true
+            break
+        fi
+    done
+
+    if $use_gui; then
         if ! command -v zenity &> /dev/null; then
-            log_message "Warning: zenity is not installed or not available in PATH and no arguments are used. Using default settings."
-            return
+            log_message "Error: zenity is not installed or not available in PATH. Cannot use GUI mode. Exiting."
+            exit 1
         else
             show_gui
         fi

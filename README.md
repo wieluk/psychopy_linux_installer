@@ -37,7 +37,7 @@ Download and execute the script:
 ```bash
  curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
  chmod +x psychopy_linux_installer
- ./psychopy_linux_installer
+ ./psychopy_linux_installer --gui
 ```
 
 ## Options
@@ -55,6 +55,7 @@ Download and execute the script:
 | `--disable-shortcut` | Disable desktop shortcut creation. |
 | `--disable-path` | Disable adding psychopy to system path. |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
+| `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
 | `-f`, `--force` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output. |
 | `-h`, `--help` | Show help message. |
