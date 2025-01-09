@@ -715,14 +715,14 @@ show_gui() {
     options=$(zenity --list --checklist --title="Additional Options" \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
-        FALSE "Build Python from source" \
-        FALSE "Build wxPython from source" \
         TRUE "Create desktop shortcuts" \
         TRUE "Add PsychoPy to system PATH" \
+        TRUE "Run in non-interactive mode" \
         FALSE "Install without versioned subdirectory" \
         FALSE "Force overwrite of existing directory" \
-        FALSE "Enable verbose output" \
-        TRUE "Run in non-interactive mode")
+        FALSE "Build Python from source" \
+        FALSE "Build wxPython from source" \
+        FALSE "Enable verbose output")
 
     build_python=false
     build_wx=false
