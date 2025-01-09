@@ -664,7 +664,64 @@ add_psychopy_to_path() {
     fi
 }
 
-main() {
+show_gui() {
+    # Step 1: Select PsychoPy version
+    psychopy_version=$(zenity --entry --title="PsychoPy Version" \
+        --text="Enter the PsychoPy version (leave empty for latest):")
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    psychopy_version=${psychopy_version:-latest}
+
+    # Step 2: Select Python version
+    python_version=$(zenity --list --title="Python Version" \
+        --text="Select the Python version:" \
+        --radiolist --column="Select" --column="Version" \
+        TRUE "3.10" FALSE "3.9" FALSE "3.8")
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    # Step 3: Select wxPython version
+    wxpython_version=$(zenity --entry --title="wxPython Version" \
+        --text="Enter the wxPython version (leave empty for default 4.2.2):")
+    wxpython_version=${wxpython_version:-4.2.2}
+
+    # Step 4: Installation directory
+    install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    # Step 5: Additional options
+    options=$(zenity --list --checklist --title="Additional Options" \
+        --text="Select additional options:" \
+        --column="Select" --column="Option" \
+        FALSE "Build Python from source" \
+        FALSE "Build wxPython from source" \
+        TRUE "Create desktop shortcuts" \
+        TRUE "Add PsychoPy to system PATH")
+
+    build_python=false
+    build_wx=false
+    disable_shortcut=true
+    disable_path=true
+
+    if [[ $options == *"Build Python from source"* ]]; then
+        build_python=true
+    fi
+    if [[ $options == *"Build wxPython from source"* ]]; then
+        build_wx=true
+    fi
+    if [[ $options == *"Create desktop shortcuts"* ]]; then
+        disable_shortcut=false
+    fi
+    if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
+        disable_path=false
+    fi
+}
+
+process_arguments() {
     psychopy_version="latest"
     python_version="3.10"
     wxpython_version="4.2.2"
@@ -769,7 +826,17 @@ main() {
                 ;;
         esac
     done
+}
 
+main() {
+    # Detect if arguments are provided
+    if [ $# -eq 0 ]; then
+        echo "No arguments provided. Falling back to GUI."
+        show_gui
+    else
+        echo "Processing command-line arguments."
+        process_arguments "$@"
+    fi
 
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
