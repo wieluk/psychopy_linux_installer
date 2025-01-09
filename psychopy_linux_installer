@@ -683,7 +683,23 @@ add_psychopy_to_path() {
 }
 
 show_gui() {
-    # Optional Select PsychoPy version
+    # Optional Select requirements.txt
+    zenity --question --title="Use requirements.txt" \
+    --text="Do you want to use a requirements.txt file?\n\nIf you don't know what this is, choose 'No' to proceed with manual setup." \
+    --ok-label="Yes" --cancel-label="No"
+
+    if [ $? -eq 0 ]; then
+        requirements_file=$(zenity --file-selection --title="Select requirements.txt" --file-filter="requirements.txt | *.txt")
+        if [ $? -eq 0 ] && [ -n "$requirements_file" ]; then
+            use_requirements=true
+        else
+            exit 1
+        fi
+    else
+        use_requirements=false
+    fi
+
+
     requirements_file=$(zenity --file-selection --title="Select requirements.txt (Optional)" --file-filter="requirements.txt | *.txt")
     if [ $? -eq 0 ] && [ -n "$requirements_file" ]; then
         echo "requirements.txt selected: $requirements_file"
