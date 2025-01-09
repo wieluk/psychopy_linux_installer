@@ -739,7 +739,7 @@ show_gui() {
             --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave Empty for no additonal packages" \
             --entry-text="")
         additional_packages=$(echo "$additional_packages" | xargs) 
-        if [ -z "$additional_packages" ]; then
+        if [ $? -ne 0 ]; then
             exit 1
         fi
     fi
