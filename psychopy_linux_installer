@@ -698,15 +698,6 @@ show_gui() {
     else
         use_requirements=false
     fi
-
-
-    requirements_file=$(zenity --file-selection --title="Select requirements.txt (Optional)" --file-filter="requirements.txt | *.txt")
-    if [ $? -eq 0 ] && [ -n "$requirements_file" ]; then
-        echo "requirements.txt selected: $requirements_file"
-        use_requirements=true
-    else
-        use_requirements=false
-    fi
     
     if [ "$use_requirements" = false ]; then
         # Select PsychoPy version
