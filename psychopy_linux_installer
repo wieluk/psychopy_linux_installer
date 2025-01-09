@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2024-11-19
-#  Version:       1.3.2
+#  Date:          2025-01-09
+#  Version:       1.4.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -774,7 +774,7 @@ show_gui() {
 
     # Step 6: Additional packages
     additional_packages=$(zenity --entry --title="Additional Packages" \
-        --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package" \
+        --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave Empty for no additonal packages" \
         --entry-text="")
     if [ $? -ne 0 ]; then
         additional_packages=""
@@ -910,7 +910,6 @@ main() {
             show_gui
         fi
     else
-        echo "Processing command-line arguments."
         process_arguments "$@"
     fi
 
