@@ -48,26 +48,11 @@ log_message() {
 
 # Function to parse requirements.txt
 parse_requirements_file() {
-    local file_wxpython_version file_psychopy_version
     local file=$1 
+
     python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs || true)
-
-    file_wxpython_version=$(grep -E '^wxPython==' "$file" | cut -d'=' -f2 | xargs || true)
-    if [ -n "$wxpython_version" ] && [ -n "$file_wxpython_version" ] && [ "$wxpython_version" != "$file_wxpython_version" ]; then
-        log_message "Warning: --wxpython-version ($wxpython_version) overrides wxPython version in $file ($file_wxpython_version)."
-    elif [ -z "$wxpython_version" ]; then
-        wxpython_version="$file_wxpython_version"
-    fi
-
-    # Extract PsychoPy version and warn if overridden by the command line
-    file_psychopy_version=$(grep -E '^psychopy==' "$file" | cut -d'=' -f2 | xargs || true)
-    if [ -n "$psychopy_version" ] && [ -n "$file_psychopy_version" ] && [ "$psychopy_version" != "$file_psychopy_version" ]; then
-        echo "Warning: --psychopy-version ($psychopy_version) overrides PsychoPy version in $file ($file_psychopy_version)."
-    elif [ -z "$psychopy_version" ]; then
-        psychopy_version="$file_psychopy_version"
-    fi
-
-    # Collect additional packages, excluding PsychoPy and wxPython
+    wxpython_version=$(grep -E '^wxPython==' "$file" | cut -d'=' -f2 | xargs || true)
+    psychopy_version=$(grep -E '^psychopy==' "$file" | cut -d'=' -f2 | xargs || true)
     additional_packages=$(grep -Ev '^(#|psychopy==|wxPython==)' "$file" | tr '\n' ',' | sed 's/,$//' || true)
 }
 
@@ -349,6 +334,12 @@ version_greater_than() {
     else
         return 1
     fi
+}
+
+# Function to get the all versions of a package from PyPI
+fetch_versions_from_pypi() {
+    package=$1
+    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[]' | sort -Vr
 }
 
 # Function to get the latest version of a package from PyPI
@@ -691,49 +682,64 @@ add_psychopy_to_path() {
     fi
 }
 
-fetch_versions_from_pypi() {
-    package=$1
-    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[]' | sort -Vr
-}
-
 show_gui() {
-    # Select PsychoPy version
-    psychopy_versions=$(fetch_versions_from_pypi psychopy)
-    first_psychopy_version=$(echo "$psychopy_versions" | head -1)
-    psychopy_version=$(zenity --list --title="PsychoPy Version" \
-        --text="Select the PsychoPy version:" \
-        --radiolist --column="Select" --column="Version" \
-        TRUE "$first_psychopy_version" "$(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {})" | tr -d '"')
-    psychopy_version=$(echo "$psychopy_version" | xargs) # Trim spaces
-    if ! zenity --list --title="PsychoPy Version" >/dev/null; then
-        exit 1
+    # Optional Select PsychoPy version
+    requirements_file=$(zenity --file-selection --title="Select requirements.txt (Optional)" --file-filter="requirements.txt | *.txt")
+    if [ $? -eq 0 ] && [ -n "$requirements_file" ]; then
+        echo "requirements.txt selected: $requirements_file"
+        use_requirements=true
+    else
+        use_requirements=false
     fi
+    
+    if [ "$use_requirements" = false ]; then
+        # Select PsychoPy version
+        psychopy_versions=$(fetch_versions_from_pypi psychopy)
+        first_psychopy_version=$(echo "$psychopy_versions" | head -1)
+        psychopy_version=$(zenity --list --title="PsychoPy Version" \
+            --text="Select the PsychoPy version:" \
+            --radiolist --column="Select" --column="Version" \
+            TRUE "$first_psychopy_version" "$(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {})" | tr -d '"')
+        psychopy_version=$(echo "$psychopy_version" | xargs) 
+        if ! zenity --list --title="PsychoPy Version" >/dev/null; then
+            exit 1
+        fi
 
-    # Select Python version
-    python_version=$(zenity --list --title="Python Version" \
-        --text="Select the Python version:" \
-        --radiolist --column="Select" --column="Version" \
-        TRUE "3.10" FALSE "3.9" FALSE "3.8")
-    python_version=$(echo "$python_version" | xargs)
-    if ! zenity --list --title="Python Version" >/dev/null; then
-        exit 1
-    fi
+        # Select Python version
+        python_version=$(zenity --list --title="Python Version" \
+            --text="Select the Python version:" \
+            --radiolist --column="Select" --column="Version" \
+            TRUE "3.10" FALSE "3.9" FALSE "3.8")
+        python_version=$(echo "$python_version" | xargs)
+        if ! zenity --list --title="Python Version" >/dev/null; then
+            exit 1
+        fi
 
-    # Select wxPython version
-    wxpython_versions=$(fetch_versions_from_pypi wxPython)
-    default_wxpython_version="4.2.2"
-    wxpython_version=$(zenity --list --title="wxPython Version" \
-        --text="Select the wxPython version:" \
-        --radiolist --column="Select" --column="Version" \
-        TRUE "$default_wxpython_version" "$(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {})" | tr -d '"')
-    wxpython_version=$(echo "$wxpython_version" | xargs) # Trim spaces
-    if ! zenity --list --title="wxPython Version" >/dev/null; then
-        exit 1
+        # Select wxPython version
+        wxpython_versions=$(fetch_versions_from_pypi wxPython)
+        default_wxpython_version="4.2.2"
+        wxpython_version=$(zenity --list --title="wxPython Version" \
+            --text="Select the wxPython version:" \
+            --radiolist --column="Select" --column="Version" \
+            TRUE "$default_wxpython_version" "$(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {})" | tr -d '"')
+        wxpython_version=$(echo "$wxpython_version" | xargs) 
+        if ! zenity --list --title="wxPython Version" >/dev/null; then
+            exit 1
+        fi
+
+        # Additional packages
+        additional_packages=$(zenity --entry --title="Additional Packages" \
+            --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave Empty for no additonal packages" \
+            --entry-text="")
+        additional_packages=$(echo "$additional_packages" | xargs) 
+        if ! zenity --entry --title="Additional Packages" >/dev/null; then
+            exit 1
+        fi
     fi
 
     # Installation directory
     install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
-    install_dir=$(echo "$install_dir" | xargs) # Trim spaces
+    install_dir=$(echo "$install_dir" | xargs) 
     if ! zenity --file-selection --directory --title="Select Installation Directory" >/dev/null; then
         exit 1
     fi
@@ -792,15 +798,6 @@ show_gui() {
         if ! zenity --list --title="Sudo Mode" >/dev/null; then
             exit 1
         fi
-    fi
-
-    # Additional packages
-    additional_packages=$(zenity --entry --title="Additional Packages" \
-        --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave Empty for no additonal packages" \
-        --entry-text="")
-    additional_packages=$(echo "$additional_packages" | xargs) # Trim spaces
-    if [ -z "$additional_packages" ]; then
-        exit 1
     fi
 }
 
@@ -919,6 +916,10 @@ main() {
         process_arguments "$@"
     fi
 
+    if [ -n "$requirements_file" ]; then
+        log_message "Info: Parsing requirements file: $requirements_file..."
+        parse_requirements_file "$requirements_file"
+    fi
 
     # Ensure defaults for unset variables
     pkg_manager_permission=false
