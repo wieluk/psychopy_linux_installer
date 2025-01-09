@@ -666,7 +666,7 @@ add_psychopy_to_path() {
 
 fetch_versions_from_pypi() {
     package=$1
-    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[] | gsub("\""; "")' | sort -Vr | head -10
+    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[]' | sort -Vr | head -10
 }
 
 show_gui() {
@@ -707,21 +707,21 @@ show_gui() {
     options=$(zenity --list --checklist --title="Additional Options" \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
-        FALSE "Build Python from source (requires source dependencies)" \
-        FALSE "Build wxPython from source (requires source dependencies)" \
+        FALSE "Build Python from source" \
+        FALSE "Build wxPython from source" \
         TRUE "Create desktop shortcuts" \
         TRUE "Add PsychoPy to system PATH" \
         FALSE "Install without versioned subdirectory" \
         FALSE "Force overwrite of existing directory" \
         FALSE "Enable verbose output" \
-        FALSE "Run in non-interactive mode")
+        TRUE "Run in non-interactive mode")
 
     build_python=false
     build_wx=false
     disable_shortcut=true
     disable_path=true
-    no_versioned_dir=false
-    force=false
+    no_versioned_install_dir=false
+    force_overwrite=false
     verbose=false
     non_interactive=false
 
@@ -738,16 +738,25 @@ show_gui() {
         disable_path=false
     fi
     if [[ $options == *"Install without versioned subdirectory"* ]]; then
-        no_versioned_dir=true
+        no_versioned_install_dir=true
     fi
     if [[ $options == *"Force overwrite of existing directory"* ]]; then
-        force=true
+        force_overwrite=true
     fi
     if [[ $options == *"Enable verbose output"* ]]; then
         verbose=true
     fi
     if [[ $options == *"Run in non-interactive mode"* ]]; then
         non_interactive=true
+    fi
+    if [[ $non_interactive == false ]]; then
+        sudo_mode=$(zenity --list --title="Sudo Mode" \
+            --text="Select the desired sudo mode:" \
+            --radiolist --column="Select" --column="Mode" \
+            TRUE "ask" FALSE "auto" FALSE "error" FALSE "continue" FALSE "force")
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
     fi
 }   
 
