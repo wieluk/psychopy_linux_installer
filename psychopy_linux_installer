@@ -50,10 +50,10 @@ log_message() {
 parse_requirements_file() {
     local file=$1
 
-    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 || true)
-    wxpython_version=$(grep -E '^wxPython==' "$file" | cut -d'=' -f2 | xargs || true)
-    psychopy_version=$(grep -E '^psychopy==' "$file" | cut -d'=' -f2 | xargs || true)
-    additional_packages=$(grep -Ev '^(#|psychopy==|wxPython==)' "$file" | tr '\n' ',' | sed 's/,$//' || true)
+    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
+    wxpython_version=$(grep -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
+    psychopy_version=$(grep -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
+    additional_packages=$(grep -E -v '^(#|psychopy==|wxPython==)' "$file" | grep -E '.+==.+' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ',' | sed 's/,$//' | tr -d '[:space:]' || true)
 }
 
 # Wrapper function to handle sudo requests and permissions dynamically
