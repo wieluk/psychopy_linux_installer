@@ -664,14 +664,21 @@ add_psychopy_to_path() {
     fi
 }
 
+fetch_versions_from_pypi() {
+    package=$1
+    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[]' | sort -Vr | head -10
+}
+
 show_gui() {
-    # Step 1: Select PsychoPy version
-    psychopy_version=$(zenity --entry --title="PsychoPy Version" \
-        --text="Enter the PsychoPy version (leave empty for latest):")
+    # Step 1: Select PsychoPy version dynamically
+    psychopy_versions=$(fetch_versions_from_pypi psychopy)
+    psychopy_version=$(zenity --list --title="PsychoPy Version" \
+        --text="Select the PsychoPy version:" \
+        --radiolist --column="Select" --column="Version" \
+        TRUE "latest" $(printf "FALSE \"%s\" " $psychopy_versions))
     if [ $? -ne 0 ]; then
         exit 1
     fi
-    psychopy_version=${psychopy_version:-latest}
 
     # Step 2: Select Python version
     python_version=$(zenity --list --title="Python Version" \
@@ -682,9 +689,12 @@ show_gui() {
         exit 1
     fi
 
-    # Step 3: Select wxPython version
-    wxpython_version=$(zenity --entry --title="wxPython Version" \
-        --text="Enter the wxPython version (leave empty for default 4.2.2):")
+    # Step 3: Select wxPython version dynamically
+    wxpython_versions=$(fetch_versions_from_pypi wxPython)
+    wxpython_version=$(zenity --list --title="wxPython Version" \
+        --text="Select the wxPython version:" \
+        --radiolist --column="Select" --column="Version" \
+        TRUE "default" $(printf "FALSE \"%s\" " $wxpython_versions))
     wxpython_version=${wxpython_version:-4.2.2}
 
     # Step 4: Installation directory
@@ -693,19 +703,27 @@ show_gui() {
         exit 1
     fi
 
-    # Step 5: Additional options
+    # Step 5: Additional options with tooltips
     options=$(zenity --list --checklist --title="Additional Options" \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
-        FALSE "Build Python from source" \
-        FALSE "Build wxPython from source" \
+        FALSE "Build Python from source (requires source dependencies)" \
+        FALSE "Build wxPython from source (requires source dependencies)" \
         TRUE "Create desktop shortcuts" \
-        TRUE "Add PsychoPy to system PATH")
+        TRUE "Add PsychoPy to system PATH" \
+        FALSE "Install without versioned subdirectory" \
+        FALSE "Force overwrite of existing directory" \
+        FALSE "Enable verbose output" \
+        FALSE "Run in non-interactive mode")
 
     build_python=false
     build_wx=false
     disable_shortcut=true
     disable_path=true
+    no_versioned_dir=false
+    force=false
+    verbose=false
+    non_interactive=false
 
     if [[ $options == *"Build Python from source"* ]]; then
         build_python=true
@@ -718,6 +736,18 @@ show_gui() {
     fi
     if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
         disable_path=false
+    fi
+    if [[ $options == *"Install without versioned subdirectory"* ]]; then
+        no_versioned_dir=true
+    fi
+    if [[ $options == *"Force overwrite of existing directory"* ]]; then
+        force=true
+    fi
+    if [[ $options == *"Enable verbose output"* ]]; then
+        verbose=true
+    fi
+    if [[ $options == *"Run in non-interactive mode"* ]]; then
+        non_interactive=true
     fi
 }
 
