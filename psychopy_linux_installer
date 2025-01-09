@@ -670,7 +670,7 @@ fetch_versions_from_pypi() {
 }
 
 show_gui() {
-    # Step 1: Select PsychoPy version
+    # Select PsychoPy version
     psychopy_versions=$(fetch_versions_from_pypi psychopy)
     first_psychopy_version=$(echo "$psychopy_versions" | head -1)
     psychopy_version=$(zenity --list --title="PsychoPy Version" \
@@ -678,21 +678,21 @@ show_gui() {
         --radiolist --column="Select" --column="Version" \
         TRUE "$first_psychopy_version" $(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
     psychopy_version=$(echo "$psychopy_version" | xargs) # Trim spaces
-    if [ $? -ne 0 ] || [ -z "$psychopy_version" ]; then
+    if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    # Step 2: Select Python version
+    # Select Python version
     python_version=$(zenity --list --title="Python Version" \
         --text="Select the Python version:" \
         --radiolist --column="Select" --column="Version" \
         TRUE "3.10" FALSE "3.9" FALSE "3.8")
     python_version=$(echo "$python_version" | xargs)
-    if [ $? -ne 0 ] || [ -z "$python_version" ]; then
+    if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    # Step 3: Select wxPython version
+    # Select wxPython version
     wxpython_versions=$(fetch_versions_from_pypi wxPython)
     default_wxpython_version="4.2.2"
     wxpython_version=$(zenity --list --title="wxPython Version" \
@@ -700,18 +700,18 @@ show_gui() {
         --radiolist --column="Select" --column="Version" \
         TRUE "$default_wxpython_version" $(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
     wxpython_version=$(echo "$wxpython_version" | xargs) # Trim spaces
-    if [ -z "$wxpython_version" ]; then
-        wxpython_version="$default_wxpython_version"
-    fi
-
-    # Step 4: Installation directory
-    install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
-    install_dir=$(echo "$install_dir" | xargs) # Trim spaces
-    if [ $? -ne 0 ] || [ -z "$install_dir" ]; then
+    if [ $? -ne 0 ]; then
         exit 1
     fi
 
-    # Step 5: Additional options with tooltips
+    # Installation directory
+    install_dir=$(zenity --file-selection --directory --title="Select Installation Directory")
+    install_dir=$(echo "$install_dir" | xargs) # Trim spaces
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
+    # Additional options with tooltips
     options=$(zenity --list --checklist --title="Additional Options" \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
@@ -723,15 +723,9 @@ show_gui() {
         FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
         FALSE "Enable verbose output")
-
-    build_python=false
-    build_wx=false
-    disable_shortcut=true
-    disable_path=true
-    no_versioned_install_dir=false
-    force_overwrite=false
-    verbose=false
-    non_interactive=false
+        if [ $? -ne 0 ]; then
+            exit 1
+        fi
 
     if [[ $options == *"Build Python from source"* ]]; then
         build_python=true
@@ -756,6 +750,7 @@ show_gui() {
     fi
     if [[ $options == *"Run in non-interactive mode"* ]]; then
         non_interactive=true
+        sudo_mode=auto
     fi
     if [[ $non_interactive == false ]]; then
         sudo_mode=$(zenity --list --title="Sudo Mode" \
@@ -772,7 +767,7 @@ show_gui() {
         fi
     fi
 
-    # Step 6: Additional packages
+    # Additional packages
     additional_packages=$(zenity --entry --title="Additional Packages" \
         --text="Specify additional pip packages to install (comma-separated).\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave Empty for no additonal packages" \
         --entry-text="")
@@ -781,6 +776,7 @@ show_gui() {
     fi
     additional_packages=$(echo "$additional_packages" | xargs) # Trim spaces
 
+    # Sudo-mode
     if [[ $non_interactive == false ]]; then
         sudo_mode=$(zenity --list --title="Sudo Mode" \
             --text="Select the desired sudo mode:" \
@@ -793,22 +789,8 @@ show_gui() {
 }   
 
 process_arguments() {
-    psychopy_version="latest"
-    python_version="3.10"
-    wxpython_version="4.2.2"
-    build_python=false
-    build_wx=false
-    install_dir="$HOME"
-    no_versioned_install_dir=false
     install_dir_set_by_user=false
-    additional_packages=""
-    sudo_mode="ask"
     sudo_mode_set=false
-    disable_shortcut=false
-    disable_path=false
-    non_interactive=false
-    force_overwrite=false
-    verbose=false
 
     for arg in "$@"; do
         case $arg in
@@ -900,11 +882,9 @@ process_arguments() {
 
 main() {
     # Detect if arguments are provided
-    pkg_manager_permission=false
     if [ $# -eq 0 ]; then
         if ! command -v zenity &> /dev/null; then
-            log_message "Warning: zenity is not installed or not available in PATH. Defaulting to non-interactive mode with default settings."
-            process_arguments
+            log_message "Warning: zenity is not installed or not available in PATH and no arguments are used. Using default settings."
             return
         else
             show_gui
@@ -912,6 +892,24 @@ main() {
     else
         process_arguments "$@"
     fi
+
+
+    # Ensure defaults for unset variables
+    pkg_manager_permission=false
+    psychopy_version=${psychopy_version:-"latest"}
+    python_version=${python_version:-"3.10"}
+    wxpython_version=${wxpython_version:-"4.2.2"}
+    build_python=${build_python:-false}
+    build_wx=${build_wx:-false}
+    install_dir=${install_dir:-"$HOME"}
+    no_versioned_install_dir=${no_versioned_install_dir:-false}
+    additional_packages=${additional_packages:-""}
+    sudo_mode=${sudo_mode:-"ask"}
+    disable_shortcut=${disable_shortcut:-false}
+    disable_path=${disable_path:-false}
+    non_interactive=${non_interactive:-false}
+    force_overwrite=${force_overwrite:-false}
+    verbose=${verbose:-false}
 
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
