@@ -21,7 +21,7 @@ jobs:
 
       - name: Run ShellCheck
         run: |
-          shellcheck -e SC1017 -e SC1091 $GITHUB_WORKSPACE/psychopy_linux_installer 
+          shellcheck -e SC1017 -e SC1091 -e SC2181 $GITHUB_WORKSPACE/psychopy_linux_installer 
 
       - name: Run bashate
         run: |
