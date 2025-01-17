@@ -9,6 +9,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate CHANGELOG.md
+        run: |
+          gem install github_changelog_generator
+          github_changelog_generator \
+            --user ${{ github.repository_owner }} \
+            --project ${{ github.event.repository.name }} \
+            --token ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit CHANGELOG.md
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "Update CHANGELOG.md for ${INSTALLER_VERSION}"
+          git push origin main
+
       - name: Create release if not exists
         id: create_release
         env:
@@ -26,6 +42,13 @@ jobs:
           RELEASE_TAG="v${INSTALLER_VERSION}"
           API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
           
+          # Fetch changelog for this version
+          if [ -f "CHANGELOG.md" ]; then
+            CHANGELOG_CONTENT=$(awk "/## ${INSTALLER_VERSION}/,/^## /" CHANGELOG.md | sed '1d;$d')
+          else
+            CHANGELOG_CONTENT="No changelog found for version ${INSTALLER_VERSION}."
+          fi
+
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
           if echo "$RESPONSE" | grep -q '"id":'; then
             echo "Release ${RELEASE_TAG} already exists."
@@ -39,7 +62,7 @@ jobs:
               {
                 "tag_name": "${RELEASE_TAG}",
                 "name": "${RELEASE_TAG}",
-                "body": "PsychoPy Linux Installer version ${INSTALLER_VERSION}",
+                "body": "${CHANGELOG_CONTENT}",
                 "draft": false,
                 "prerelease": false
               }
