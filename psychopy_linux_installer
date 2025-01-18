@@ -1048,12 +1048,6 @@ main() {
     log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
     log pip install -U pip distro sip six psychtoolbox attrdict
 
-    # Install numpy<2 if PsychoPy version is less than 2024.2.0
-    if version_greater_than "2024.2.0" "$psychopy_version"; then
-        log_message "Info: PsychoPy version < 2024.2.0, installing numpy<2"
-        log pip install "numpy<2"
-    fi
-
     # Determine wxPython version and install it
     if [ "$wxpython_version" = "latest" ]; then
         wxpython_version=$(get_latest_pypi_version "wxPython")
@@ -1083,6 +1077,12 @@ main() {
     if ! pip show wxPython &> /dev/null; then
         log_message "Error: wxPython is not installed. Something went wrong during the installation. Use --verbose and maybe --build=wxpython flags."
         exit 1
+    fi
+
+    # Install numpy<2 if PsychoPy version is less than 2024.2.0
+    if version_greater_than "2024.2.0" "$psychopy_version"; then
+        log_message "Info: PsychoPy version < 2024.2.0, installing numpy<2"
+        log pip install "numpy<2"
     fi
 
     # Install PsychoPy
