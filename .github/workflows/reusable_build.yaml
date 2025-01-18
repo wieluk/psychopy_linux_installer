@@ -63,7 +63,7 @@ jobs:
           if [ -z "$INSTALLER_VERSION" ]; then
             exit 1
           fi
-          WXPYTHON_VERSION=$(grep -m1 '^\s*wxpython_version=' psychopy_linux_installer | sed 's/^[^=]*=//;s/"//g')
+          WXPYTHON_VERSION=$(grep -m1 '^wxpython_version=\${wxpython_version:-"' psychopy_linux_installer | sed -n 's/^wxpython_version=\${wxpython_version:-"\([^"]*\)"}/\1/p')
           if [ -z "$WXPYTHON_VERSION" ]; then
             exit 1
           fi
