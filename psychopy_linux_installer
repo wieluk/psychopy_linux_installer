@@ -53,7 +53,24 @@ parse_requirements_file() {
     python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
     wxpython_version=$(grep -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
     psychopy_version=$(grep -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
+    backup_additional_packages=$(
+        { grep -E '.+==.+' "$file" | grep -v '^#' | grep -v '^wxPython==' | grep -v '^psychopy==' && \
+        grep '^wxPython==' "$file" && \
+        grep '^psychopy==' "$file"; } | \
+        sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ',' | sed 's/,$//' | tr -d '[:space:]' || true
+    )
+    
+    if [ -z "$python_version" ]; then
+        log_message "Warning: Python version not specified in requirements file, using default."
+    fi
+    if [ -z "$wxpython_version" ]; then
+        log_message "Warning: wxPython version not specified in requirements file, using default."
+    fi
+    if [ -z "$psychopy_version" ]; then
+        log_message "Warning: PsychoPy version not specified in requirements file, using default."
+    fi
 }
+
 
 # Wrapper function to handle sudo requests and permissions dynamically
 sudo_wrapper() {
@@ -1104,6 +1121,16 @@ main() {
             log_message "Info: Packages from $requirements_file installed successfully."
         else
             log_message "Warning: Failed to install packages from $requirements_file."
+            IFS=',' read -ra PACKAGES <<< "$backup_additional_packages"
+            for package in "${PACKAGES[@]}"; do
+                log_message "Info: Installing $package..."
+                if log pip install "$package"; then
+                    installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+                    log_message "Info: ${package%%=*} version $installed_version installed successfully."
+                else
+                    log_message "Warning: Failed to install $package. Skipping."
+                fi
+            done
         fi
     elif [ -n "$additional_packages" ]; then
         log_message "Info: Installing additional packages..."
