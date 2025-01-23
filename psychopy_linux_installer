@@ -54,7 +54,7 @@ parse_requirements_file() {
     wxpython_version=$(grep -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
     psychopy_version=$(grep -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
     backup_additional_packages=$(
-        { grep -E '.+==.+' "$file" | grep -v '^#' | grep -v '^wxPython==' | grep -v '^psychopy==' && \
+        { grep -E '.+==.+' "$file" | grep -v '^#' | grep -v '^wxPython==' | grep -v '^psychopy==' | grep -v '^pywin32==' | grep -v '^pyWinhook==' && \
         grep '^wxPython==' "$file" && \
         grep '^psychopy==' "$file"; } | \
         sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ',' | sed 's/,$//' | tr -d '[:space:]' || true
@@ -70,7 +70,6 @@ parse_requirements_file() {
         log_message "Warning: PsychoPy version not specified in requirements file, using default."
     fi
 }
-
 
 # Wrapper function to handle sudo requests and permissions dynamically
 sudo_wrapper() {
@@ -1117,10 +1116,10 @@ main() {
     # Install additional packages if specified
     if [ -n "$requirements_file" ]; then
         log_message "Info: Installing packages from requirements file..."
-        if log pip install -r "$requirements_file"; then
+        if pip install -r <(echo "$backup_additional_packages"); then
             log_message "Info: Packages from $requirements_file installed successfully."
         else
-            log_message "Warning: Failed to install packages from $requirements_file."
+            log_message "Warning: Failed to install packages from $requirements_file. Installing packages one by one ..."
             IFS=',' read -ra PACKAGES <<< "$backup_additional_packages"
             for package in "${PACKAGES[@]}"; do
                 log_message "Info: Installing $package..."
