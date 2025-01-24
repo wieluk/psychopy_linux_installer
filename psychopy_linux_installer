@@ -99,7 +99,7 @@ parse_requirements_file() {
         if echo "$backup_additional_packages" | grep -q "$pkg=="; then
             version=$(echo "$backup_additional_packages" | grep -o "$pkg==[^,]*" | cut -d'=' -f3)
             log_message "Warning: Changing $pkg version requirement from '==$version' to '>=$version' as specified in requirements.txt due to PsychoPy dependencies on Linux. Install the exact version manually if needed."
-            backup_additional_packages=$(echo "$backup_additional_packages" | sed "s/$pkg==$version/$pkg>=$version/g")
+            backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
         fi
     done
 }
