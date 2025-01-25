@@ -63,7 +63,7 @@ parse_requirements_file() {
     fi
 
     python_version=$(grep -i -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
-    wxpython_version=$(grep -i -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
+    wxpython_version=$(grep -i -E '^wxpython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
     psychopy_version=$(grep -i -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
     backup_additional_packages=$(
         { grep -i -E '.+==.+' "$file" | grep -vi '^#' | grep -vi '^psychopy==' | grep -vi '^wxpython==' && \
@@ -87,7 +87,7 @@ parse_requirements_file() {
     fi
 
     # Cut specific packages from backup_additional_packages and issue warnings
-    for pkg in pywin32 pypiwin32 pyWinhook; do
+    for pkg in pywin32 pypiwin32 pywinhook; do
         if echo "$backup_additional_packages" | grep -i -q "$pkg=="; then
             log_message "Warning: $pkg is not installed from requirements.txt as it is a Windows-only package."
             backup_additional_packages=$(echo "$backup_additional_packages" | sed "s/$pkg==[^,]*,//g" | sed "s/,$pkg==[^,]*//g")
@@ -102,6 +102,7 @@ parse_requirements_file() {
             backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
         fi
     done
+    echo "$backup_additional_packages"
 }
 
 # Wrapper function to handle sudo requests and permissions dynamically
