@@ -102,7 +102,6 @@ parse_requirements_file() {
             backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
         fi
     done
-    echo "$backup_additional_packages"
 }
 
 # Wrapper function to handle sudo requests and permissions dynamically
