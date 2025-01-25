@@ -62,12 +62,12 @@ parse_requirements_file() {
         exit 1
     fi
 
-    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
-    wxpython_version=$(grep -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
-    psychopy_version=$(grep -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
+    python_version=$(grep -i -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
+    wxpython_version=$(grep -i -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
+    psychopy_version=$(grep -i -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
     backup_additional_packages=$(
-        { grep -E '.+==.+' "$file" | grep -v '^#' | grep -v '^psychopy==' && \
-        grep '^psychopy==' "$file"; } | \
+        { grep -i -E '.+==.+' "$file" | grep -vi '^#' | grep -vi '^psychopy==' | grep -vi '^wxpython==' && \
+        grep -i '^psychopy==' "$file"; } | \
         sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ',' | sed 's/,$//' | tr -d '[:space:]' || true
     )
 
@@ -87,8 +87,8 @@ parse_requirements_file() {
     fi
 
     # Cut specific packages from backup_additional_packages and issue warnings
-    for pkg in pywin32 pypiwin32 pyWinhook wxpython; do
-        if echo "$backup_additional_packages" | grep -q "$pkg=="; then
+    for pkg in pywin32 pypiwin32 pyWinhook; do
+        if echo "$backup_additional_packages" | grep -i -q "$pkg=="; then
             log_message "Warning: $pkg is not installed from requirements.txt as it is a Windows-only package."
             backup_additional_packages=$(echo "$backup_additional_packages" | sed "s/$pkg==[^,]*,//g" | sed "s/,$pkg==[^,]*//g")
         fi
@@ -96,8 +96,8 @@ parse_requirements_file() {
 
     # Modify version requirements and issue warnings
     for pkg in pyglet python-vlc; do
-        if echo "$backup_additional_packages" | grep -q "$pkg=="; then
-            version=$(echo "$backup_additional_packages" | grep -o "$pkg==[^,]*" | cut -d'=' -f3)
+        if echo "$backup_additional_packages" | grep -i -q "$pkg=="; then
+            version=$(echo "$backup_additional_packages" | grep -i -o "$pkg==[^,]*" | cut -d'=' -f3)
             log_message "Warning: Changing $pkg version requirement from '==$version' to '>=$version' as specified in requirements.txt due to PsychoPy dependencies on Linux. Install the exact version manually if needed."
             backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
         fi
