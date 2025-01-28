@@ -76,13 +76,13 @@ parse_requirements_file() {
             # Detect duplicates
             if [[ -n "${package_versions[$package_name]}" ]]; then
                 current_version="${package_versions[$package_name]}"
-                
+
                 if [[ "$current_version" != "$package_version" ]]; then
                     log_message "Warning: Duplicate package detected for '$package_name'. Found versions '$current_version' and '$package_version'. Keeping the higher version '$package_version'. Please check your requirements.txt for duplicates."
                 else
                     log log_message "Info: Duplicate package detected for '$package_name' with the same version '$package_version'. Please check your requirements.txt for redundant entries."
                 fi
-                
+
                 if [[ $(printf '%s\n%s' "$current_version" "$package_version" | sort -V | tail -n 1) == "$package_version" ]]; then
                     package_versions["$package_name"]="$package_version"
                 fi
