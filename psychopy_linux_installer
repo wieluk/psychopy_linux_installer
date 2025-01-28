@@ -49,6 +49,7 @@ log_message() {
 # Function to parse requirements.txt
 parse_requirements_file() {
     local file=$1
+    local -A package_versions
 
     # Check if the file exists, is not empty, and is readable
     if [ ! -f "$file" ]; then
@@ -62,14 +63,44 @@ parse_requirements_file() {
         exit 1
     fi
 
+    # Parse the requirements file
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^# ]] || [[ -z "$line" ]]; then
+            continue
+        fi
+
+        if [[ "$line" =~ ^([^=]+)==([^,]+) ]]; then
+            package_name="${BASH_REMATCH[1]}"
+            package_version="${BASH_REMATCH[2]}"
+
+            # Detect duplicates
+            if [[ -n "${package_versions[$package_name]}" ]]; then
+                current_version="${package_versions[$package_name]}"
+                
+                if [[ "$current_version" != "$package_version" ]]; then
+                    log_message "Warning: Duplicate package detected for '$package_name'. Found versions '$current_version' and '$package_version'. Keeping the higher version '$package_version'. Please check your requirements.txt for duplicates."
+                else
+                    log log_message "Info: Duplicate package detected for '$package_name' with the same version '$package_version'. Please check your requirements.txt for redundant entries."
+                fi
+                
+                if [[ $(printf '%s\n%s' "$current_version" "$package_version" | sort -V | tail -n 1) == "$package_version" ]]; then
+                    package_versions["$package_name"]="$package_version"
+                fi
+            else
+                package_versions["$package_name"]="$package_version"
+            fi
+        fi
+    done < "$file"
+
+    backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
+        if [[ "$pkg" != "psychopy" && "$pkg" != "wxpython" ]]; then
+            echo "$pkg==${package_versions[$pkg]}"
+        fi
+    done | tr '\n' ',' | sed 's/,$//')
+
     python_version=$(grep -i -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
-    wxpython_version=$(grep -i -E '^wxpython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
-    psychopy_version=$(grep -i -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
-    backup_additional_packages=$(
-        { grep -i -E '.+==.+' "$file" | grep -vi '^#' | grep -vi '^psychopy==' | grep -vi '^wxpython==' && \
-        grep -i '^psychopy==' "$file"; } | \
-        sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ',' | sed 's/,$//' | tr -d '[:space:]' || true
-    )
+    wxpython_version="${package_versions["wxpython"]:-}"
+    psychopy_version="${package_versions["psychopy"]:-}"
 
     if [ -z "$python_version" ]; then
         log_message "Warning: Python version not specified in requirements.txt, using default."
@@ -86,19 +117,11 @@ parse_requirements_file() {
         fi
     fi
 
-    # Cut specific packages from backup_additional_packages and issue warnings
-    for pkg in pywin32 pypiwin32 pywinhook; do
-        if echo "$backup_additional_packages" | grep -i -q "$pkg=="; then
-            log_message "Warning: $pkg is not installed from requirements.txt as it is a Windows-only package."
-            backup_additional_packages=$(echo "$backup_additional_packages" | sed "s/$pkg==[^,]*,//g" | sed "s/,$pkg==[^,]*//g")
-        fi
-    done
-
-    # Modify version requirements and issue warnings
+    # Adjust specific packages for Linux dependencies
     for pkg in pyglet python-vlc; do
-        if echo "$backup_additional_packages" | grep -i -q "$pkg=="; then
-            version=$(echo "$backup_additional_packages" | grep -i -o "$pkg==[^,]*" | cut -d'=' -f3)
-            log_message "Warning: Changing $pkg version requirement from '==$version' to '>=$version' as specified in requirements.txt due to PsychoPy dependencies on Linux. Install the exact version manually if needed."
+        if [[ -n "${package_versions[$pkg]}" ]]; then
+            version="${package_versions[$pkg]}"
+            log_message "Warning: Changing $pkg version requirement from '==$version' to '>=$version' due to PsychoPy dependencies on Linux. Install the exact version manually if needed."
             backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
         fi
     done
