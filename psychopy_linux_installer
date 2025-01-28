@@ -188,7 +188,7 @@ sudo_wrapper() {
                 log sudo "${command[@]}"
                 ;;
             continue)
-                log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo..."
+                log log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo..."
                 ;;
             error)
                 log_message "Error: Command '${command[*]}' failed with '${error_output}'. Sudo is required, but mode is set to 'error'."
