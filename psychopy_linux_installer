@@ -73,7 +73,6 @@ parse_requirements_file() {
             package_name="${BASH_REMATCH[1]}"
             package_version="${BASH_REMATCH[2]}"
 
-            # Detect duplicates
             if [[ -n "${package_versions[$package_name]}" ]]; then
                 current_version="${package_versions[$package_name]}"
 
