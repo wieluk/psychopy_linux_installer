@@ -17,7 +17,7 @@ jobs:
           - fedora-39
           - fedora-40
           - pop-22.04
-          - rocky-9.4
+          - rocky-9.5
           - centos-9
           - manjarolinux-24
           - opensuse-leap-15.6
