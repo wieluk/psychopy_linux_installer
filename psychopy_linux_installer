@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2025-01-17
-#  Version:       1.4.0
+#  Version:       1.4.1
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -49,11 +49,81 @@ log_message() {
 # Function to parse requirements.txt
 parse_requirements_file() {
     local file=$1
+    local -A package_versions
 
-    python_version=$(grep -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
-    wxpython_version=$(grep -E '^wxPython==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
-    psychopy_version=$(grep -E '^psychopy==' "$file" | awk -F'==' '{print $2}' | xargs | tr -d '[:space:]' || true)
-    additional_packages=$(grep -E -v '^(#|psychopy==|wxPython==)' "$file" | grep -E '.+==.+' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | tr '\n' ',' | sed 's/,$//' | tr -d '[:space:]' || true)
+    # Check if the file exists, is not empty, and is readable
+    if [ ! -f "$file" ]; then
+        log_message "Error: File '$file' does not exist."
+        exit 1
+    elif [ ! -s "$file" ]; then
+        log_message "Error: File '$file' is empty."
+        exit 1
+    elif [ ! -r "$file" ]; then
+        log_message "Error: File '$file' is not readable."
+        exit 1
+    fi
+
+    # Parse the requirements file
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^# ]] || [[ -z "$line" ]]; then
+            continue
+        fi
+
+        if [[ "$line" =~ ^([^=]+)==([^,]+) ]]; then
+            package_name="${BASH_REMATCH[1]}"
+            package_version="${BASH_REMATCH[2]}"
+
+            if [[ -n "${package_versions[$package_name]}" ]]; then
+                current_version="${package_versions[$package_name]}"
+
+                if [[ "$current_version" != "$package_version" ]]; then
+                    log_message "Warning: Duplicate package detected for '$package_name'. Found versions '$current_version' and '$package_version'. Keeping the higher version '$package_version'. Please check your requirements.txt for duplicates."
+                else
+                    log log_message "Info: Duplicate package detected for '$package_name' with the same version '$package_version'. Please check your requirements.txt for redundant entries."
+                fi
+
+                if [[ $(printf '%s\n%s' "$current_version" "$package_version" | sort -V | tail -n 1) == "$package_version" ]]; then
+                    package_versions["$package_name"]="$package_version"
+                fi
+            else
+                package_versions["$package_name"]="$package_version"
+            fi
+        fi
+    done < "$file"
+
+    backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
+        if [[ "$pkg" != "psychopy" && "$pkg" != "wxpython" ]]; then
+            echo "$pkg==${package_versions[$pkg]}"
+        fi
+    done | tr '\n' ',' | sed 's/,$//')
+
+    python_version=$(grep -i -E '^# Python version:' "$file" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
+    wxpython_version="${package_versions["wxpython"]:-}"
+    psychopy_version="${package_versions["psychopy"]:-}"
+
+    if [ -z "$python_version" ]; then
+        log_message "Warning: Python version not specified in requirements.txt, using default."
+    fi
+    if [ -z "$wxpython_version" ]; then
+        log_message "Warning: wxPython version not specified in requirements.txt, using default."
+    fi
+    if [ -z "$psychopy_version" ]; then
+        log_message "Warning: PsychoPy version not specified in requirements.txt, using default."
+        if [ -n "$backup_additional_packages" ]; then
+            backup_additional_packages="${backup_additional_packages},psychopy"
+        else
+            backup_additional_packages="psychopy"
+        fi
+    fi
+
+    # Adjust specific packages for Linux dependencies
+    for pkg in pyglet python-vlc; do
+        if [[ -n "${package_versions[$pkg]}" ]]; then
+            version="${package_versions[$pkg]}"
+            log_message "Warning: Changing $pkg version requirement from '==$version' to '>=$version' due to PsychoPy dependencies on Linux. Install the exact version manually if needed."
+            backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
+        fi
+    done
 }
 
 # Wrapper function to handle sudo requests and permissions dynamically
@@ -118,7 +188,7 @@ sudo_wrapper() {
                 log sudo "${command[@]}"
                 ;;
             continue)
-                log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo..."
+                log log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo..."
                 ;;
             error)
                 log_message "Error: Command '${command[*]}' failed with '${error_output}'. Sudo is required, but mode is set to 'error'."
@@ -791,6 +861,8 @@ show_gui() {
     if [[ $options == *"Run in non-interactive mode"* ]]; then
         non_interactive=true
         sudo_mode=auto
+    else
+        non_interactive=false
     fi
     if [[ $non_interactive == false ]]; then
         sudo_mode=$(zenity --list --title="Sudo Mode" \
@@ -1079,38 +1151,58 @@ main() {
         exit 1
     fi
 
+    # Install packages based on conditions
+    if [ -n "$requirements_file" ]; then
+        log_message "Info: Installing packages from requirements file..."
+        if log pip install -r <(echo "$backup_additional_packages" | tr ',' '\n'); then
+            log_message "Info: Packages from $requirements_file installed successfully."
+        else
+            log_message "Warning: Failed to install packages from $requirements_file. Installing packages one by one ..."
+            IFS=',' read -ra PACKAGES <<< "$backup_additional_packages"
+            for package in "${PACKAGES[@]}"; do
+                log_message "Info: Installing $package..."
+                if log pip install "$package"; then
+                    installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+                    log_message "Info: ${package%%=*} version $installed_version installed successfully."
+                else
+                    log_message "Warning: Failed to install $package. Skipping."
+                fi
+            done
+        fi
+    else
+        # Install PsychoPy
+        log_message "Info: Installing PsychoPy version ${psychopy_version}"
+        if [ "$psychopy_version" == "git" ]; then
+            log pip install git+https://github.com/psychopy/psychopy.git@dev
+        else
+            log pip install psychopy=="${psychopy_version}"
+        fi
+
+        if ! pip show psychopy &> /dev/null; then
+            log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use the --verbose flag."
+            exit 1
+        fi
+
+        # Install additional packages if specified
+        if [ -n "$additional_packages" ]; then
+            log_message "Info: Installing additional packages..."
+            IFS=',' read -ra PACKAGES <<< "$additional_packages"
+            for package in "${PACKAGES[@]}"; do
+                log_message "Info: Installing $package..."
+                if log pip install "$package"; then
+                    installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+                    log_message "Info: ${package%%=*} version $installed_version installed successfully."
+                else
+                    log_message "Warning: Failed to install $package. Skipping."
+                fi
+            done
+        fi
+    fi
+
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
     if version_greater_than "2024.2.0" "$psychopy_version"; then
-        log_message "Info: PsychoPy version < 2024.2.0, installing numpy<2"
+        log_message "Warning: PsychoPy version < 2024.2.0, installing numpy<2"
         log pip install "numpy<2"
-    fi
-
-    # Install PsychoPy
-    log_message "Info: Installing PsychoPy version ${psychopy_version}"
-    if [ "$psychopy_version" == "git" ]; then
-        log pip install git+https://github.com/psychopy/psychopy.git@dev
-    else
-        log pip install psychopy=="${psychopy_version}"
-    fi
-
-    if ! pip show psychopy &> /dev/null; then
-        log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use the --verbose flag."
-        exit 1
-    fi
-
-    # Install additional packages if specified
-    if [ -n "$additional_packages" ]; then
-        log_message "Info: Installing additional packages..."
-        IFS=',' read -ra PACKAGES <<< "$additional_packages"
-        for package in "${PACKAGES[@]}"; do
-            log_message "Info: Installing $package..."
-            if log pip install "$package"; then
-                installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
-                log_message "Info: ${package%%=*} version $installed_version installed successfully."
-            else
-                log_message "Warning: Failed to install $package. Skipping."
-            fi
-        done
     fi
 
     # Deactivate virtual environment
