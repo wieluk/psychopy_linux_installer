@@ -50,50 +50,39 @@ log_message() {
 parse_requirements_file() {
     local file=$1
     local -A package_versions
+    local -A package_operators
 
-    # Check if the file exists, is not empty, and is readable
-    if [ ! -f "$file" ]; then
-        log_message "Error: File '$file' does not exist."
-        exit 1
-    elif [ ! -s "$file" ]; then
-        log_message "Error: File '$file' is empty."
-        exit 1
-    elif [ ! -r "$file" ]; then
-        log_message "Error: File '$file' is not readable."
+    if [ ! -f "$file" ] || [ ! -s "$file" ] || [ ! -r "$file" ]; then
+        log_message "Error: File '$file' is not accessible or empty."
         exit 1
     fi
 
-    # Parse the requirements file
     while IFS= read -r line; do
         if [[ "$line" =~ ^# ]] || [[ -z "$line" ]]; then
             continue
         fi
 
-        if [[ "$line" =~ ^([^=]+)==([^,]+) ]]; then
-            package_name="${BASH_REMATCH[1]}"
-            package_version="${BASH_REMATCH[2]}"
+        if [[ "$line" =~ ^([A-Za-z0-9._-]+)[[:space:]]*(>=|<=|==|~=|!=|>|<)[[:space:]]*([0-9][A-Za-z0-9._-]*) ]]; then
+            package_name="${BASH_REMATCH[1],,}"
+            operator="${BASH_REMATCH[2]}"
+            package_version="${BASH_REMATCH[3]}"
 
             if [[ -n "${package_versions[$package_name]}" ]]; then
                 current_version="${package_versions[$package_name]}"
-
-                if [[ "$current_version" != "$package_version" ]]; then
-                    log_message "Warning: Duplicate package detected for '$package_name'. Found versions '$current_version' and '$package_version'. Keeping the higher version '$package_version'. Please check your requirements.txt for duplicates."
-                else
-                    log log_message "Info: Duplicate package detected for '$package_name' with the same version '$package_version'. Please check your requirements.txt for redundant entries."
-                fi
-
-                if [[ $(printf '%s\n%s' "$current_version" "$package_version" | sort -V | tail -n 1) == "$package_version" ]]; then
+                if [[ "$operator" == "==" || "${package_operators[$package_name]}" != "==" ]]; then
                     package_versions["$package_name"]="$package_version"
+                    package_operators["$package_name"]="$operator"
                 fi
             else
                 package_versions["$package_name"]="$package_version"
+                package_operators["$package_name"]="$operator"
             fi
         fi
     done < "$file"
 
     backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
-        if [[ "$pkg" != "psychopy" && "$pkg" != "wxpython" ]]; then
-            echo "$pkg==${package_versions[$pkg]}"
+        if [[ "$pkg" != "psychopy" && "$pkg" != "wxpython" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
+            echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
         fi
     done | tr '\n' ',' | sed 's/,$//')
 
@@ -101,27 +90,20 @@ parse_requirements_file() {
     wxpython_version="${package_versions["wxpython"]:-}"
     psychopy_version="${package_versions["psychopy"]:-}"
 
-    if [ -z "$python_version" ]; then
-        log_message "Warning: Python version not specified in requirements.txt, using default."
-    fi
-    if [ -z "$wxpython_version" ]; then
-        log_message "Warning: wxPython version not specified in requirements.txt, using default."
-    fi
+    [[ -z "$python_version" ]] && log_message "Warning: Python version not specified in requirements.txt, using default."
+    [[ -z "$wxpython_version" ]] && log_message "Warning: wxPython version not specified in requirements.txt, using default."
+    
     if [ -z "$psychopy_version" ]; then
         log_message "Warning: PsychoPy version not specified in requirements.txt, using default."
-        if [ -n "$backup_additional_packages" ]; then
-            backup_additional_packages="${backup_additional_packages},psychopy"
-        else
-            backup_additional_packages="psychopy"
-        fi
+        backup_additional_packages="${backup_additional_packages:+$backup_additional_packages,}psychopy"
     fi
 
-    # Adjust specific packages for Linux dependencies
+    # Adjust Linux dependencies
     for pkg in pyglet python-vlc; do
-        if [[ -n "${package_versions[$pkg]}" ]]; then
-            version="${package_versions[$pkg]}"
-            log_message "Warning: Changing $pkg version requirement from '==$version' to '>=$version' due to PsychoPy dependencies on Linux. Install the exact version manually if needed."
-            backup_additional_packages=${backup_additional_packages//"$pkg==$version"/"$pkg>=$version"}
+        pkg_lower="${pkg,,}"
+        if [[ -n "${package_versions[$pkg_lower]}" ]]; then
+            version="${package_versions[$pkg_lower]}"
+            backup_additional_packages=${backup_additional_packages//"$pkg_lower${package_operators[$pkg_lower]}$version"/"$pkg_lower>=$version"}
         fi
     done
 }
@@ -429,7 +411,7 @@ check_pypi_for_version() {
     local package=$1
     local version=$2
     if ! curl -s "https://pypi.org/pypi/${package}/${version}/json" | jq -e .info.version > /dev/null; then
-        log_message "Error: ${package} version ${version} does not exist. Exiting."
+        log_message "Error: ${package} version ${version} does not exist on PyPi. Exiting."
         exit 1
     fi
 }
