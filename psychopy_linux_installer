@@ -81,7 +81,7 @@ parse_requirements_file() {
     done < "$file"
 
     backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
-        if [[ "$pkg" != "psychopy" && "$pkg" != "wxpython" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
+        if [[ "$pkg" != "wxpython" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
             echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
         fi
     done | tr '\n' ',' | sed 's/,$//')
