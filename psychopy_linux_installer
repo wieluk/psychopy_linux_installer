@@ -81,7 +81,7 @@ parse_requirements_file() {
     done < "$file"
 
     backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
-        if [[ "$pkg" != "wxpython" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
+        if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
             echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
         fi
     done | tr '\n' ',' | sed 's/,$//')
@@ -92,10 +92,12 @@ parse_requirements_file() {
 
     [[ -z "$python_version" ]] && log_message "Warning: Python version not specified in requirements.txt, using default."
     [[ -z "$wxpython_version" ]] && log_message "Warning: wxPython version not specified in requirements.txt, using default."
-    
+
     if [ -z "$psychopy_version" ]; then
         log_message "Warning: PsychoPy version not specified in requirements.txt, using default."
         backup_additional_packages="${backup_additional_packages:+$backup_additional_packages,}psychopy"
+    else
+        backup_additional_packages="${backup_additional_packages:+$backup_additional_packages,}psychopy==$psychopy_version"
     fi
 
     # Adjust Linux dependencies
@@ -406,14 +408,45 @@ get_latest_pypi_version() {
     echo "$latest_version"
 }
 
+transform_package_spec() {
+    local package_spec=$1
+
+    # If not psychopy or not using git tag, return original
+    if [[ ! $package_spec =~ ^psychopy== ]] || [ "$PSYCHOPY_GIT_TAG" != "true" ]; then
+        echo "$package_spec"
+        return
+    fi
+
+    # Extract version and transform to git format
+    local version=${package_spec#psychopy==}
+    echo "git+https://github.com/psychopy/psychopy.git@${version}"
+}
+
 # Function to check if a specific version of a package exists on PyPI
 check_pypi_for_version() {
     local package=$1
     local version=$2
-    if ! curl -s "https://pypi.org/pypi/${package}/${version}/json" | jq -e .info.version > /dev/null; then
-        log_message "Error: ${package} version ${version} does not exist on PyPi. Exiting."
-        exit 1
+    local GITHUB_API="https://api.github.com/repos/psychopy/psychopy/git/refs/tags"
+    local PYPI_API="https://pypi.org/pypi"
+
+    # Try PyPI first
+    if curl -s "${PYPI_API}/${package}/${version}/json" | jq -e .info.version > /dev/null; then
+        log_message "Info: ${package} version ${version} found on PyPI"
+        return 0
     fi
+
+    # If PyPI fails and package is psychopy, try GitHub tags
+    if [ "${package}" = "psychopy" ]; then
+        if curl -s -H "Accept: application/vnd.github.v3+json" \
+            "${GITHUB_API}/${version}" | jq -e .ref > /dev/null; then
+            log_message "Warning: ${package} version ${version} not found on PyPi but as git tag"
+            PSYCHOPY_GIT_TAG=true
+            return 0
+        fi
+    fi
+
+    log_message "Error: ${package} version ${version} not found on PyPI$([ "${package}" = "psychopy" ] && echo " or as git tag"). Exiting."
+    return 1
 }
 
 # Function to check if python is in path and pip and venv are installed
@@ -998,6 +1031,7 @@ main() {
     non_interactive=${non_interactive:-false}
     force_overwrite=${force_overwrite:-false}
     verbose=${verbose:-false}
+    PSYCHOPY_GIT_TAG=false
 
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
@@ -1060,7 +1094,7 @@ main() {
         exit 1
     fi
 
-    # Install python and create vnev
+    # Install python and create venv
     if [ "$build_python" = true ] || ! check_python_pkg_manager; then
         if [ "$build_python" = true ]; then
             log_message "Info: Installing python build dependencies ..."
@@ -1133,19 +1167,24 @@ main() {
         exit 1
     fi
 
-    # Install packages based on conditions
     if [ -n "$requirements_file" ]; then
         log_message "Info: Installing packages from requirements file..."
-        if log pip install -r <(echo "$backup_additional_packages" | tr ',' '\n'); then
+        transformed_packages=$(echo "$backup_additional_packages" | tr ',' '\n' | while read -r pkg; do
+            transform_package_spec "$pkg"
+        done)
+
+        if log pip install -r <(echo "$transformed_packages"); then
             log_message "Info: Packages from $requirements_file installed successfully."
         else
             log_message "Warning: Failed to install packages from $requirements_file. Installing packages one by one ..."
             IFS=',' read -ra PACKAGES <<< "$backup_additional_packages"
             for package in "${PACKAGES[@]}"; do
                 log_message "Info: Installing $package..."
-                if log pip install "$package"; then
-                    installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
-                    log_message "Info: ${package%%=*} version $installed_version installed successfully."
+                transformed_pkg=$(transform_package_spec "$package")
+                if log pip install "$transformed_pkg"; then
+                    pkg_name="${package%%=*}"
+                    installed_version=$(pip show "$pkg_name" | grep Version | cut -d' ' -f2)
+                    log_message "Info: $pkg_name version $installed_version installed successfully."
                 else
                     log_message "Warning: Failed to install $package. Skipping."
                 fi
@@ -1156,6 +1195,8 @@ main() {
         log_message "Info: Installing PsychoPy version ${psychopy_version}"
         if [ "$psychopy_version" == "git" ]; then
             log pip install git+https://github.com/psychopy/psychopy.git@dev
+        elif [ "$PSYCHOPY_GIT_TAG" = "true" ]; then
+            log pip install "git+https://github.com/psychopy/psychopy.git@${psychopy_version}"
         else
             log pip install psychopy=="${psychopy_version}"
         fi
