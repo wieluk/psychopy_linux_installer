@@ -361,8 +361,9 @@ jobs:
           fi
 
       - name: Build Python
-        if: env.SKIP_PYTHON_PROCESS == 'false'
+      
         id: build-python
+        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
           cd /tmp_dir
           curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
