@@ -23,7 +23,7 @@ jobs:
           - opensuse-leap-15.6
           - linuxmint-22
         python_version: ['3.8', '3.9', '3.10']
-        wxpython_version: ['grab', '4.2.1', 4.2.0', '4.1.1']
+        wxpython_version: ['grab', '4.2.1', '4.2.0', '4.1.1']
       fail-fast: false
     permissions:
       contents: write
