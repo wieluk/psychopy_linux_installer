@@ -23,6 +23,7 @@ jobs:
           - opensuse-leap-15.6
           - linuxmint-22
         python_version: ['3.8', '3.9', '3.10']
+        wxpython_version: ['grab', '4.2.1', 4.2.0', '4.1.1']
       fail-fast: false
     permissions:
       contents: write
@@ -63,9 +64,13 @@ jobs:
           if [ -z "$INSTALLER_VERSION" ]; then
             exit 1
           fi
-          WXPYTHON_VERSION=$(grep -m1 'wxpython_version=${wxpython_version:-"[^"]*"}' psychopy_linux_installer | sed -n 's/.*:-"\([^"]*\)".*/\1/p')
-          if [ -z "$WXPYTHON_VERSION" ]; then
-            exit 1
+          if [ "${{ matrix.wxpython_version }}" = "grab" ]; then
+            WXPYTHON_VERSION=$(grep -m1 'wxpython_version=${wxpython_version:-"[^"]*"}' psychopy_linux_installer | sed -n 's/.*:-"\([^"]*\)".*/\1/p')
+            if [ -z "$WXPYTHON_VERSION" ]; then
+              exit 1
+            fi
+          else
+            WXPYTHON_VERSION="${{ matrix.wxpython_version }}"
           fi
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
@@ -387,24 +392,24 @@ jobs:
           export PATH=/usr/local/psychopy_python/bin:$PATH
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
-      
+          
           pip install -U pip distro sip six setuptools wheel
-      
+          
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
           cd "$WXPYTHON_DIR"
-      
+          
           python --version
           python -m pip wheel .
-      
+          
           WXPYTHON_WHEEL=$(ls wxPython-*.whl)
           WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
-      
+          
           deactivate
 
       - name: Upload wxPython to Release
