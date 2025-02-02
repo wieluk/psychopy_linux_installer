@@ -411,31 +411,27 @@ get_latest_pypi_version() {
 transform_package_spec() {
     local package_spec=$1
 
-    # If not psychopy or not using git tag, return original
     if [[ ! $package_spec =~ ^psychopy== ]] || [ "$PSYCHOPY_GIT_TAG" != "true" ]; then
         echo "$package_spec"
         return
     fi
 
-    # Extract version and transform to git format
     local version=${package_spec#psychopy==}
     echo "git+https://github.com/psychopy/psychopy.git@${version}"
 }
 
-# Function to check if a specific version of a package exists on PyPI
+# Function to check if a specific version of a package exists on PyPI (extra rule for psychopy)
 check_pypi_for_version() {
     local package=$1
     local version=$2
     local GITHUB_API="https://api.github.com/repos/psychopy/psychopy/git/refs/tags"
     local PYPI_API="https://pypi.org/pypi"
 
-    # Try PyPI first
     if curl -s "${PYPI_API}/${package}/${version}/json" | jq -e .info.version > /dev/null; then
         log_message "Info: ${package} version ${version} found on PyPI"
         return 0
     fi
 
-    # If PyPI fails and package is psychopy, try GitHub tags
     if [ "${package}" = "psychopy" ]; then
         if curl -s -H "Accept: application/vnd.github.v3+json" \
             "${GITHUB_API}/${version}" | jq -e .ref > /dev/null; then
@@ -504,33 +500,31 @@ build_python() {
 
 # Function to download prebuilt Python from GitHub release
 python_github_install() {
-    local asset_name api_url assets_json temp_file temp_dir github_download_url python_version_pattern
-
+    local asset_name api_url assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
+    latest_release_tag=$(curl -s "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
     assets_json=$(curl -s "$api_url")
-
-    if echo "$assets_json" | grep -q '"message": "Not Found"'; then
-        log_message "Warning: Release v${script_version} not found on GitHub."
-        return 1
-    fi
-
-    if [ -z "$assets_json" ]; then
-        log_message "Warning: Empty response from GitHub API."
-        return 1
-    fi
 
     python_version_pattern="python-${python_version}\.[0-9]+-${processor_structure}-${os_version}\.tar\.gz"
     asset_name=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
 
+    # If no matching asset is found AND the script version is NOT the latest, check the latest release
+    if [[ -z "$asset_name" && "v${script_version}" != "$latest_release_tag" ]]; then
+        log_message "No matching Python version found in v${script_version}. Checking the latest release ($latest_release_tag)..."
+        api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
+        assets_json=$(curl -s "$api_url")
+        asset_name=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
+    fi
+
     if [ -z "$asset_name" ]; then
-        log_message "Warning: No matching Python version found in release v${script_version} for Python ${python_version}."
+        log_message "Warning: No matching Python version found in v${script_version} or latest release ($latest_release_tag) for Python ${python_version}."
         return 1
     fi
 
     github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
     if [ -z "$github_download_url" ]; then
-        log_message "Warning: Could not find download URL for asset $asset_name."
+        log_message "Warning: Could not find a download URL for asset $asset_name."
         return 1
     fi
 
@@ -618,28 +612,27 @@ wxpython_wheelurl_install() {
 
 # Function to install wxPython from GitHub release
 wxpython_github_install() {
-    local api_url assets_json wheel_name renamed_wheel download_url python_version_major_minor
+    local api_url assets_json latest_release_tag wheel_name renamed_wheel download_url python_version_major_minor
 
+    latest_release_tag=$(curl -s "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
-
     assets_json=$(curl -s "$api_url")
-    if echo "$assets_json" | grep -q '"message": "Not Found"'; then
-        log_message "Warning: Release v${script_version} not found on GitHub."
-        return 1
-    fi
-
-    if [ -z "$assets_json" ]; then
-        log_message "Warning: Empty response from GitHub API."
-        return 1
-    fi
 
     python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
     wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
-
     download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
 
+    # If no matching wheel is found AND the script version is NOT the latest, check the latest release
+    if [[ -z "$download_url" && "v${script_version}" != "$latest_release_tag" ]]; then
+        log_message "No matching wxPython wheel found in v${script_version}. Checking the latest release ($latest_release_tag)..."
+        api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
+        assets_json=$(curl -s "$api_url")
+        download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
+    fi
+
+    # If still not found, exit with an error
     if [ -z "$download_url" ]; then
-        log_message "Warning: No matching wxPython wheel found in release v${script_version} for wxPython ${wxpython_version}."
+        log_message "Error: No matching wxPython wheel found in v${script_version} or latest release ($latest_release_tag) for wxPython ${wxpython_version}."
         return 1
     fi
 
@@ -1133,8 +1126,8 @@ main() {
     check_python_env "python"
 
     # Upgrade pip and install required Python packages
-    log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox and attrdict ..."
-    log pip install -U pip distro sip six psychtoolbox attrdict
+    log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox, attrdict, setuptools, wheel ..."
+    log pip install -U pip distro sip six psychtoolbox attrdict setuptools wheel
 
     # Determine wxPython version and install it
     if [ "$wxpython_version" = "latest" ]; then
