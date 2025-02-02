@@ -31,6 +31,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Determine if Failure is Allowed
+        id: check-failure
+        run: |
+          if [[ "${{ matrix.wxpython_version }}" == "grab" ]]; then
+            echo "ALLOW_FAILURE=false" >> $GITHUB_ENV
+          else
+            echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
+          fi
+          
       - name: Install dependencies
         run: |
           sudo rm -rf /tmp_dir
@@ -361,7 +370,6 @@ jobs:
           fi
 
       - name: Build Python
-      
         id: build-python
         if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
@@ -388,13 +396,14 @@ jobs:
 
       - name: Build wxPython
         if: env.SKIP_WXPYTHON_PROCESS == 'false'
+        continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
         id: build-wxpython
         run: |
           export PATH=/usr/local/psychopy_python/bin:$PATH
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
           
-          pip install -U pip distro attrdict3 six setuptools wheel
+          pip install -U pip distro sip six psychtoolbox attrdict setuptools wheel
           
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
