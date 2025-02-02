@@ -15,12 +15,12 @@ jobs:
     uses: ./.github/workflows/reusable_syntax_check.yaml
 
   # Test installation with build
- test-installation-build:
-   needs: syntax-check
-   if: success()
-   uses: ./.github/workflows/reusable_test.yaml
-   with:
-     build-mode: true
+  test-installation-build:
+    needs: syntax-check
+    if: success()
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      build-mode: true
 
   # Create a release if it does not exist
   create-release:
