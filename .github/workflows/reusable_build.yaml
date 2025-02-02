@@ -394,7 +394,7 @@ jobs:
           /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
           
-          pip install -U pip distro sip six setuptools wheel
+          pip install -U pip distro attrdict3 six setuptools wheel
           
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
