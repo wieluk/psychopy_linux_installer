@@ -379,7 +379,7 @@ version_greater_than() {
 # Function to get the all versions of a package from PyPI
 fetch_versions_from_pypi() {
     package=$1
-    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases | keys[]' | sort -Vr
+    curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases // {} | keys[]' | sort -Vr
 }
 
 # Function to get the latest version of a package from PyPI
@@ -491,14 +491,14 @@ python_github_install() {
     assets_json=$(curl -s "$api_url")
 
     python_version_pattern="python-${python_version}\.[0-9]+-${processor_structure}-${os_version}\.tar\.gz"
-    asset_name=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
+    asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
 
     # If no matching asset is found AND the script version is NOT the latest, check the latest release
     if [[ -z "$asset_name" && "v${script_version}" != "$latest_release_tag" ]]; then
         log_message "No matching Python version found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
         assets_json=$(curl -s "$api_url")
-        asset_name=$(echo "$assets_json" | jq -r '.assets[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
+        asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
     fi
 
     if [ -z "$asset_name" ]; then
@@ -506,7 +506,7 @@ python_github_install() {
         return 1
     fi
 
-    github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url')
+    github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
 
     if [ -z "$github_download_url" ]; then
         log_message "Warning: Could not find a download URL for asset $asset_name."
@@ -561,14 +561,14 @@ wxpython_github_install() {
 
     python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
     wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
-    download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
+    download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
 
     # If no matching wheel is found AND the script version is NOT the latest, check the latest release
     if [[ -z "$download_url" && "v${script_version}" != "$latest_release_tag" ]]; then
         log_message "No matching wxPython wheel found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
         assets_json=$(curl -s "$api_url")
-        download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets[] | select(.name == $name) | .browser_download_url')
+        download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
     fi
 
     # If still not found, exit with an error
