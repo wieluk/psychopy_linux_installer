@@ -206,9 +206,9 @@ check_for_updates() {
     if version_greater_than "$latest_version" "$current_version"; then
         read -r -p "A new version ($latest_version) of the installer script is available. Would you like to update? (y/n) " response
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            log_message "Updating to version $latest_version..."
+            log_message "Info: Updating to version $latest_version..."
             curl -o "$(dirname "$0")/$(basename "$0")" https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
-            log_message "Update completed. Please re-run the installer."
+            log_message "Info: Update completed. Please re-run the installer. Exiting"
             exit 0
         fi
     fi
@@ -495,7 +495,7 @@ python_github_install() {
 
     # If no matching asset is found AND the script version is NOT the latest, check the latest release
     if [[ -z "$asset_name" && "v${script_version}" != "$latest_release_tag" ]]; then
-        log_message "No matching Python version found in v${script_version}. Checking the latest release ($latest_release_tag)..."
+        log_message "Warning: No matching Python version found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
         assets_json=$(curl -s "$api_url")
         asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
@@ -565,7 +565,7 @@ wxpython_github_install() {
 
     # If no matching wheel is found AND the script version is NOT the latest, check the latest release
     if [[ -z "$download_url" && "v${script_version}" != "$latest_release_tag" ]]; then
-        log_message "No matching wxPython wheel found in v${script_version}. Checking the latest release ($latest_release_tag)..."
+        log_message "Info: No matching wxPython wheel found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
         assets_json=$(curl -s "$api_url")
         download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
@@ -1176,7 +1176,7 @@ main() {
     # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
-        log_message "Desktop shortcuts created."
+        log_message "Info: Desktop shortcuts created."
     fi
 
     # Add PsychoPy to PATH
