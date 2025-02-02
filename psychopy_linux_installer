@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2025-02-01
-#  Version:       1.4.2
+#  Date:          2025-02-02
+#  Version:       1.4.3
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -37,8 +37,9 @@ log() {
     if [ "$verbose" = true ]; then
         "$@"
     else
-        "$@" > /dev/null 2>&1
+        "$@" >/dev/null 2>&1
     fi
+    return $?
 }
 
 # Function to print log messages with timestamp
@@ -213,23 +214,11 @@ check_for_updates() {
     fi
 }
 
+# Function to detect the OS version
 detect_os_version() {
-    local long_version=0
-    if [ "$1" = "--long" ]; then
-        long_version=1
-    fi
-
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
-            if [ "$long_version" -eq 1 ]; then
-                echo "$ID-$VERSION_ID"
-                return
-            else
-                major_version=$(echo "$VERSION_ID" | cut -d. -f1)
-                echo "$ID-$major_version"
-                return
-            fi
             major_version=$(echo "$VERSION_ID" | cut -d. -f1)
             echo "$ID-$major_version"
             return
@@ -237,11 +226,7 @@ detect_os_version() {
     fi
 
     if command -v lsb_release > /dev/null 2>&1; then
-        if [ "$long_version" -eq 1 ]; then
-            version=$(lsb_release -sr)
-        else
-            version=$(lsb_release -sr | cut -d. -f1)
-        fi
+        version=$(lsb_release -sr | cut -d. -f1)
         echo "$(lsb_release -si)-$version"
         return
     fi
@@ -250,6 +235,7 @@ detect_os_version() {
     echo "unknown"
     return
 }
+
 
 # Function to detect the package manager for the OS
 detect_package_manager() {
@@ -532,16 +518,16 @@ python_github_install() {
     if log curl -L -o "$asset_name" "$github_download_url"; then
         log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${script_version}. Making an altinstall ..."
         temp_dir="${asset_name%.tar.gz}_temp"
-        mkdir -p "$temp_dir" || { log_message "Error: Failed to create temp directory."; return 1; }
+        mkdir -p "$temp_dir" || { log_message "Warning: Failed to create temp directory."; return 1; }
 
         if tar -xf "$asset_name" -C "$temp_dir"; then
-            cd "$temp_dir" || { log_message "Error: Failed to change directory."; return 1; }
+            cd "$temp_dir" || { log_message "Warning: Failed to change directory."; return 1; }
             sudo_wrapper make altinstall
-            cd "${psychopy_dir}" || { log_message "Error: Failed to return to psychopy directory."; return 1; }
+            cd "${psychopy_dir}" || { log_message "Warning: Failed to return to psychopy directory."; return 1; }
             sudo_wrapper rm -rf "$temp_dir" "$asset_name"
             return 0
         else
-            log_message "Error: Failed to extract $asset_name."
+            log_message "Warning: Failed to extract $asset_name."
             sudo_wrapper rm -rf "$temp_dir"
             return 1
         fi
@@ -565,50 +551,6 @@ build_wxpython() {
     fi
 }
 
-# Function install wxPython using pip without building
-wxpython_pip_install() {
-    if log pip install --only-binary=:all: "wxpython==$wxpython_version" --find-links /usr/local/psychopy_python/wx_wheels/; then
-        log_message "Info: Successfully installed wxPython version $wxpython_version using a pip wheel."
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Function to install wxPython from wheel URL
-wxpython_wheelurl_install() {
-    local wheel_dir html wheels latest_wheel wheel_url wheel_file os_version_long
-    local base_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/"
-    os_version_long=$(detect_os_version --long | tr '[:upper:]' '[:lower:]')
-    wheel_dir="${base_url}${os_version_long}/"
-    html=$(curl -s "$wheel_dir")
-    wheels=$(echo "$html" | grep -oP 'href="\K[^"]*' | grep -E "${wxpython_version}.*${python_version}.*${processor_structure}.*\.whl" | grep -v ".asc" | sort)
-    if [ -z "$wheels" ]; then
-        log_message "Warning: No matching wxPython wheel found for ${wxpython_version}, ${os_version_long}, Python ${python_version}, and ${processor_structure} on extras.wxpython.org."
-        return 1
-    fi
-
-    latest_wheel=$(echo "$wheels" | tail -n 1)
-    wheel_url="${wheel_dir}${latest_wheel}"
-    wheel_file=$(basename "$wheel_url")
-
-    if log curl -s -O "$wheel_url"; then
-        log_message "Info: Download from extras.wxpython.org successful. Installing wxPython from $wheel_file..."
-        if log pip install "$wheel_file"; then
-            log_message "Info: Installed wxPython from $wheel_file"
-            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
-            sudo_wrapper mv "$wheel_file" /usr/local/psychopy_python/wx_wheels/
-            return 0
-        else
-            log_message "Warning: Installing wxPython from $wheel_file failed."
-            rm "$wheel_file"
-            return 1
-        fi
-    else
-        log_message "Warning: Downloading $wheel_url failed."
-        return 1
-    fi
-}
 
 # Function to install wxPython from GitHub release
 wxpython_github_install() {
@@ -632,7 +574,7 @@ wxpython_github_install() {
 
     # If still not found, exit with an error
     if [ -z "$download_url" ]; then
-        log_message "Error: No matching wxPython wheel found in v${script_version} or latest release ($latest_release_tag) for wxPython ${wxpython_version}."
+        log_message "Warning: No matching wxPython wheel found in v${script_version} or latest release ($latest_release_tag) for wxPython ${wxpython_version}."
         return 1
     fi
 
@@ -1129,9 +1071,9 @@ main() {
     log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox, attrdict, setuptools, wheel ..."
     log pip install -U pip distro sip six psychtoolbox setuptools wheel
     if [[ "${python_version}" == "3.8" || "${python_version}" == "3.9" ]]; then
-        pip install attrdict
+        log pip install -U attrdict
     elif [[ "${python_version}" == "3.10" ]]; then
-        pip install attrdict3
+        log pip install -U attrdict3
     fi
 
     # Determine wxPython version and install it
@@ -1146,18 +1088,15 @@ main() {
         install_dependencies wxpython_deps
         log_message "Info: Building wxPython from git. This might take a while ..."
         log pip install git+https://github.com/wxWidgets/Phoenix
+
     elif [ "$build_wx" = true ]; then
         build_wxpython
+
     else
-        if wxpython_pip_install; then
-            :
-        elif wxpython_wheelurl_install; then
-            :
-        elif wxpython_github_install; then
-            :
-        else
-            build_wxpython
-        fi
+        log pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==$wxpython_version" || \
+        log pip install --only-binary=:all: --find-links https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ "wxPython==$wxpython_version" || \
+        wxpython_github_install || \
+        build_wxpython
     fi
 
     if ! pip show wxPython &> /dev/null; then
