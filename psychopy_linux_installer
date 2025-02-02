@@ -414,7 +414,6 @@ check_pypi_for_version() {
     local PYPI_API="https://pypi.org/pypi"
 
     if curl -s "${PYPI_API}/${package}/${version}/json" | jq -e .info.version > /dev/null; then
-        log_message "Info: ${package} version ${version} found on PyPI"
         return 0
     fi
 
