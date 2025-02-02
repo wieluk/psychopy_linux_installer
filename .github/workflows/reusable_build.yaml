@@ -400,11 +400,17 @@ jobs:
         id: build-wxpython
         run: |
           export PATH=/usr/local/psychopy_python/bin:$PATH
-          /usr/local/psychopy_python/bin/python${{ matrix.python_version }} -m venv /tmp_dir/psychopy_venv
+          /usr/local/psychopy_python/bin/python$PYTHON_VERSION -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
           
-          pip install -U pip distro sip six psychtoolbox attrdict setuptools wheel
+          pip install -U pip distro sip six psychtoolbox setuptools wheel
           
+          if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
+              pip install attrdict
+          elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
+              pip install attrdict3
+          fi
+
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
