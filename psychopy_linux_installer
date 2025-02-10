@@ -327,13 +327,14 @@ install_packages() {
     log_message "Attempting batch installation of packages: ${available_packages[*]}"
 
     if case $pkg_manager in
-        apt-get) sudo_wrapper apt-get install -y -qq ${available_packages[@]} ;;
-        yum) sudo_wrapper yum install -y -q ${available_packages[@]} ;;
-        dnf) sudo_wrapper dnf install -y -q ${available_packages[@]} ;;
-        pacman) sudo_wrapper pacman -Syu --needed --noconfirm ${available_packages[@]} ;;
-        zypper) sudo_wrapper zypper install -y ${available_packages[@]} ;;
+        apt-get) sudo_wrapper apt-get install -y -qq "${available_packages[@]}" ;;
+        yum) sudo_wrapper yum install -y -q "${available_packages[@]}" ;;
+        dnf) sudo_wrapper dnf install -y -q "${available_packages[@]}" ;;
+        pacman) sudo_wrapper pacman -Syu --needed --noconfirm "${available_packages[@]}" ;;
+        zypper) sudo_wrapper zypper install -y "${available_packages[@]}" ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac; then
+        log_message "Batch installation successful."
         return 0
     else
         log_message "Warning: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
@@ -351,6 +352,7 @@ install_packages() {
         esac
     done
 }
+
 # Function to install different types of dependencies
 install_dependencies() {
     local dep_type="$1"
