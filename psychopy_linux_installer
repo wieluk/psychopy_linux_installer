@@ -261,7 +261,7 @@ update_package_manager() {
         apt-get) sudo_wrapper apt-get update -qq ;;
         yum) sudo_wrapper yum makecache -q ;;
         dnf) sudo_wrapper dnf makecache -q ;;
-        pacman) log log_message "Info: Pacman update/upgrade skipped" ;;
+        pacman) log_message "Warning: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
         zypper) sudo_wrapper zypper refresh ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
@@ -274,28 +274,28 @@ filter_existing_packages() {
     for package in "$@"; do
         case $pkg_manager in
             apt-get)
-                if log apt-cache show "$package"; then
+                if apt-cache show "$package" &>/dev/null; then
                     filtered_packages+=("$package")
                 else
                     log_message "Skipping unavailable package: $package"
                 fi
                 ;;
             yum|dnf)
-                if log yum list available "$package"; then
+                if yum list available "$package" &>/dev/null; then
                     filtered_packages+=("$package")
                 else
                     log_message "Skipping unavailable package: $package"
                 fi
                 ;;
             pacman)
-                if log pacman -Si "$package"; then
+                if pacman -Si "$package" &>/dev/null; then
                     filtered_packages+=("$package")
                 else
                     log_message "Skipping unavailable package: $package"
                 fi
                 ;;
             zypper)
-                if log zypper search --match-exact "$package"; then
+                if zypper search --match-exact "$package" &>/dev/null; then
                     filtered_packages+=("$package")
                 else
                     log_message "Skipping unavailable package: $package"
@@ -324,17 +324,14 @@ install_packages() {
         return
     fi
 
-    log_message "Attempting batch installation of packages: ${available_packages[*]}"
-
     if case $pkg_manager in
-        apt-get) sudo_wrapper apt-get install -y -qq "${available_packages[@]}" ;;
-        yum) sudo_wrapper yum install -y -q "${available_packages[@]}" ;;
-        dnf) sudo_wrapper dnf install -y -q "${available_packages[@]}" ;;
-        pacman) sudo_wrapper pacman -Syu --needed --noconfirm "${available_packages[@]}" ;;
-        zypper) sudo_wrapper zypper install -y "${available_packages[@]}" ;;
+        apt-get) sudo_wrapper apt-get install -y -qq ${available_packages[@]} ;;
+        yum) sudo_wrapper yum install -y -q ${available_packages[@]} ;;
+        dnf) sudo_wrapper dnf install -y -q ${available_packages[@]} ;;
+        pacman) sudo_wrapper pacman -S --needed --noconfirm ${available_packages[@]} ;;
+        zypper) sudo_wrapper zypper install -y ${available_packages[@]} ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac; then
-        log_message "Batch installation successful."
         return 0
     else
         log_message "Warning: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
@@ -346,7 +343,7 @@ install_packages() {
             apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
             yum) sudo_wrapper yum install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
             dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
-            pacman) sudo_wrapper pacman -Sy --needed --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            pacman) sudo_wrapper pacman -S --needed --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
             zypper) sudo_wrapper zypper install -y "$package" || log_message "Warning: Package $package not found, skipping." ;;
             *) log_message "Error: No compatible package manager found."; exit 1 ;;
         esac
