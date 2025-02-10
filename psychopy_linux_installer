@@ -261,7 +261,7 @@ update_package_manager() {
         apt-get) sudo_wrapper apt-get update -qq ;;
         yum) sudo_wrapper yum makecache -q ;;
         dnf) sudo_wrapper dnf makecache -q ;;
-        pacman) sudo_wrapper pacman -Sy --noconfirm ;;
+        pacman) log log_message "Info: Pacman update/upgrade skipped" ;;
         zypper) sudo_wrapper zypper refresh ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
