@@ -555,10 +555,12 @@ build_python() {
 
 # Function to download prebuilt Python from GitHub release
 python_github_install() {
-    local asset_name api_url assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
-    latest_release_tag=$(curl -s "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
+    local asset_name api_url github_api_header assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
+
+    github_api_header="Accept: application/vnd.github.v3+json"
+    latest_release_tag=$(curl -s -H "$github_api_header" "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
-    assets_json=$(curl -s "$api_url")
+    assets_json=$(curl -s -H "$github_api_header" "$api_url")
 
     python_version_pattern="python-${python_version}\.[0-9]+-${processor_structure}-${os_version}\.tar\.gz"
     asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
@@ -567,7 +569,7 @@ python_github_install() {
     if [[ -z "$asset_name" && "v${script_version}" != "$latest_release_tag" ]]; then
         log_message "Warning: No matching Python version found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
-        assets_json=$(curl -s "$api_url")
+        assets_json=$(curl -s -H "$github_api_header" "$api_url")
         asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
     fi
 
@@ -620,14 +622,14 @@ build_wxpython() {
     fi
 }
 
-
 # Function to install wxPython from GitHub release
 wxpython_github_install() {
-    local api_url assets_json latest_release_tag wheel_name renamed_wheel download_url python_version_major_minor
+    local api_url assets_json latest_release_tag github_api_header wheel_name renamed_wheel download_url python_version_major_minor
 
-    latest_release_tag=$(curl -s "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
+    github_api_header="Accept: application/vnd.github.v3+json"
+    latest_release_tag=$(curl -s -H "$github_api_header" "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
-    assets_json=$(curl -s "$api_url")
+    assets_json=$(curl -s -H "$github_api_header" "$api_url")
 
     python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
     wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
@@ -637,7 +639,7 @@ wxpython_github_install() {
     if [[ -z "$download_url" && "v${script_version}" != "$latest_release_tag" ]]; then
         log_message "Info: No matching wxPython wheel found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
-        assets_json=$(curl -s "$api_url")
+        assets_json=$(curl -s -H "$github_api_header" "$api_url")
         download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
     fi
 
@@ -667,7 +669,6 @@ wxpython_github_install() {
         return 1
     fi
 }
-
 
 # Function to create a desktop shortcut file
 create_desktop_shortcut() {
