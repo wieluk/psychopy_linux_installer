@@ -261,28 +261,96 @@ update_package_manager() {
         apt-get) sudo_wrapper apt-get update -qq ;;
         yum) sudo_wrapper yum makecache -q ;;
         dnf) sudo_wrapper dnf makecache -q ;;
-        pacman) log log_message "Skipping package database update for pacman. It will be updated during installation." ;;
+        pacman) sudo_wrapper pacman -Sy --noconfirm ;;
         zypper) sudo_wrapper zypper refresh ;;
         *) log_message "Error: No compatible package manager found."; exit 1 ;;
     esac
+}
+
+# Function to check if a package is available
+filter_existing_packages() {
+    local filtered_packages=()
+    
+    for package in "$@"; do
+        case $pkg_manager in
+            apt-get)
+                if log apt-cache show "$package"; then
+                    filtered_packages+=("$package")
+                else
+                    log_message "Skipping unavailable package: $package"
+                fi
+                ;;
+            yum|dnf)
+                if log yum list available "$package"; then
+                    filtered_packages+=("$package")
+                else
+                    log_message "Skipping unavailable package: $package"
+                fi
+                ;;
+            pacman)
+                if log pacman -Si "$package"; then
+                    filtered_packages+=("$package")
+                else
+                    log_message "Skipping unavailable package: $package"
+                fi
+                ;;
+            zypper)
+                if log zypper search --match-exact "$package"; then
+                    filtered_packages+=("$package")
+                else
+                    log_message "Skipping unavailable package: $package"
+                fi
+                ;;
+            *)
+                log_message "Error: No compatible package manager found."
+                exit 1
+                ;;
+        esac
+    done
+
+    echo "${filtered_packages[@]}"
 }
 
 # Function to install packages using the package manager
 install_packages() {
     local packages=("$@")
 
+    # Try batch install first
+    local available_packages
+    available_packages=$(filter_existing_packages "${packages[@]}")
+
+    if [[ -z "$available_packages" ]]; then
+        log_message "No valid packages found for installation."
+        return
+    fi
+
+    log_message "Attempting batch installation of packages: ${available_packages[*]}"
+
+    if case $pkg_manager in
+        apt-get) sudo_wrapper apt-get install -y -qq ${available_packages[@]} ;;
+        yum) sudo_wrapper yum install -y -q ${available_packages[@]} ;;
+        dnf) sudo_wrapper dnf install -y -q ${available_packages[@]} ;;
+        pacman) sudo_wrapper pacman -Syu --needed --noconfirm ${available_packages[@]} ;;
+        zypper) sudo_wrapper zypper install -y ${available_packages[@]} ;;
+        *) log_message "Error: No compatible package manager found."; exit 1 ;;
+    esac; then
+        return 0
+    else
+        log_message "Warning: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
+    fi
+
+    # If batch install fails, fallback to installing packages one by one
     for package in "${packages[@]}"; do
         case $pkg_manager in
             apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
             yum) sudo_wrapper yum install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
             dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
-            pacman) sudo_wrapper pacman -Syu --needed --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            pacman) sudo_wrapper pacman -Sy --needed --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
             zypper) sudo_wrapper zypper install -y "$package" || log_message "Warning: Package $package not found, skipping." ;;
             *) log_message "Error: No compatible package manager found."; exit 1 ;;
         esac
     done
 }
-
 # Function to install different types of dependencies
 install_dependencies() {
     local dep_type="$1"
