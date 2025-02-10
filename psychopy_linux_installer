@@ -270,7 +270,7 @@ update_package_manager() {
 # Function to check if a package is available
 filter_existing_packages() {
     local filtered_packages=()
-    
+
     for package in "$@"; do
         case $pkg_manager in
             apt-get)
