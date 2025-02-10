@@ -1147,6 +1147,7 @@ main() {
     fi
 
     # Determine wxPython version and install it
+    log_message "Info: Installing wxpython ..."
     if [ "$wxpython_version" = "latest" ]; then
         get_latest_pypi_version "wxPython" wxpython_version
     elif [ "$wxpython_version" != "git" ]; then
