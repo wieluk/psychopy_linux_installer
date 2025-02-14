@@ -209,7 +209,7 @@ check_for_updates() {
         echo "🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
         echo "🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
         echo
-        
+
         read -r -p "Would you like to update? (y/n)" response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "Info: Updating to version $latest_version..."
@@ -970,7 +970,7 @@ process_arguments() {
             --install-dir=*)
                 install_dir="${arg#*=}"
                 ;;
-            --venv-name)
+            --venv-name=*)
                 venv_name="${arg#*=}"
                 ;;
             --sudo-mode=*)
