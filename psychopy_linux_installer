@@ -204,7 +204,13 @@ check_for_updates() {
     latest_version=$(curl -s https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
 
     if version_greater_than "$latest_version" "$current_version"; then
-        read -r -p "A new version ($latest_version) of the installer script is available. Would you like to update? (y/n) " response
+        echo -e "\nA new version ($latest_version) of the installer script is available."
+        echo
+        echo "🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
+        echo "🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
+        echo
+        
+        read -r -p "Would you like to update? (y/n)" response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "Info: Updating to version $latest_version..."
             curl -o "$(dirname "$0")/$(basename "$0")" https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
