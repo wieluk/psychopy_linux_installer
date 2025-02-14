@@ -276,7 +276,7 @@ update_package_manager() {
 # Function to check if a package is available
 filter_existing_packages() {
     local filtered_packages=()
-    
+
     for package in "$@"; do
         # Skip conficting packages for specific OS versions
         case "$os_version" in
