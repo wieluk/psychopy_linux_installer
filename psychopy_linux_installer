@@ -276,7 +276,18 @@ update_package_manager() {
 # Function to check if a package is available
 filter_existing_packages() {
     local filtered_packages=()
+    
     for package in "$@"; do
+        # Skip conficting packages for specific OS versions
+        case "$os_version" in
+            ubuntu-24) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
+            ubuntu-20) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
+            debian-11) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
+            fedora-39|fedora-40) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" ]] && continue ;;
+            rocky-9.5|centos-9) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" || "$package" == "portaudio-devel" ]] && continue ;;
+            linuxmint-22) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
+        esac
+
         case "$pkg_manager" in
             apt-get)
                 if apt-cache show "$package" &>/dev/null; then
