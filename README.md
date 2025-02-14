@@ -116,25 +116,35 @@ All commands, along with the installed versions and set paths will be displayed 
 
 ## Uninstalling PsychoPy
 
-To completely uninstall PsychoPy, you’ll need to remove the application files, shortcuts, and (optionally) dependencies installed for PsychoPy.
+To completely remove PsychoPy, you’ll need to delete its virtual environment folder, shortcuts, settings folder, and optionally, any dependencies installed for PsychoPy.
 
-### Remove PsychoPy Application Files
+### Removing the PsychoPy Virtual Environment Folder
 
-By default, PsychoPy installs its files in the following directories:
+By default, PsychoPy installs its files in the following locations:
 
-- **PsychoPy installation directory**: `~/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`
-- **Python and wxPython packages**: `/usr/local/psychopy_python`
+- **PsychoPy installation directory:** `~/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`
+- **PsychoPy’s Python and wxPython:** `/usr/local/psychopy_python`
 
-To uninstall PsychoPy, delete both of these directories:
+To uninstall PsychoPy, delete both directories:
 
 ```bash
-#rm -rf {install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION} #use your version and install_dir default is $home directory
+# rm -rf {install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}  # Use your version and install_dir (default is the home directory)
 sudo rm -rf /usr/local/psychopy_python
+```  
+
+### Remove the PsychoPy settings folder
+
+PsychoPy stores its user-specific settings and preferences in the ~/.psychopy3 directory.
+
+To remove it, run:
+
+```bash
+rm -rf ~/.psychopy3
 ```
 
 ### Remove Desktop Shortcuts
 
-PsychoPy creates desktop shortcuts that you can safely delete. To remove all PsychoPy shortcuts, use:
+The PsychoPy installer creates desktop shortcuts that you can safely delete. To remove all PsychoPy shortcuts, use:
 
 ```bash
 rm ~/.local/share/applications/PsychoPy*.desktop
@@ -161,7 +171,7 @@ Locate and edit the configuration file for your shell to remove this line:
 
 Dependencies for PsychoPy and for building Python/WxPython are installed via package manager.
 
-**Warning**: Removing dependencies can affect other applications. If you’re unsure, do not touch them.
+**⚠ Warning ⚠**: Removing dependencies can affect other applications. If you’re unsure, do not touch them.
 
 <details>
   <summary>Uninstall dependencies by package manager</summary>
