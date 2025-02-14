@@ -283,8 +283,9 @@ filter_existing_packages() {
             ubuntu-24) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
             ubuntu-20) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
             debian-11) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
+            pop-22) [[ "$package" == "pulseaudio" ]] && continue ;;
             fedora-39|fedora-40) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" ]] && continue ;;
-            rocky-9.5|centos-9) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" || "$package" == "portaudio-devel" ]] && continue ;;
+            rocky-9|centos-9) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" || "$package" == "portaudio-devel" ]] && continue ;;
             linuxmint-22) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
         esac
 
