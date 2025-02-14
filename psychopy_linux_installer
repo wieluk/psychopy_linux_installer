@@ -19,7 +19,7 @@ Options:
   --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
   --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
-  --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
+  --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
   --disable-shortcut                            Disable desktop shortcut creation.
@@ -674,14 +674,23 @@ create_desktop_shortcut() {
     local desktop_dir="${HOME}/.local/share/applications/"
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
     local resources_dir="${psychopy_dir}/Resources"
+    local shortcuts=()
 
     desktop_shortcut="$(xdg-user-dir DESKTOP)"
 
-    local shortcuts=(
-        "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
-        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
-        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) Python(v${python_version})" "coder.png"
-    )
+    if [ -n "$venv_name" ]; then
+        shortcuts+=(
+            "--no-splash" "$venv_name" "psychopy.png"
+            "--builder --no-splash" "Builder $venv_name" "builder.png"
+            "--coder --no-splash" "Coder $venv_name" "coder.png"
+        )
+    else
+        shortcuts+=(
+            "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
+            "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
+            "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) Python(v${python_version})" "coder.png"
+        )
+    fi
 
     if [ ! -d "$desktop_shortcut" ]; then
         log_message "Warning: Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
@@ -731,7 +740,12 @@ Categories=Education;Science;"
 add_psychopy_to_path() {
     local shell_name
     local bin_dir="${psychopy_dir}/.bin"
-    local target_bin="${bin_dir}/psychopy_${psychopy_version}_py${python_version}"
+
+    if [ -n "$venv_name" ]; then
+        local target_bin="${bin_dir}/${venv_name}"
+    else
+        local target_bin="${bin_dir}/psychopy_${psychopy_version}_py${python_version}"
+    fi
 
     shell_name=$(basename "$SHELL")
     mkdir -p "$bin_dir"
@@ -801,8 +815,8 @@ show_gui() {
         fi
 
         # Select Python version
-        python_version=$(zenity --list --title="Python Version" \
-            --text="Select the Python version:" \
+        python_version=$(zenity --list --title="Select Python Version" \
+            --text="Choose the Python version for this installation.\n\nPython 3.10 is recommended for best compatibility." \
             --radiolist --column="Select" --column="Version" \
             TRUE "3.10" FALSE "3.9" FALSE "3.8")
         python_version=$(echo "$python_version" | xargs)
@@ -812,9 +826,9 @@ show_gui() {
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        default_wxpython_version="4.2.2"
-        wxpython_version=$(zenity --list --title="wxPython Version" \
-            --text="Select the wxPython version:" \
+        default_wxpython_version=$(grep -m1 "wxpython_version=\${wxpython_version:-\"[^\"]*\"}" "$0" | sed -n 's/.*:-"\([^"]*\)".*/\1/p')
+        wxpython_version=$(zenity --list --title="Select wxPython Version" \
+            --text="Choose the wxPython version for this installation.\n\nVersion $default_wxpython_version is recommended for most setups." \
             --radiolist --column="Select" --column="Version" \
             TRUE "$default_wxpython_version" $(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
         wxpython_version=$(echo "$wxpython_version" | xargs)
@@ -839,6 +853,15 @@ show_gui() {
         exit 1
     fi
 
+    # Prompt for custom virtual environment name
+    venv_name=$(zenity --entry --title="Custom Virtual Environment Name" \
+        --text="Enter a custom name for the virtual environment folder.\n\nIf left empty, a versioned folder will be created automatically.\nPress OK without entering a name to use the default versioned format.\n\nThis folder will be created inside:\n$install_dir\n\nNote: Any spaces in the name will be replaced with underscores (_).\n\nExample: my_custom_env" \
+        --entry-text="")
+    venv_name=$(echo "$venv_name" | xargs)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     # Additional options with tooltips
     options=$(zenity --list --checklist --title="Additional Options" \
         --text="Select additional options:" \
@@ -846,7 +869,6 @@ show_gui() {
         TRUE "Create desktop shortcuts" \
         TRUE "Add PsychoPy to system PATH" \
         TRUE "Run in non-interactive mode" \
-        FALSE "Install without versioned subdirectory" \
         FALSE "Force overwrite of existing directory" \
         FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
@@ -866,9 +888,6 @@ show_gui() {
     fi
     if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
         disable_path=false
-    fi
-    if [[ $options == *"Install without versioned subdirectory"* ]]; then
-        no_versioned_install_dir=true
     fi
     if [[ $options == *"Force overwrite of existing directory"* ]]; then
         force_overwrite=true
@@ -899,7 +918,6 @@ show_gui() {
 }
 
 process_arguments() {
-    install_dir_set_by_user=false
     sudo_mode_set=false
 
     for arg in "$@"; do
@@ -945,14 +963,9 @@ process_arguments() {
                 ;;
             --install-dir=*)
                 install_dir="${arg#*=}"
-                install_dir_set_by_user=true
                 ;;
-            --no-versioned-install-dir)
-                if [ "$install_dir_set_by_user" = false ]; then
-                    echo "Error: --no-versioned-install-dir cannot be used without setting --install_dir."
-                    exit 1
-                fi
-                no_versioned_install_dir=true
+            --venv-name)
+                venv_name="${arg#*=}"
                 ;;
             --sudo-mode=*)
                 sudo_mode="${arg#*=}"
@@ -1026,7 +1039,7 @@ main() {
     build_python=${build_python:-false}
     build_wx=${build_wx:-false}
     install_dir=${install_dir:-"$HOME"}
-    no_versioned_install_dir=${no_versioned_install_dir:-false}
+    venv_name=${venv_name:-""} && venv_name=${venv_name//[[:space:]]/_}
     additional_packages=${additional_packages:-""}
     sudo_mode=${sudo_mode:-"ask"}
     disable_shortcut=${disable_shortcut:-false}
@@ -1070,8 +1083,8 @@ main() {
     install_dependencies psychopy_deps
 
     # Set up PsychoPy installation directory
-    if [ "$no_versioned_install_dir" = true ]; then
-        psychopy_dir="${install_dir}"
+    if [ -n "$venv_name" ]; then
+        psychopy_dir="${install_dir}/${venv_name}"
     else
         psychopy_dir="${install_dir}/psychopy_${psychopy_version}_py${python_version}"
     fi
@@ -1254,7 +1267,11 @@ main() {
         add_psychopy_to_path
         echo
         echo "To start PsychoPy from the system path, use:"
-        echo "psychopy_${psychopy_version}_py${python_version}"
+        if [ -n "$venv_name" ]; then
+            echo "${venv_name}"
+        else
+            echo "psychopy_${psychopy_version}_py${python_version}"
+        fi
     fi
 
     echo

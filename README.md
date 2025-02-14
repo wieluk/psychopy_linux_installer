@@ -61,7 +61,7 @@ Install curl with your package manger. On most distros curl is already installed
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Use `both` if something does not work. |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
-| `--no-versioned-install-dir` | Installs directly into the specified `install-dir` without creating a versioned subdirectory. Requires `--install-dir`. |
+| `--venv-name=NAME` | Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default. Spaces in the name will be replaced with underscores (_). |
 | `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
 | `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
