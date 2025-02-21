@@ -384,7 +384,7 @@ install_dependencies() {
             ;;
         zypper)
             script_deps=(git curl jq)
-            psychopy_deps=(gtk3-devel libxcb-xinerama0 libSDL2-devel libusb-1_0-devel portaudio-devel alsa-devel pulseaudio pulseaudio-utils libnotify4)
+            psychopy_deps=(gtk3-devel libxcb-xinerama0 SDL2-devel libusb-1_0-devel portaudio-devel alsa-devel pulseaudio pulseaudio-utils libnotify4)
             python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel readline-devel xz-devel make)
             wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel libjpeg-turbo gcc-c++ make glib2-devel)
             python_with_venv=(python3 python3-virtualenv python3-pip python3-devel)
