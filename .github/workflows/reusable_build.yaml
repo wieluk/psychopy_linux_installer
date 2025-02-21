@@ -19,7 +19,7 @@ jobs:
           - pop-22.04
           - rocky-9.5
           - centos-9
-          - manjarolinux-24
+          - manjarolinux-25
           - opensuse-leap-15.6
           - linuxmint-22
         python_version: ['3.8', '3.9', '3.10']
