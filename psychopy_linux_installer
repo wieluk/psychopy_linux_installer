@@ -293,34 +293,22 @@ filter_existing_packages() {
             apt-get)
                 if apt-cache show "$package" &>/dev/null; then
                     filtered_packages+=("$package")
-                else
-                    log_message "Skipping unavailable package: $package"
                 fi
                 ;;
             yum|dnf)
                 if $pkg_manager info "$package" &>/dev/null; then
                     filtered_packages+=("$package")
-                else
-                    log_message "Skipping unavailable package: $package"
                 fi
                 ;;
             pacman)
                 if pacman -Si "$package" &>/dev/null; then
                     filtered_packages+=("$package")
-                else
-                    log_message "Skipping unavailable package: $package"
                 fi
                 ;;
             zypper)
                 if zypper search --match-exact "$package" &>/dev/null; then
                     filtered_packages+=("$package")
-                else
-                    log_message "Skipping unavailable package: $package"
                 fi
-                ;;
-            *)
-                log_message "Error: No compatible package manager found. Exiting."
-                exit 1
                 ;;
         esac
     done
