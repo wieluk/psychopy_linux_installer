@@ -287,6 +287,7 @@ filter_existing_packages() {
             fedora-39|fedora-40) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" ]] && continue ;;
             rocky-9|centos-9) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" || "$package" == "portaudio-devel" ]] && continue ;;
             linuxmint-22) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
+            manjaro-25) [[ "$package" == "pulseaudio-utils" || "$package" == "pulseaudio" ]] && continue ;;
         esac
 
         case "$pkg_manager" in
