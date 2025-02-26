@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ inputs.quick-mode && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
     strategy:
       matrix:
-        os: ${{ inputs.quick-mode && fromJson('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"]') || fromJson('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "debian-12", "debian-11", "fedora-39", "fedora-40", "pop-22.04", "rocky-9.5", "centos-9", "manjarolinux-24", "opensuse-leap-15.6", "linuxmint-22"]') }}
+        os: ${{ inputs.quick-mode && fromJson('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"]') || fromJson('["ubuntu-24", "ubuntu-22", "ubuntu-20", "debian-12", "debian-11", "fedora-39", "fedora-40", "pop-22", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15", "linuxmint-22"]') }}
         python_version: ${{ inputs.build-mode && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
         psychopy_version: ${{ inputs.build-mode && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
       fail-fast: false
@@ -38,7 +38,7 @@ jobs:
           cp -rf $GITHUB_WORKSPACE/.github/PsychoPy_tests /tmp_dir/
           
           BUILD_FLAG="${{ inputs.build-mode && '--build=both' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir/psychopy --no-versioned-install-dir -f --non-interactive $BUILD_FLAG"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Verify PsychoPy installation and version
