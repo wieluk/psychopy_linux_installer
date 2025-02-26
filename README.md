@@ -15,6 +15,7 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 These distributions have been tested for compatibility, but the script may also work on other Linux distributions.
 
 **Notes:**
+
 - Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
 - Arch Linux worked in my testing. I had to increase /tmp size to be bigger than 2GB, and since there are no prebuilt wxPython wheels for Arch, it has to be built from source.
 
@@ -37,7 +38,7 @@ Install curl with your package manger. On most distros curl is already installed
 1. **Download the script:**
 
    ```bash
-   curl -O https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
+   curl -LOs https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer
    ```
 
 2. **Make it executable:**
