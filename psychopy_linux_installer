@@ -628,14 +628,14 @@ python_github_install() {
 
 build_wxpython() {
     local tmp_size_gb
-    
+
     log_message "Info: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
     # Check /tmp size and warn if ≤2GB (non-blocking)
     tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
     [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
-    
+
     log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
     if pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$wxpython_version"; then
         log_message "Info: Successfully built wxPython from source."
