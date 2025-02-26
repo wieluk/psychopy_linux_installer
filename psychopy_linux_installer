@@ -228,7 +228,7 @@ check_for_updates() {
         read -r -p "Would you like to update? (y/n) " response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "Info: Updating to version $latest_version..."
-            
+
             # Download and replace the current script with the latest release
             curl -sLo "$(dirname "$0")/$(basename "$0")" "$latest_url"
 
