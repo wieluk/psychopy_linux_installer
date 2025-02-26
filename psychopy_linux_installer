@@ -741,6 +741,7 @@ Categories=Education;Science;"
         gio set "$desktop_file" metadata::trusted true
         sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
     done
+    log_message "Info: Desktop shortcuts created."
 }
 
 # Function to create add PsychoPy to system path
@@ -1266,7 +1267,6 @@ main() {
     # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
-        log_message "Info: Desktop shortcuts created."
     fi
 
     # Add PsychoPy to PATH
