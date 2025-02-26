@@ -20,7 +20,7 @@ These distributions have been tested for compatibility, but the script may also 
 
 ## Important Information
 
-- This script will install multiple dependencies based on your Linux distribution. A detailed list of packages that may be installed is available [here](#optional-remove-dependencies) (click to expand).
+- This script will install multiple dependencies based on your Linux distribution. A detailed list of packages that may be installed is available [here](#optional-remove-dependencies) (click "Uninstall dependencies by package manager" to expand).
 - PsychoPy supports Python versions 3.8, 3.9, and 3.10.
 - A directory is created at `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}` (`--install-dir`, default: `$HOME`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`{install_dir}/${NAME}`).
 - The script attempts to install Python via the package manager; if not found, it downloads a pre-packaged .tar.gz from GitHub releases or, if unavailable, from python.org to build from source.
@@ -206,7 +206,7 @@ yum|dnf
 
 pacman
     script_deps=(git curl jq)
-    psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify)
+    psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify xcb-util-cursor)
     python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
     wxpython_deps=(libjpeg libpng libsm mesa gstreamer freeglut libtiff gtk2 gcc make glib2)
     python_with_venv=(python python-virtualenv python-pip)
