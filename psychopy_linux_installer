@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2025-02-02
-#  Version:       1.4.3
+#  Date:          2025-02-26
+#  Version:       1.5.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -17,9 +17,9 @@ Options:
   --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
-  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
+  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn’t work as expected.
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
-  --no-versioned-install-dir                    Install directly into install-dir without creating a versioned subdirectory. Requires --install-dir.
+  --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
   --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
   --disable-shortcut                            Disable desktop shortcut creation.
@@ -42,14 +42,27 @@ log() {
     return $?
 }
 
-# Function to print log messages with timestamp
+# Function to print log messages with timestamp and color-coded severity
 log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+    local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m" timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Disable colors if not a terminal (e.g., redirected output)
+    if [[ ! -t 1 ]]; then
+        reset=""; green=""; yellow=""; red=""
+    fi
+
+    case "$1" in
+        Info:*)    printf "%s - %b%s%b\n" "$timestamp" "$green" "$1" "$reset" ;;
+        Warning:*) printf "%s - %b%s%b\n" "$timestamp" "$yellow" "$1" "$reset" ;;
+        Error:*)   printf "%s - %b%s%b\n" "$timestamp" "$red" "$1" "$reset" ;;
+        *)         printf "%s - %s\n" "$timestamp" "$1" ;;  # Default (no color)
+    esac
 }
 
 # Function to parse requirements.txt
 parse_requirements_file() {
-    local file=$1
+    local file="$1"
     local -A package_versions
     local -A package_operators
 
@@ -118,8 +131,8 @@ sudo_wrapper() {
     local is_pkg_manager_command=false
 
     needs_sudo() {
-        local exit_code=$1
-        local error_output=$2
+        local exit_code="$1"
+        local error_output="$2"
 
         case $exit_code in
             0) return 1 ;;
@@ -204,7 +217,13 @@ check_for_updates() {
     latest_version=$(curl -s https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
 
     if version_greater_than "$latest_version" "$current_version"; then
-        read -r -p "A new version ($latest_version) of the installer script is available. Would you like to update? (y/n) " response
+        echo -e "\nA new version ($latest_version) of the installer script is available."
+        echo
+        echo "🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
+        echo "🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
+        echo
+
+        read -r -p "Would you like to update? (y/n)" response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "Info: Updating to version $latest_version..."
             curl -o "$(dirname "$0")/$(basename "$0")" https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
@@ -259,24 +278,90 @@ detect_package_manager() {
 update_package_manager() {
     case $pkg_manager in
         apt-get) sudo_wrapper apt-get update -qq ;;
-        yum) sudo_wrapper yum check-update -q ;;
-        dnf) sudo_wrapper dnf check-update -q ;;
-        pacman) sudo_wrapper pacman -Sy --noconfirm ;;
+        yum) sudo_wrapper yum makecache -q ;;
+        dnf) sudo_wrapper dnf makecache -q ;;
+        pacman) log_message "Warning: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
         zypper) sudo_wrapper zypper refresh ;;
-        *) log_message "Error: No compatible package manager found."; exit 1 ;;
+        *) log_message "Error: No compatible package manager found. Exiting."; exit 1 ;;
     esac
+}
+
+# Function to check if a package is available
+filter_existing_packages() {
+    local filtered_packages=()
+
+    for package in "$@"; do
+        # Skip conficting packages for specific OS versions
+        case "$os_version" in
+            ubuntu-24) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
+            ubuntu-20) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
+            debian-11) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
+            pop-22) [[ "$package" == "pulseaudio" ]] && continue ;;
+            fedora-39|fedora-40) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" ]] && continue ;;
+            rocky-9|centos-9) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" || "$package" == "portaudio-devel" ]] && continue ;;
+            linuxmint-22) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
+            manjarolinux-25) [[ "$package" == "pulseaudio-utils" || "$package" == "pulseaudio" ]] && continue ;;
+        esac
+
+        case "$pkg_manager" in
+            apt-get)
+                if apt-cache show "$package" &>/dev/null; then
+                    filtered_packages+=("$package")
+                fi
+                ;;
+            yum|dnf)
+                if $pkg_manager info "$package" &>/dev/null; then
+                    filtered_packages+=("$package")
+                fi
+                ;;
+            pacman)
+                if pacman -Si "$package" &>/dev/null; then
+                    filtered_packages+=("$package")
+                fi
+                ;;
+            zypper)
+                if zypper search --match-exact "$package" &>/dev/null; then
+                    filtered_packages+=("$package")
+                fi
+                ;;
+        esac
+    done
+    echo "${filtered_packages[@]}"
 }
 
 # Function to install packages using the package manager
 install_packages() {
     local packages=("$@")
 
+    # Try batch install first
+    local available_packages
+    available_packages=$(filter_existing_packages "${packages[@]}")
+
+    if [[ -z "$available_packages" ]]; then
+        log_message "No valid packages found for installation."
+        return
+    fi
+
+    if case $pkg_manager in
+        apt-get) sudo_wrapper apt-get install -y -qq ${available_packages[@]} ;;
+        yum) sudo_wrapper yum install -y -q ${available_packages[@]} ;;
+        dnf) sudo_wrapper dnf install -y -q ${available_packages[@]} ;;
+        pacman) sudo_wrapper pacman -S --needed --noconfirm ${available_packages[@]} ;;
+        zypper) sudo_wrapper zypper install -y ${available_packages[@]} ;;
+        *) log_message "Error: No compatible package manager found."; exit 1 ;;
+    esac; then
+        return 0
+    else
+        log_message "Warning: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
+    fi
+
+    # If batch install fails, fallback to installing packages one by one
     for package in "${packages[@]}"; do
         case $pkg_manager in
             apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
             yum) sudo_wrapper yum install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
             dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
-            pacman) sudo_wrapper pacman -Sy --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
+            pacman) sudo_wrapper pacman -S --needed --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
             zypper) sudo_wrapper zypper install -y "$package" || log_message "Warning: Package $package not found, skipping." ;;
             *) log_message "Error: No compatible package manager found."; exit 1 ;;
         esac
@@ -285,7 +370,7 @@ install_packages() {
 
 # Function to install different types of dependencies
 install_dependencies() {
-    local dep_type=$1
+    local dep_type="$1"
     local dependencies=()
 
     case $pkg_manager in
@@ -305,14 +390,14 @@ install_dependencies() {
             ;;
         pacman)
             script_deps=(git curl jq)
-            psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify)
+            psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify xcb-util-cursor)
             python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
             wxpython_deps=(libjpeg libpng libsm mesa gstreamer freeglut libtiff gtk2 gcc make glib2)
             python_with_venv=(python python-virtualenv python-pip)
             ;;
         zypper)
             script_deps=(git curl jq)
-            psychopy_deps=(gtk3-devel libxcb-xinerama0 libSDL2-devel libusb-1_0-devel portaudio-devel alsa-devel pulseaudio pulseaudio-utils libnotify4)
+            psychopy_deps=(gtk3-devel libxcb-xinerama0 SDL2-devel libusb-1_0-devel portaudio-devel alsa-devel pulseaudio pulseaudio-utils libnotify4)
             python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel readline-devel xz-devel make)
             wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel libjpeg-turbo gcc-c++ make glib2-devel)
             python_with_venv=(python3 python3-virtualenv python3-pip python3-devel)
@@ -378,28 +463,31 @@ version_greater_than() {
 
 # Function to get the all versions of a package from PyPI
 fetch_versions_from_pypi() {
-    package=$1
+    package="$1"
     curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases // {} | keys[]' | sort -Vr
 }
 
 # Function to get the latest version of a package from PyPI
 get_latest_pypi_version() {
-    local latest_version
-    local package_name=$1
-    latest_version=$(curl -s "https://pypi.org/pypi/${package_name}/json" | jq -r .info.version)
-    if [ -z "$latest_version" ]; then
+    local pkg="$1"
+    local var_name="$2"
+
+    local version
+    version=$(curl -s "https://pypi.org/pypi/$pkg/json" | jq -r '.info.version')
+    if [ -z "$version" ] || [ "$version" = "null" ]; then
         log_message "Error: Unable to fetch the latest version for package ${package_name}. Exiting."
         exit 1
     fi
-    echo "$latest_version"
+    declare -n result=$var_name
+    result="$version"
 }
 
 transform_package_spec() {
-    local package_spec=$1
+    local package_spec="$1"
 
     if [[ ! $package_spec =~ ^psychopy== ]] || [ "$PSYCHOPY_GIT_TAG" != "true" ]; then
         echo "$package_spec"
-        return
+        return 0
     fi
 
     local version=${package_spec#psychopy==}
@@ -408,8 +496,8 @@ transform_package_spec() {
 
 # Function to check if a specific version of a package exists on PyPI (extra rule for psychopy)
 check_pypi_for_version() {
-    local package=$1
-    local version=$2
+    local package="$1"
+    local version="$2"
     local GITHUB_API="https://api.github.com/repos/psychopy/psychopy/git/refs/tags"
     local PYPI_API="https://pypi.org/pypi"
 
@@ -426,8 +514,8 @@ check_pypi_for_version() {
         fi
     fi
 
-    log_message "Error: ${package} version ${version} not found on PyPI$([ "${package}" = "psychopy" ] && echo " or as git tag"). Exiting."
-    return 1
+    log_message "Error: ${package} version ${version} not found on PyPI. Exiting."
+    exit 1
 }
 
 # Function to check if python is in path and pip and venv are installed
@@ -485,10 +573,12 @@ build_python() {
 
 # Function to download prebuilt Python from GitHub release
 python_github_install() {
-    local asset_name api_url assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
-    latest_release_tag=$(curl -s "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
+    local asset_name api_url github_api_header assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
+
+    github_api_header="Accept: application/vnd.github.v3+json"
+    latest_release_tag=$(curl -s -H "$github_api_header" "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
-    assets_json=$(curl -s "$api_url")
+    assets_json=$(curl -s -H "$github_api_header" "$api_url")
 
     python_version_pattern="python-${python_version}\.[0-9]+-${processor_structure}-${os_version}\.tar\.gz"
     asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
@@ -497,7 +587,7 @@ python_github_install() {
     if [[ -z "$asset_name" && "v${script_version}" != "$latest_release_tag" ]]; then
         log_message "Warning: No matching Python version found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
-        assets_json=$(curl -s "$api_url")
+        assets_json=$(curl -s -H "$github_api_header" "$api_url")
         asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
     fi
 
@@ -536,10 +626,15 @@ python_github_install() {
     fi
 }
 
-# Function to build wxPython from source
 build_wxpython() {
+    local tmp_size_gb
+
     log_message "Info: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
+
+    # Check /tmp size and warn if ≤2GB (non-blocking)
+    tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
+    [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
 
     log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
     if pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$wxpython_version"; then
@@ -550,14 +645,14 @@ build_wxpython() {
     fi
 }
 
-
 # Function to install wxPython from GitHub release
 wxpython_github_install() {
-    local api_url assets_json latest_release_tag wheel_name renamed_wheel download_url python_version_major_minor
+    local api_url assets_json latest_release_tag github_api_header wheel_name renamed_wheel download_url python_version_major_minor
 
-    latest_release_tag=$(curl -s "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
+    github_api_header="Accept: application/vnd.github.v3+json"
+    latest_release_tag=$(curl -s -H "$github_api_header" "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${script_version}"
-    assets_json=$(curl -s "$api_url")
+    assets_json=$(curl -s -H "$github_api_header" "$api_url")
 
     python_version_major_minor=$(echo "${python_version}" | awk -F. '{printf "%s%s", $1, $2}')
     wheel_name="wxPython-${wxpython_version}-cp${python_version_major_minor}-cp${python_version_major_minor}-${processor_structure}-${os_version}.whl"
@@ -567,7 +662,7 @@ wxpython_github_install() {
     if [[ -z "$download_url" && "v${script_version}" != "$latest_release_tag" ]]; then
         log_message "Info: No matching wxPython wheel found in v${script_version}. Checking the latest release ($latest_release_tag)..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
-        assets_json=$(curl -s "$api_url")
+        assets_json=$(curl -s -H "$github_api_header" "$api_url")
         download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
     fi
 
@@ -598,21 +693,29 @@ wxpython_github_install() {
     fi
 }
 
-
 # Function to create a desktop shortcut file
 create_desktop_shortcut() {
     local desktop_shortcut
     local desktop_dir="${HOME}/.local/share/applications/"
     local psychopy_exec="${psychopy_dir}/bin/psychopy"
     local resources_dir="${psychopy_dir}/Resources"
+    local shortcuts=()
 
     desktop_shortcut="$(xdg-user-dir DESKTOP)"
 
-    local shortcuts=(
-        "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
-        "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
-        "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) Python(v${python_version})" "coder.png"
-    )
+    if [ -n "$venv_name" ]; then
+        shortcuts+=(
+            "--no-splash" "$venv_name" "psychopy.png"
+            "--builder --no-splash" "Builder $venv_name" "builder.png"
+            "--coder --no-splash" "Coder $venv_name" "coder.png"
+        )
+    else
+        shortcuts+=(
+            "--no-splash" "PsychoPy (v${psychopy_version}) Python(v${python_version})" "psychopy.png"
+            "--builder --no-splash" "PsychoPy Builder (v${psychopy_version}) Python(v${python_version})" "builder.png"
+            "--coder --no-splash" "PsychoPy Coder (v${psychopy_version}) Python(v${python_version})" "coder.png"
+        )
+    fi
 
     if [ ! -d "$desktop_shortcut" ]; then
         log_message "Warning: Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
@@ -656,13 +759,19 @@ Categories=Education;Science;"
         gio set "$desktop_file" metadata::trusted true
         sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
     done
+    log_message "Info: Desktop shortcuts created."
 }
 
 # Function to create add PsychoPy to system path
 add_psychopy_to_path() {
     local shell_name
     local bin_dir="${psychopy_dir}/.bin"
-    local target_bin="${bin_dir}/psychopy_${psychopy_version}_py${python_version}"
+
+    if [ -n "$venv_name" ]; then
+        local target_bin="${bin_dir}/${venv_name}"
+    else
+        local target_bin="${bin_dir}/psychopy_${psychopy_version}_py${python_version}"
+    fi
 
     shell_name=$(basename "$SHELL")
     mkdir -p "$bin_dir"
@@ -732,8 +841,8 @@ show_gui() {
         fi
 
         # Select Python version
-        python_version=$(zenity --list --title="Python Version" \
-            --text="Select the Python version:" \
+        python_version=$(zenity --list --title="Select Python Version" \
+            --text="Choose the Python version for this installation.\n\nPython 3.10 is recommended for best compatibility." \
             --radiolist --column="Select" --column="Version" \
             TRUE "3.10" FALSE "3.9" FALSE "3.8")
         python_version=$(echo "$python_version" | xargs)
@@ -743,9 +852,9 @@ show_gui() {
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        default_wxpython_version="4.2.2"
-        wxpython_version=$(zenity --list --title="wxPython Version" \
-            --text="Select the wxPython version:" \
+        default_wxpython_version=$(grep -m1 "wxpython_version=\${wxpython_version:-\"[^\"]*\"}" "$0" | sed -n 's/.*:-"\([^"]*\)".*/\1/p')
+        wxpython_version=$(zenity --list --title="Select wxPython Version" \
+            --text="Choose the wxPython version for this installation.\n\nVersion $default_wxpython_version is recommended for most setups." \
             --radiolist --column="Select" --column="Version" \
             TRUE "$default_wxpython_version" $(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
         wxpython_version=$(echo "$wxpython_version" | xargs)
@@ -770,6 +879,15 @@ show_gui() {
         exit 1
     fi
 
+    # Prompt for custom virtual environment name
+    venv_name=$(zenity --entry --title="Custom Virtual Environment Name" \
+        --text="Enter a custom name for the virtual environment folder.\n\nIf left empty, a versioned folder will be created automatically.\nPress OK without entering a name to use the default versioned format.\n\nThis folder will be created inside:\n$install_dir\n\nNote: Any spaces in the name will be replaced with underscores (_).\n\nExample: my_custom_env" \
+        --entry-text="")
+    venv_name=$(echo "$venv_name" | xargs)
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+
     # Additional options with tooltips
     options=$(zenity --list --checklist --title="Additional Options" \
         --text="Select additional options:" \
@@ -777,7 +895,6 @@ show_gui() {
         TRUE "Create desktop shortcuts" \
         TRUE "Add PsychoPy to system PATH" \
         TRUE "Run in non-interactive mode" \
-        FALSE "Install without versioned subdirectory" \
         FALSE "Force overwrite of existing directory" \
         FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
@@ -789,30 +906,38 @@ show_gui() {
     if [[ $options == *"Build Python from source"* ]]; then
         build_python=true
     fi
+
     if [[ $options == *"Build wxPython from source"* ]]; then
         build_wx=true
     fi
+
     if [[ $options == *"Create desktop shortcuts"* ]]; then
         disable_shortcut=false
+    else
+        disable_shortcut=true
     fi
+
     if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
         disable_path=false
+    else
+        disable_path=true
     fi
-    if [[ $options == *"Install without versioned subdirectory"* ]]; then
-        no_versioned_install_dir=true
-    fi
+
     if [[ $options == *"Force overwrite of existing directory"* ]]; then
         force_overwrite=true
     fi
+
     if [[ $options == *"Enable verbose output"* ]]; then
         verbose=true
     fi
+
     if [[ $options == *"Run in non-interactive mode"* ]]; then
         non_interactive=true
         sudo_mode=auto
     else
         non_interactive=false
     fi
+
     if [[ $non_interactive == false ]]; then
         sudo_mode=$(zenity --list --title="Sudo Mode" \
             --text="Select the desired sudo mode:\n\
@@ -830,7 +955,6 @@ show_gui() {
 }
 
 process_arguments() {
-    install_dir_set_by_user=false
     sudo_mode_set=false
 
     for arg in "$@"; do
@@ -841,7 +965,7 @@ process_arguments() {
             --python-version=*)
                 python_version="${arg#*=}"
                 if [[ ! $python_version =~ ^3\.(8|9|10)$ ]]; then
-                    echo "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
+                    log_message "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
                     exit 1
                 fi
                 ;;
@@ -868,7 +992,7 @@ process_arguments() {
                         build_wx=true
                         ;;
                     *)
-                        echo "Error: Invalid option for --build: $build_arg"
+                        log_message "Error: Invalid option for --build: $build_arg"
                         show_help
                         exit 1
                         ;;
@@ -876,19 +1000,14 @@ process_arguments() {
                 ;;
             --install-dir=*)
                 install_dir="${arg#*=}"
-                install_dir_set_by_user=true
                 ;;
-            --no-versioned-install-dir)
-                if [ "$install_dir_set_by_user" = false ]; then
-                    echo "Error: --no-versioned-install-dir cannot be used without setting --install_dir."
-                    exit 1
-                fi
-                no_versioned_install_dir=true
+            --venv-name=*)
+                venv_name="${arg#*=}"
                 ;;
             --sudo-mode=*)
                 sudo_mode="${arg#*=}"
                 if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "continue" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
-                    echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
+                    log_message "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                     exit 1
                 fi
                 sudo_mode_set=true
@@ -916,7 +1035,7 @@ process_arguments() {
                 exit 0
                 ;;
             *)
-                echo "Error: Unknown option: $arg"
+                log_message "Error: Unknown option: $arg"
                 show_help
                 exit 1
                 ;;
@@ -957,7 +1076,7 @@ main() {
     build_python=${build_python:-false}
     build_wx=${build_wx:-false}
     install_dir=${install_dir:-"$HOME"}
-    no_versioned_install_dir=${no_versioned_install_dir:-false}
+    venv_name=${venv_name:-""} && venv_name=${venv_name//[[:space:]]/_}
     additional_packages=${additional_packages:-""}
     sudo_mode=${sudo_mode:-"ask"}
     disable_shortcut=${disable_shortcut:-false}
@@ -991,7 +1110,7 @@ main() {
 
     # Determine PsychoPy version to install
     if [ "$psychopy_version" == "latest" ]; then
-        psychopy_version=$(get_latest_pypi_version "psychopy")
+        get_latest_pypi_version "psychopy" psychopy_version
     elif [ "$psychopy_version" != "git" ]; then
         check_pypi_for_version psychopy "${psychopy_version}"
     fi
@@ -1001,8 +1120,8 @@ main() {
     install_dependencies psychopy_deps
 
     # Set up PsychoPy installation directory
-    if [ "$no_versioned_install_dir" = true ]; then
-        psychopy_dir="${install_dir}"
+    if [ -n "$venv_name" ]; then
+        psychopy_dir="${install_dir}/${venv_name}"
     else
         psychopy_dir="${install_dir}/psychopy_${psychopy_version}_py${python_version}"
     fi
@@ -1076,8 +1195,9 @@ main() {
     fi
 
     # Determine wxPython version and install it
+    log_message "Info: Installing wxpython ..."
     if [ "$wxpython_version" = "latest" ]; then
-        wxpython_version=$(get_latest_pypi_version "wxPython")
+        get_latest_pypi_version "wxPython" wxpython_version
     elif [ "$wxpython_version" != "git" ]; then
         check_pypi_for_version wxpython "${wxpython_version}"
     fi
@@ -1176,7 +1296,6 @@ main() {
     # Create desktop shortcut
     if [ "$disable_shortcut" = false ]; then
         create_desktop_shortcut
-        log_message "Info: Desktop shortcuts created."
     fi
 
     # Add PsychoPy to PATH
@@ -1184,7 +1303,11 @@ main() {
         add_psychopy_to_path
         echo
         echo "To start PsychoPy from the system path, use:"
-        echo "psychopy_${psychopy_version}_py${python_version}"
+        if [ -n "$venv_name" ]; then
+            echo "${venv_name}"
+        else
+            echo "psychopy_${psychopy_version}_py${python_version}"
+        fi
     fi
 
     echo
