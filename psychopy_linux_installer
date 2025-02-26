@@ -17,7 +17,7 @@ Options:
   --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
   --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
   --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
-  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading.
+  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn’t work as expected.
   --install-dir=DIR                             Specify installation directory (default: "$HOME").
   --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
@@ -287,7 +287,7 @@ filter_existing_packages() {
             fedora-39|fedora-40) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" ]] && continue ;;
             rocky-9|centos-9) [[ "$package" == "libxcb-xinerama" || "$package" == "pulseaudio" || "$package" == "portaudio-devel" ]] && continue ;;
             linuxmint-22) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
-            manjaro-25) [[ "$package" == "pulseaudio-utils" || "$package" == "pulseaudio" ]] && continue ;;
+            manjarolinux-25) [[ "$package" == "pulseaudio-utils" || "$package" == "pulseaudio" ]] && continue ;;
         esac
 
         case "$pkg_manager" in
