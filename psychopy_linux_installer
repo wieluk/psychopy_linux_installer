@@ -44,17 +44,13 @@ log() {
 
 # Function to print log messages with timestamp and color-coded severity
 log_message() {
-    local reset="\033[0m"
-    local green="\033[32m"
-    local yellow="\033[33m"
-    local red="\033[31m"
-    
+    local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m" timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
     # Disable colors if not a terminal (e.g., redirected output)
     if [[ ! -t 1 ]]; then
         reset=""; green=""; yellow=""; red=""
     fi
-    
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
     case "$1" in
         Info:*)    printf "%s - %b%s%b\n" "$timestamp" "$green" "$1" "$reset" ;;
@@ -631,11 +627,13 @@ python_github_install() {
 }
 
 build_wxpython() {
+    local tmp_size_gb
+    
     log_message "Info: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
     # Check /tmp size and warn if ≤2GB (non-blocking)
-    local tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
+    tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
     [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
     
     log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
