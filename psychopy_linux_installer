@@ -390,7 +390,7 @@ install_dependencies() {
             ;;
         pacman)
             script_deps=(git curl jq)
-            psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify)
+            psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify xcb-util-cursor)
             python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
             wxpython_deps=(libjpeg libpng libsm mesa gstreamer freeglut libtiff gtk2 gcc make glib2)
             python_with_venv=(python python-virtualenv python-pip)
@@ -906,27 +906,38 @@ show_gui() {
     if [[ $options == *"Build Python from source"* ]]; then
         build_python=true
     fi
+
     if [[ $options == *"Build wxPython from source"* ]]; then
         build_wx=true
     fi
+
     if [[ $options == *"Create desktop shortcuts"* ]]; then
         disable_shortcut=false
+    else
+        disable_shortcut=true
     fi
+
     if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
         disable_path=false
+    else
+        disable_path=true
     fi
+
     if [[ $options == *"Force overwrite of existing directory"* ]]; then
         force_overwrite=true
     fi
+
     if [[ $options == *"Enable verbose output"* ]]; then
         verbose=true
     fi
+
     if [[ $options == *"Run in non-interactive mode"* ]]; then
         non_interactive=true
         sudo_mode=auto
     else
         non_interactive=false
     fi
+
     if [[ $non_interactive == false ]]; then
         sudo_mode=$(zenity --list --title="Sudo Mode" \
             --text="Select the desired sudo mode:\n\
