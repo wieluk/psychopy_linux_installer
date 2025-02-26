@@ -42,9 +42,26 @@ log() {
     return $?
 }
 
-# Function to print log messages with timestamp
+# Function to print log messages with timestamp and color-coded severity
 log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+    local reset="\033[0m"
+    local green="\033[32m"
+    local yellow="\033[33m"
+    local red="\033[31m"
+    
+    # Disable colors if not a terminal (e.g., redirected output)
+    if [[ ! -t 1 ]]; then
+        reset=""; green=""; yellow=""; red=""
+    fi
+    
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    case "$1" in
+        Info:*)    printf "%s - %b%s%b\n" "$timestamp" "$green" "$1" "$reset" ;;
+        Warning:*) printf "%s - %b%s%b\n" "$timestamp" "$yellow" "$1" "$reset" ;;
+        Error:*)   printf "%s - %b%s%b\n" "$timestamp" "$red" "$1" "$reset" ;;
+        *)         printf "%s - %s\n" "$timestamp" "$1" ;;  # Default (no color)
+    esac
 }
 
 # Function to parse requirements.txt
@@ -613,11 +630,14 @@ python_github_install() {
     fi
 }
 
-# Function to build wxPython from source
 build_wxpython() {
     log_message "Info: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
+    # Check /tmp size and warn if ≤2GB (non-blocking)
+    local tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
+    [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
+    
     log_message "Info: Building wxPython $wxpython_version from source. This might take a while ..."
     if pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$wxpython_version"; then
         log_message "Info: Successfully built wxPython from source."
@@ -936,7 +956,7 @@ process_arguments() {
             --python-version=*)
                 python_version="${arg#*=}"
                 if [[ ! $python_version =~ ^3\.(8|9|10)$ ]]; then
-                    echo "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
+                    log_message "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
                     exit 1
                 fi
                 ;;
@@ -963,7 +983,7 @@ process_arguments() {
                         build_wx=true
                         ;;
                     *)
-                        echo "Error: Invalid option for --build: $build_arg"
+                        log_message "Error: Invalid option for --build: $build_arg"
                         show_help
                         exit 1
                         ;;
@@ -978,7 +998,7 @@ process_arguments() {
             --sudo-mode=*)
                 sudo_mode="${arg#*=}"
                 if [[ "$sudo_mode" != "ask" && "$sudo_mode" != "continue" && "$sudo_mode" != "auto" && "$sudo_mode" != "error"  && "$sudo_mode" != "force" ]]; then
-                    echo "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
+                    log_message "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                     exit 1
                 fi
                 sudo_mode_set=true
@@ -1006,7 +1026,7 @@ process_arguments() {
                 exit 0
                 ;;
             *)
-                echo "Error: Unknown option: $arg"
+                log_message "Error: Unknown option: $arg"
                 show_help
                 exit 1
                 ;;
