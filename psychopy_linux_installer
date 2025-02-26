@@ -212,9 +212,11 @@ sudo_wrapper() {
 
 # Function to check for updates
 check_for_updates() {
-    local latest_version current_version
+    local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer"
+    local current_version latest_version
+
     current_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
-    latest_version=$(curl -s https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
+    latest_version=$(curl -sL "$latest_url" | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
 
     if version_greater_than "$latest_version" "$current_version"; then
         echo -e "\nA new version ($latest_version) of the installer script is available."
@@ -223,11 +225,14 @@ check_for_updates() {
         echo "🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
         echo
 
-        read -r -p "Would you like to update? (y/n)" response
+        read -r -p "Would you like to update? (y/n) " response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "Info: Updating to version $latest_version..."
-            curl -o "$(dirname "$0")/$(basename "$0")" https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/psychopy_linux_installer
-            log_message "Info: Update completed. Please re-run the installer. Exiting"
+            
+            # Download and replace the current script with the latest release
+            curl -sLo "$(dirname "$0")/$(basename "$0")" "$latest_url"
+
+            log_message "Info: Update completed. Please re-run the installer. Exiting."
             exit 0
         fi
     fi
@@ -254,7 +259,6 @@ detect_os_version() {
     echo "unknown"
     return
 }
-
 
 # Function to detect the package manager for the OS
 detect_package_manager() {
