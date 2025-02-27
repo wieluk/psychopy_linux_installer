@@ -284,6 +284,10 @@ check_for_updates() {
                 cmd+=" --build=wxpython"
             fi
 
+            if [ -n "$requirements_file" ]; then
+                cmd+=" --requirements-file=$requirements_file"
+            fi
+
             echo
             echo "To re-run the installer with the current settings, use:"
             echo "$cmd"
