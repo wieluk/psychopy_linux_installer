@@ -261,12 +261,11 @@ check_for_updates() {
             # Build a re-run command that only includes options differing from their defaults.
             local cmd="$script_path"
 
-            # List of options to process (skip build options for now).
-            for key in psychopy_version python_version wxpython_version install_dir venv_name additional_packages sudo_mode disable_shortcut disable_path non_interactive force_overwrite verbose; do
+            for key in "${!default_opts[@]}"; do
+                [[ "$key" == "build_python" || "$key" == "build_wx" ]] && continue
                 current_value="${!key}"
                 default_value="${default_opts[$key]}"
                 if [[ "$current_value" != "$default_value" ]]; then
-                    # For boolean flags, add the flag only if true.
                     if [[ "$current_value" == "true" ]] && [[ "$default_value" == "false" ]]; then
                         cmd+=" --${key//_/-}"
                     else
@@ -275,7 +274,6 @@ check_for_updates() {
                 fi
             done
 
-            # Handle build options as a combined flag.
             if [[ "$build_python" == true && "$build_wx" == true ]]; then
                 cmd+=" --build=both"
             elif [[ "$build_python" == true ]]; then
