@@ -9,19 +9,37 @@
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
+# Define default values in an associative array
+declare -A default_opts=(
+    [psychopy_version]="latest"
+    [python_version]="3.10"
+    [wxpython_version]="4.2.2"
+    [build_python]=false
+    [build_wx]=false
+    [install_dir]="$HOME"
+    [venv_name]=""
+    [additional_packages]=""
+    [sudo_mode]="ask"
+    [disable_shortcut]=false
+    [disable_path]=false
+    [non_interactive]=false
+    [force_overwrite]=false
+    [verbose]=false
+)
+
 show_help() {
     cat << EOF
 Usage: ./psychopy_linux_installer [options]
 Options:
-  --psychopy-version=VERSION                    Specify PsychoPy version (default: latest).
-  --python-version=3.8|3.9|3.10                 Specify Python version (default: 3.10).
-  --wxpython-version=VERSION                    Specify wxPython version (default: 4.2.2).
+  --psychopy-version=VERSION                    Specify PsychoPy version (default: ${default_opts[psychopy_version]}).
+  --python-version=3.8|3.9|3.10                 Specify Python version (default: ${default_opts[python_version]}).
+  --wxpython-version=VERSION                    Specify wxPython version (default: ${default_opts[wxpython_version]}).
   --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
   --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn’t work as expected.
-  --install-dir=DIR                             Specify installation directory (default: "$HOME").
+  --install-dir=DIR                             Specify installation directory (default: "${default_opts[install_dir]}").
   --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
-  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ask).
+  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ${default_opts[sudo_mode]}).
   --disable-shortcut                            Disable desktop shortcut creation.
   --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
   --disable-path                                Disable adding psychopy to system path.
@@ -215,24 +233,60 @@ check_for_updates() {
     local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer"
     local current_version latest_version
 
+    # Extract version information from the current and latest scripts.
     current_version=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
     latest_version=$(curl -sL "$latest_url" | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
 
     if version_greater_than "$latest_version" "$current_version"; then
         echo -e "\nA new version ($latest_version) of the installer script is available."
-        echo
         echo "🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
         echo "🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
         echo
+
+        local script_path
+        script_path=$(readlink -f "$0")
 
         read -r -p "Would you like to update? (y/n) " response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "Info: Updating to version $latest_version..."
 
-            # Download and replace the current script with the latest release
-            curl -sLo "$(dirname "$0")/$(basename "$0")" "$latest_url"
+            # Download and replace the current script with the latest release.
+            if curl -sLo "$script_path" "$latest_url"; then
+                log_message "Info: Update completed successfully."
+            else
+                log_message "Error: Failed to download the update."
+                return 1
+            fi
 
-            log_message "Info: Update completed. Please re-run the installer. Exiting."
+            # Build a re-run command that only includes options differing from their defaults.
+            local cmd="$script_path"
+
+            # List of options to process (skip build options for now).
+            for key in psychopy_version python_version wxpython_version install_dir venv_name additional_packages sudo_mode disable_shortcut disable_path non_interactive force_overwrite verbose; do
+                current_value="${!key}"
+                default_value="${default_opts[$key]}"
+                if [[ "$current_value" != "$default_value" ]]; then
+                    # For boolean flags, add the flag only if true.
+                    if [[ "$current_value" == "true" ]] && [[ "$default_value" == "false" ]]; then
+                        cmd+=" --${key//_/-}"
+                    else
+                        cmd+=" --${key//_/-}=$current_value"
+                    fi
+                fi
+            done
+
+            # Handle build options as a combined flag.
+            if [[ "$build_python" == true && "$build_wx" == true ]]; then
+                cmd+=" --build=both"
+            elif [[ "$build_python" == true ]]; then
+                cmd+=" --build=python"
+            elif [[ "$build_wx" == true ]]; then
+                cmd+=" --build=wxpython"
+            fi
+
+            echo
+            echo "To re-run the installer with the current settings, use:"
+            echo "$cmd"
             exit 0
         fi
     fi
@@ -856,7 +910,7 @@ show_gui() {
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        default_wxpython_version=$(grep -m1 "wxpython_version=\${wxpython_version:-\"[^\"]*\"}" "$0" | sed -n 's/.*:-"\([^"]*\)".*/\1/p')
+        default_wxpython_version=${default_opts[wxpython_version]}
         wxpython_version=$(zenity --list --title="Select wxPython Version" \
             --text="Choose the wxPython version for this installation.\n\nVersion $default_wxpython_version is recommended for most setups." \
             --radiolist --column="Select" --column="Version" \
@@ -1073,21 +1127,15 @@ main() {
     fi
 
     # Ensure defaults for unset variables
+    for key in "${!default_opts[@]}"; do
+        if [ -z "${!key+x}" ]; then
+            eval "$key='${default_opts[$key]}'"
+        fi
+    done
+
+    venv_name=${venv_name//[[:space:]]/_}
+
     pkg_manager_permission=false
-    psychopy_version=${psychopy_version:-"latest"}
-    python_version=${python_version:-"3.10"}
-    wxpython_version=${wxpython_version:-"4.2.2"}
-    build_python=${build_python:-false}
-    build_wx=${build_wx:-false}
-    install_dir=${install_dir:-"$HOME"}
-    venv_name=${venv_name:-""} && venv_name=${venv_name//[[:space:]]/_}
-    additional_packages=${additional_packages:-""}
-    sudo_mode=${sudo_mode:-"ask"}
-    disable_shortcut=${disable_shortcut:-false}
-    disable_path=${disable_path:-false}
-    non_interactive=${non_interactive:-false}
-    force_overwrite=${force_overwrite:-false}
-    verbose=${verbose:-false}
     PSYCHOPY_GIT_TAG=false
 
     # Detect OS version and architecture
