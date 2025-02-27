@@ -2,6 +2,7 @@ name: Reusable Build Workflow
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -413,15 +414,24 @@ jobs:
 
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
-          WXPYTHON_TARBALL=$(ls wxPython-*.tar.gz)
+          WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
-          WXPYTHON_DIR=$(find . -type d -name "wxPython-*")
+          WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
           cd "$WXPYTHON_DIR"
           
           python --version
           python -m pip wheel .
           
-          WXPYTHON_WHEEL=$(ls wxPython-*.whl)
+          # Use a case-insensitive glob to capture the wheel file.
+          WXPYTHON_WHEEL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.whl)
+          
+          # If the wheel file does not start with "wxPython-"
+          if [[ "$WXPYTHON_WHEEL" != wxPython-* ]]; then
+              NEW_WXPYTHON_WHEEL="wxPython-${WXPYTHON_WHEEL:9}"
+              mv "$WXPYTHON_WHEEL" "$NEW_WXPYTHON_WHEEL"
+              WXPYTHON_WHEEL="$NEW_WXPYTHON_WHEEL"
+          fi
+
           WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
