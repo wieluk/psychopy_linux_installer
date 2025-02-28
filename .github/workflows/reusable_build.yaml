@@ -75,7 +75,7 @@ jobs:
             exit 1
           fi
           if [ "${{ matrix.wxpython_version }}" = "grab" ]; then
-            WXPYTHON_VERSION=$(grep -m1 'wxpython_version=${wxpython_version:-"[^"]*"}' psychopy_linux_installer | sed -n 's/.*:-"\([^"]*\)".*/\1/p')
+            WXPYTHON_VERSION=$(grep -m1 '^\s*\[wxpython_version\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
             if [ -z "$WXPYTHON_VERSION" ]; then
               exit 1
             fi
