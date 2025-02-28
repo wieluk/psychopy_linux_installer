@@ -1,4 +1,4 @@
-name: Reusable Release Creation
+name: reusable release creation
 
 on:
   workflow_call:

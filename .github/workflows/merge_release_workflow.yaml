@@ -1,0 +1,58 @@
+name: main merge workflow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - psychopy_linux_installer
+      - .github/workflows/**
+      - .github/PsychoPy_tests/**
+  workflow_dispatch:
+
+jobs:
+  # Initial syntax check
+  syntax-check:
+    uses: ./.github/workflows/reusable_syntax_check.yaml
+
+  # Check if a release already exists
+  check-if-release:
+    name: Check if Release
+    needs: syntax-check
+    uses: ./.github/workflows/reusable_check_release.yaml
+
+  # Test installation with build
+  test-installation-build:
+    name: Test Installation (Build)
+    needs: check-if-release
+    if: needs.check-if-release.outputs.result == 'release'
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      build-mode: true
+
+  # Create a release
+  create-release:
+    name: Create Release
+    needs: test-installation-build
+    if: needs.check-if-release.outputs.result == 'release'
+    uses: ./.github/workflows/reusable_release.yaml
+
+  # Build binaries and upload to release
+  build-binaries:
+    name: Build Binaries
+    needs: create-release
+    if: needs.check-if-release.outputs.result == 'release'
+    uses: ./.github/workflows/reusable_build.yaml
+
+  # Run testing if check-if-release succeeds.
+  test-installation-release:
+    name: Test Installation (new release)
+    needs: build-binaries
+    if: needs.check-if-release.outputs.result == 'release'
+    uses: ./.github/workflows/reusable_test.yaml
+
+  # Run testing if check-if-release fails.
+  test-installation-no-release:
+    name: Test Installation (no new release)
+    needs: check-if-release
+    if: needs.check-if-release.outputs.result == 'no_release'
+    uses: ./.github/workflows/reusable_test.yaml

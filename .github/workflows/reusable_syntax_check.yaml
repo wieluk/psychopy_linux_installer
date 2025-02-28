@@ -1,4 +1,4 @@
-name: Reusable Syntax Check
+name: reusable syntax check
 
 on:
   workflow_call:
