@@ -1,4 +1,4 @@
-name: Run extended tests (pr)
+name: pull request workflow
 
 on:
   pull_request:

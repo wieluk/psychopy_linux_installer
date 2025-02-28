@@ -1,4 +1,4 @@
-name: Run quick test
+name: push workflow
 
 on:
   push:

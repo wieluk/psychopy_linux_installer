@@ -1,4 +1,4 @@
-name: Reusable Test Workflow
+name: reusable test workflow
 
 on:
   workflow_call:
@@ -53,26 +53,68 @@ jobs:
           else
               /tmp_dir/psychopy/bin/psychopy -v
           fi
-    
+        
+      - name: Install xvfb
+        if: ${{ inputs.quick-mode }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y xvfb
+          sleep 2
+
       - name: Run basic PsychoPy test
         run: |
           cd /tmp_dir/PsychoPy_tests
           if [ "${{ inputs.quick-mode }}" = "true" ]; then
-            sudo apt-get update && sudo apt-get install -y xvfb
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
           else
             /tmp_dir/psychopy/bin/python -m unittest psychopy_test -v
           fi
+          sleep 2
 
       - name: Run extended PsychoPy Tests
         run: |
           cd /tmp_dir/PsychoPy_tests
           if [ "${{ inputs.quick-mode }}" = "true" ]; then
-            sudo apt-get update && sudo apt-get install -y xvfb
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
           else
             /tmp_dir/psychopy/bin/python -m unittest psychopy_test_extended -v
           fi
+          sleep 2
+
+      - name: Run Stroop Test
+        id: run_stroop
+        if: ${{ matrix.psychopy_version != '2023.2.3' }}
+        run: |
+          # Disable immediate exit on error
+          set +e
+      
+          cd /tmp_dir/PsychoPy_tests/stroop
+      
+          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+            output=$(xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python stroop_lastrun.py 2>&1)
+            exit_code=$?
+          else
+            output=$(/tmp_dir/psychopy/bin/python stroop_lastrun.py 2>&1)
+            exit_code=$?
+          fi
+      
+          # Print the full output to the log
+          echo "=== Stroop Task Output ==="
+          echo "$output"
+      
+          # Check for warnings and add GitHub annotations
+          if echo "$output" | grep -iq "warning"; then
+            warning_lines=$(echo "$output" | grep -i "warning")
+            echo "::warning::Warnings detected during the Stroop test run: $warning_lines"
+          fi
+      
+          # If the command failed, add an error annotation
+          if [ $exit_code -ne 0 ]; then
+            echo "::error::Stroop test failed with exit code $exit_code. See above output for details."
+          fi
+      
+          # Exit with the captured exit code so the step status reflects the task result
+          exit $exit_code
+          sleep 2
 
       - name: Cleanup
         if: always()
