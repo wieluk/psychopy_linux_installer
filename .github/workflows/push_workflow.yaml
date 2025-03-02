@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - psychopy_linux_installer
+      - .github/workflows/**
+      - .github/PsychoPy_tests/**
   workflow_dispatch:
 
 jobs:

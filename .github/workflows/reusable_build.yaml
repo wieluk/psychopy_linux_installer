@@ -17,6 +17,7 @@ jobs:
           - debian-11
           - fedora-39
           - fedora-40
+          - fedora-41
           - pop-22
           - rocky-9
           - centos-9
@@ -316,7 +317,7 @@ jobs:
             echo "$pkg_block" | grep -E "^[[:space:]]*$1=\(" | sed -E "s/^[[:space:]]*$1=\(//; s/\)[[:space:]]*$//"
           }
           
-          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
+          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
           echo "Installing packages: $all_deps"
       
           case "$PKG_MANAGER" in

@@ -5,7 +5,7 @@ This script facilitates the installation of [PsychoPy](https://www.psychopy.org/
 - Ubuntu 24.04, 22.04, 20.04, (18.04)
 - Pop!_OS 22.04
 - Debian 12, 11
-- Fedora 40, 39
+- Fedora 41, 40, 39
 - Rocky Linux 9
 - CentOS 9
 - Linux Mint 22
@@ -193,25 +193,32 @@ Here are all dependencies listed that might be installed:
 ```text
 apt-get
     script_deps=(curl git jq)
-    psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev ttf-mscorefonts-installer portaudio19-dev pulseaudio pulseaudio-utils)
+    psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
+    fonts=(fonts-dejavu fonts-liberation fontconfig)
     python_build_deps=(build-essential libbz2-dev libffi-dev libreadline-dev libsqlite3-dev libssl-dev make xz-utils zlib1g-dev)
     wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
     python_with_venv=(python3 python3-dev python3-pip python3-venv)
+
 yum|dnf
     script_deps=(curl git jq)
-    psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel msttcore-fonts-installer portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+    psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+    fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
     python_build_deps=(bzip2-devel gcc libffi-devel make openssl-devel readline-devel sqlite-devel xz-devel zlib-devel)
     wxpython_deps=(freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
     python_with_venv=(python3 python3-devel python3-pip python3-venv)
+
 pacman
     script_deps=(curl git jq)
     psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+    fonts=(dejavu ttf-liberation noto-fonts gnu-free-fonts)
     python_build_deps=(base-devel bzip2 libffi make openssl readline sqlite xz zlib)
     wxpython_deps=(freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
     python_with_venv=(python python-pip python-virtualenv)
+
 zypper
     script_deps=(curl git jq)
-    psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 msttcore-fonts-installer portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+    psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+    fonts=(dejavu-fonts liberation-fonts fontconfig)
     python_build_deps=(gcc libffi-devel libopenssl-devel make readline-devel sqlite3-devel xz-devel zlib-devel)
     wxpython_deps=(freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
     python_with_venv=(python3 python3-devel python3-pip python3-virtualenv)
