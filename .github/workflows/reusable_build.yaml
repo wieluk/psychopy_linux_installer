@@ -47,25 +47,31 @@ jobs:
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           
-          if command -v jq >/dev/null 2>&1; then
-            echo "jq is already installed"
+          if command -v apt-get > /dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y jq curl
+            PKG_MANAGER="apt-get"
+          elif command -v pacman > /dev/null; then
+            sudo pacman -Syu --noconfirm jq curl
+            PKG_MANAGER="pacman"
+          elif command -v dnf > /dev/null; then
+            sudo dnf makecache -q
+            sudo dnf install -y jq curl
+            PKG_MANAGER="dnf"
+          elif command -v yum > /dev/null; then
+            sudo yum makecache -q
+            sudo yum install -y jq curl
+            PKG_MANAGER="yum"
+          elif command -v zypper > /dev/null; then
+            sudo zypper refresh
+            sudo zypper install -y jq curl
+            PKG_MANAGER="zypper"
           else
-            if command -v apt-get > /dev/null; then
-              sudo apt-get update || true
-              sudo apt-get install -y jq curl || true
-            elif command -v pacman > /dev/null; then
-              sudo pacman -Sy --noconfirm jq curl || true
-            elif command -v dnf > /dev/null; then
-              sudo dnf install -y jq curl || true
-            elif command -v yum > /dev/null; then
-              sudo yum install -y jq curl || true
-            elif command -v zypper > /dev/null; then
-              sudo zypper install -y jq curl || true
-            else
-              echo "Unsupported package manager"
-              exit 1
-            fi
+            echo "Unsupported package manager"
+            exit 1
           fi
+
+          echo "PKG_MANAGER=$PKG_MANAGER" >> $GITHUB_ENV
 
       - name: Extract versions from script
         id: extract_versions
@@ -130,24 +136,11 @@ jobs:
             exit 1
           fi
           
-          # Function to detect OS of machine
+          # Function to detect the OS version
           detect_os_version() {
-              local long_version=0
-              if [ "$1" = "--long" ]; then
-                  long_version=1
-              fi
-
               if [ -f /etc/os-release ]; then
                   . /etc/os-release
                   if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
-                      if [ "$long_version" -eq 1 ]; then
-                          echo "$ID-$VERSION_ID"
-                          return
-                      else
-                          major_version=$(echo "$VERSION_ID" | cut -d. -f1)
-                          echo "$ID-$major_version"
-                          return
-                      fi
                       major_version=$(echo "$VERSION_ID" | cut -d. -f1)
                       echo "$ID-$major_version"
                       return
@@ -155,15 +148,12 @@ jobs:
               fi
 
               if command -v lsb_release > /dev/null 2>&1; then
-                  if [ "$long_version" -eq 1 ]; then
-                      version=$(lsb_release -sr)
-                  else
-                      version=$(lsb_release -sr | cut -d. -f1)
-                  fi
+                  version=$(lsb_release -sr | cut -d. -f1)
                   echo "$(lsb_release -si)-$version"
                   return
               fi
-              log_message "Error: Unable to detect OS version."
+
+              log_message "Warning: Unable to detect OS version."
               exit 1
           }
 
@@ -277,6 +267,14 @@ jobs:
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
 
+          ###
+          # Temporarly disable the transfer from previous release #TODO: Remove this line
+          echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
+          echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
+          echo "SKIP_PYTHON_PROCESS=false" >> $GITHUB_ENV
+          echo "SKIP_WXPYTHON_PROCESS=false" >> $GITHUB_ENV
+          ###
+          
       - name: Transfer Python from previous release
         if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
         run: |
@@ -303,72 +301,51 @@ jobs:
             --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
             "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
-      - name: Set up dependencies
+      - name: Install build dependencies
         if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
-          if command -v apt-get > /dev/null; then
-            sudo apt-get update || true
-            packages=(
-              git curl jq python3-pip python3-dev libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 
-              libegl1-mesa-dev python3-venv libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev 
-              libasound2-dev build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev 
-              libreadline-dev xz-utils libjpeg-dev libpng-dev gstreamer1.0-plugins-base gstreamer1.0-tools 
-              gstreamer1.0-x freeglut3-dev libtiff-dev libnotify-dev libsm-dev make
-            )
-            for pkg in "${packages[@]}"; do
-              sudo apt-get install -y "$pkg" || true
-            done
-          elif command -v pacman > /dev/null; then
-            sudo pacman -Syu --noconfirm || true
-            packages=(
-              git curl jq python python-devel gtk3 webkit2gtk libxcb mesa sdl2 glu 
-              libusb portaudio alsa-lib base-devel openssl zlib sqlite libffi bzip2 
-              readline xz libjpeg libpng libsm gstreamer gstreamer-base freeglut 
-              libtiff libnotify make
-            )
-            for pkg in "${packages[@]}"; do
-              sudo pacman -S --noconfirm "$pkg" || true
-            done
-          elif command -v dnf > /dev/null; then
-            sudo dnf check-update || true
-            packages=(
-              git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama 
-              mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
-              gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
-              xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
-              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel make
-            )
-            for pkg in "${packages[@]}"; do
-              sudo dnf install -y "$pkg" || true
-            done
-          elif command -v yum > /dev/null; then
-            sudo yum check-update || true
-            packages=(
-              git curl jq python3-devel python3-pip gtk3-devel webkit2gtk3-devel libxcb-xinerama 
-              mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel 
-              gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel 
-              xz-devel libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-plugins-base 
-              gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel make
-            )
-            for pkg in "${packages[@]}"; do
-              sudo yum install -y "$pkg" || true
-            done
-          elif command -v zypper > /dev/null; then
-            sudo zypper refresh || true
-            packages=(
-              git curl jq python3-pip python3-devel gtk3-devel webkit2gtk3-devel libxcb1 libxcb-xinerama0 
-              Mesa-libEGL-devel SDL2-devel Mesa-libGLU-devel libusb-1_0-devel portaudio-devel alsa-devel 
-              gcc-c++ libopenssl-devel libbz2-devel libffi-devel zlib-devel sqlite3-devel readline-devel 
-              xz-devel libjpeg-devel libpng16-compat-devel libSM-devel gstreamer-plugins-base-devel 
-              gstreamer-devel freeglut-devel libtiff-devel libnotify-devel make
-            )
-            for pkg in "${packages[@]}"; do
-              sudo zypper install -y "$pkg" || true
-            done
-          else
-            echo "Unsupported package manager"
-            exit 1
-          fi
+          # Extract install_dependencies function block.
+          func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
+          # Narrow to the case block.
+          case_block=$(echo "$func_block" | awk '/^ *case *\$PKG_MANAGER *in/,/^esac/')
+          # Extract the sub-block for the detected PKG_MANAGER.
+          pkg_block=$(echo "$case_block" | awk -v pkg="$PKG_MANAGER" '$0 ~ "^[[:space:]]*"pkg"\\)" {in=1} in {print} $0 ~ ";;" && in {exit}')
+          
+          # Function to extract dependencies from a variable declaration.
+          extract_deps() {
+            echo "$pkg_block" | grep -E "^[[:space:]]*$1=\(" | sed -E "s/^[[:space:]]*$1=\(//; s/\)[[:space:]]*$//"
+          }
+          
+          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
+          echo "Installing packages: $all_deps"
+      
+          case "$PKG_MANAGER" in
+            apt-get)
+              for pkg in $all_deps; do
+                sudo apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+              done
+              ;;
+            dnf)
+              for pkg in $all_deps; do
+                sudo dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+              done
+              ;;
+            yum)
+              for pkg in $all_deps; do
+                sudo yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+              done
+              ;;
+            pacman)
+              for pkg in $all_deps; do
+                sudo pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
+              done
+              ;;
+            zypper)
+              for pkg in $all_deps; do
+                sudo zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+              done
+              ;;
+          esac
 
       - name: Build Python
         id: build-python

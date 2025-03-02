@@ -161,6 +161,18 @@ sudo_wrapper() {
         esac
     }
 
+    setup_temporary_sudo_timeout() {
+        if [ "$temporary_sudo_setup_done" = true ]; then
+            return
+        fi
+        temp_sudoers="/etc/sudoers.d/temporary_timeout"
+        trap 'echo; log_message "Info: Removing temporary sudoers file ($temp_sudoers) to restore original sudoers configuration."; sudo_wrapper rm -f "$temp_sudoers"' EXIT
+        temporary_sudo_setup_done=true
+        log_message "Info: Setting temporary sudo timeout to 300 minutes..."
+        sudo_wrapper sh -c "echo 'Defaults        timestamp_timeout=300' > $temp_sudoers"
+        sudo_wrapper chmod 440 $temp_sudoers
+    }
+
     handle_sudo_request() {
         local response
         local command=("$@")
@@ -186,9 +198,10 @@ sudo_wrapper() {
                     [Cc])
                         ;;
                     [aA])
+                        sudo_mode=auto
+                        setup_temporary_sudo_timeout
                         log_message "Info: Retrying ${command[*]} with sudo and setting sudo-mode=auto ..."
                         log sudo "${command[@]}"
-                        sudo_mode=auto
                         ;;
                     *)
                         log_message "Info: Exiting."
@@ -197,6 +210,7 @@ sudo_wrapper() {
                 esac
                 ;;
             auto)
+                setup_temporary_sudo_timeout
                 if $is_pkg_manager_command; then
                     pkg_manager_permission=true
                 fi
@@ -397,6 +411,10 @@ install_packages() {
     local available_packages
     available_packages=$(filter_existing_packages "${packages[@]}")
 
+    # Using grep to compute the difference available_packages
+    diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(echo "$available_packages" | tr ' ' '\n') | paste -sd, -)
+    [ -n "$diff" ] && log_message "Warning: The following packages are not available and will be skipped: $diff"
+
     if [[ -z "$available_packages" ]]; then
         log_message "No valid packages found for installation."
         return
@@ -435,32 +453,32 @@ install_dependencies() {
 
     case $pkg_manager in
         apt-get)
-            script_deps=(git curl jq)
-            psychopy_deps=(libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libxcb-cursor0 libxkbcommon-x11-0 pulseaudio pulseaudio-utils libnotify4 libglib2.0-dev)
-            python_build_deps=(build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils make)
-            wxpython_deps=(libjpeg-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libpng-dev libtiff-dev libnotify-dev libsm-dev libgtk2.0-dev g++ make)
-            python_with_venv=(python3 python3-venv python3-pip python3-dev)
+            script_deps=(curl git jq)
+            psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev ttf-mscorefonts-installer portaudio19-dev pulseaudio pulseaudio-utils)
+            python_build_deps=(build-essential libbz2-dev libffi-dev libreadline-dev libsqlite3-dev libssl-dev make xz-utils zlib1g-dev)
+            wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
+            python_with_venv=(python3 python3-dev python3-pip python3-venv)
             ;;
         yum|dnf)
-            script_deps=(git curl jq)
-            psychopy_deps=(gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel pulseaudio pulseaudio-utils libnotify)
-            python_build_deps=(gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel make)
-            wxpython_deps=(libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel gtk2-devel make glib2-devel)
-            python_with_venv=(python3 python3-venv python3-pip python3-devel)
+            script_deps=(curl git jq)
+            psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel msttcore-fonts-installer portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+            python_build_deps=(bzip2-devel gcc libffi-devel make openssl-devel readline-devel sqlite-devel xz-devel zlib-devel)
+            wxpython_deps=(freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
+            python_with_venv=(python3 python3-devel python3-pip python3-venv)
             ;;
         pacman)
-            script_deps=(git curl jq)
-            psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify xcb-util-cursor)
-            python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
-            wxpython_deps=(libjpeg libpng libsm mesa gstreamer freeglut libtiff gtk2 gcc make glib2)
-            python_with_venv=(python python-virtualenv python-pip)
+            script_deps=(curl git jq)
+            psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+            python_build_deps=(base-devel bzip2 libffi make openssl readline sqlite xz zlib)
+            wxpython_deps=(freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
+            python_with_venv=(python python-pip python-virtualenv)
             ;;
         zypper)
-            script_deps=(git curl jq)
-            psychopy_deps=(gtk3-devel libxcb-xinerama0 SDL2-devel libusb-1_0-devel portaudio-devel alsa-devel pulseaudio pulseaudio-utils libnotify4)
-            python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel readline-devel xz-devel make)
-            wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel libjpeg-turbo gcc-c++ make glib2-devel)
-            python_with_venv=(python3 python3-virtualenv python3-pip python3-devel)
+            script_deps=(curl git jq)
+            psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 msttcore-fonts-installer portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+            python_build_deps=(gcc libffi-devel libopenssl-devel make readline-devel sqlite3-devel xz-devel zlib-devel)
+            wxpython_deps=(freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
+            python_with_venv=(python3 python3-devel python3-pip python3-virtualenv)
             ;;
         *)
             log_message "Error: No compatible package manager found."; exit 1
@@ -545,7 +563,7 @@ get_latest_pypi_version() {
 transform_package_spec() {
     local package_spec="$1"
 
-    if [[ ! $package_spec =~ ^psychopy== ]] || [ "$PSYCHOPY_GIT_TAG" != "true" ]; then
+    if [[ ! $package_spec =~ ^psychopy== ]] || [ "$psychopy_git_tag" != "true" ]; then
         echo "$package_spec"
         return 0
     fi
@@ -569,7 +587,7 @@ check_pypi_for_version() {
         if curl -s -H "Accept: application/vnd.github.v3+json" \
             "${GITHUB_API}/${version}" | jq -e .ref > /dev/null; then
             log_message "Warning: ${package} version ${version} not found on PyPi but as git tag"
-            PSYCHOPY_GIT_TAG=true
+            psychopy_git_tag=true
             return 0
         fi
     fi
@@ -890,11 +908,10 @@ show_gui() {
     if [ "$use_requirements" = false ]; then
         # Select PsychoPy version
         psychopy_versions=$(fetch_versions_from_pypi psychopy)
-        first_psychopy_version=$(echo "$psychopy_versions" | head -1)
         psychopy_version=$(zenity --list --title="PsychoPy Version" \
             --text="Select the PsychoPy version:" \
             --radiolist --column="Select" --column="Version" \
-            TRUE "$first_psychopy_version" $(echo "$psychopy_versions" | tail -n +2 | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
+            TRUE "${default_opts[psychopy_version]}" $(echo "$psychopy_versions" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
         psychopy_version=$(echo "$psychopy_version" | xargs)
         if [ $? -ne 0 ] || [ -z "$psychopy_version" ]; then
             exit 1
@@ -902,7 +919,7 @@ show_gui() {
 
         # Select Python version
         python_version=$(zenity --list --title="Select Python Version" \
-            --text="Choose the Python version for this installation.\n\nPython 3.10 is recommended for best compatibility." \
+            --text="Choose the Python version for this installation.\n\nPython ${default_opts[python_version]} is recommended for best compatibility." \
             --radiolist --column="Select" --column="Version" \
             TRUE "3.10" FALSE "3.9" FALSE "3.8")
         python_version=$(echo "$python_version" | xargs)
@@ -912,11 +929,10 @@ show_gui() {
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        default_wxpython_version=${default_opts[wxpython_version]}
         wxpython_version=$(zenity --list --title="Select wxPython Version" \
-            --text="Choose the wxPython version for this installation.\n\nVersion $default_wxpython_version is recommended for most setups." \
+            --text="Choose the wxPython version for this installation.\n\nVersion ${default_opts[wxpython_version]} is recommended for most setups." \
             --radiolist --column="Select" --column="Version" \
-            TRUE "$default_wxpython_version" $(echo "$wxpython_versions" | grep -v "$default_wxpython_version" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
+            TRUE "${default_opts[wxpython_version]}" $(echo "$wxpython_versions" | grep -v "${default_opts[wxpython_version]}" | xargs -I{} printf "FALSE %s " {}) | tr -d '"')
         wxpython_version=$(echo "$wxpython_version" | xargs)
         if [ $? -ne 0 ] || [ -z "$wxpython_version" ]; then
             exit 1
@@ -954,7 +970,7 @@ show_gui() {
         --column="Select" --column="Option" \
         TRUE "Create desktop shortcuts" \
         TRUE "Add PsychoPy to system PATH" \
-        TRUE "Run in non-interactive mode" \
+        FALSE "Run in non-interactive mode" \
         FALSE "Force overwrite of existing directory" \
         FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
@@ -1104,7 +1120,11 @@ process_arguments() {
 }
 
 main() {
+    pkg_manager_permission=false
+    psychopy_git_tag=false
+    temporary_sudo_setup_done=false
     use_gui=false
+
     for arg in "$@"; do
         if [[ "$arg" == "--gui" ]]; then
             use_gui=true
@@ -1137,8 +1157,6 @@ main() {
 
     venv_name=${venv_name//[[:space:]]/_}
 
-    pkg_manager_permission=false
-    PSYCHOPY_GIT_TAG=false
 
     # Detect OS version and architecture
     os_version=$(detect_os_version | tr '[:upper:]' '[:lower:]')
@@ -1305,7 +1323,7 @@ main() {
         log_message "Info: Installing PsychoPy version ${psychopy_version}"
         if [ "$psychopy_version" == "git" ]; then
             log pip install git+https://github.com/psychopy/psychopy.git@dev
-        elif [ "$PSYCHOPY_GIT_TAG" = "true" ]; then
+        elif [ "$psychopy_git_tag" = "true" ]; then
             log pip install "git+https://github.com/psychopy/psychopy.git@${psychopy_version}"
         else
             log pip install psychopy=="${psychopy_version}"
