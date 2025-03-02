@@ -192,32 +192,29 @@ Here are all dependencies listed that might be installed:
 
 ```text
 apt-get
-    script_deps=(git curl jq)
-    psychopy_deps=(libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-xinerama0 libegl1-mesa-dev libsdl2-dev libglu1-mesa-dev libusb-1.0-0-dev portaudio19-dev libasound2-dev libxcb-cursor0 libxkbcommon-x11-0 pulseaudio pulseaudio-utils libnotify4 libglib2.0-dev)
-    python_build_deps=(build-essential libssl-dev zlib1g-dev libsqlite3-dev libffi-dev libbz2-dev libreadline-dev xz-utils make)
-    wxpython_deps=(libjpeg-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x freeglut3-dev libpng-dev libtiff-dev libnotify-dev libsm-dev libgtk2.0-dev g++ make)
-    python_with_venv=(python3 python3-venv python3-pip python3-dev)
-
+    script_deps=(curl git jq)
+    psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev ttf-mscorefonts-installer portaudio19-dev pulseaudio pulseaudio-utils)
+    python_build_deps=(build-essential libbz2-dev libffi-dev libreadline-dev libsqlite3-dev libssl-dev make xz-utils zlib1g-dev)
+    wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
+    python_with_venv=(python3 python3-dev python3-pip python3-venv)
 yum|dnf
-    script_deps=(git curl jq)
-    psychopy_deps=(gtk3-devel webkit2gtk3-devel libxcb-xinerama mesa-libEGL-devel SDL2-devel mesa-libGLU-devel libusb1-devel portaudio-devel alsa-lib-devel pulseaudio pulseaudio-utils libnotify)
-    python_build_deps=(gcc openssl-devel bzip2-devel libffi-devel zlib-devel sqlite-devel readline-devel xz-devel make)
-    wxpython_deps=(libjpeg-devel libpng-devel libSM-devel gcc-c++ gstreamer1-devel freeglut-devel libjpeg-turbo-devel libtiff-devel libnotify-devel gtk2-devel make glib2-devel)
-    python_with_venv=(python3 python3-venv python3-pip python3-devel)
-
+    script_deps=(curl git jq)
+    psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel msttcore-fonts-installer portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+    python_build_deps=(bzip2-devel gcc libffi-devel make openssl-devel readline-devel sqlite-devel xz-devel zlib-devel)
+    wxpython_deps=(freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
+    python_with_venv=(python3 python3-devel python3-pip python3-venv)
 pacman
-    script_deps=(git curl jq)
-    psychopy_deps=(gtk3 webkit2gtk libxcb mesa sdl2 glu libusb portaudio alsa-lib pulseaudio pulseaudio-utils libnotify xcb-util-cursor)
-    python_build_deps=(base-devel openssl zlib sqlite libffi bzip2 readline xz make)
-    wxpython_deps=(libjpeg libpng libsm mesa gstreamer freeglut libtiff gtk2 gcc make glib2)
-    python_with_venv=(python python-virtualenv python-pip)
-
+    script_deps=(curl git jq)
+    psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+    python_build_deps=(base-devel bzip2 libffi make openssl readline sqlite xz zlib)
+    wxpython_deps=(freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
+    python_with_venv=(python python-pip python-virtualenv)
 zypper
-    script_deps=(git curl jq)
-    psychopy_deps=(gtk3-devel libxcb-xinerama0 SDL2-devel libusb-1_0-devel portaudio-devel alsa-devel pulseaudio pulseaudio-utils libnotify4)
-    python_build_deps=(gcc libopenssl-devel zlib-devel sqlite3-devel libffi-devel readline-devel xz-devel make)
-    wxpython_deps=(libpng16-devel gstreamer-plugins-base freeglut-devel libnotify-devel libSM-devel libjpeg-turbo gcc-c++ make glib2-devel)
-    python_with_venv=(python3 python3-virtualenv python3-pip python3-devel)
+    script_deps=(curl git jq)
+    psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 msttcore-fonts-installer portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+    python_build_deps=(gcc libffi-devel libopenssl-devel make readline-devel sqlite3-devel xz-devel zlib-devel)
+    wxpython_deps=(freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
+    python_with_venv=(python3 python3-devel python3-pip python3-virtualenv)
 ```
 
 </details>
