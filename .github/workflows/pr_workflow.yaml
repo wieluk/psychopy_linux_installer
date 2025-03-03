@@ -13,10 +13,9 @@ on:
 jobs:
   # Initial syntax check
   syntax-check:
-    uses: ./.github/workflows/reusable_syntax_check.yaml
+    uses: ./.github/workflows/reusable/syntax_check.yaml
   
   # Test installation with build
   test-installation-quick:
     needs: syntax-check
-    if: success()
-    uses: ./.github/workflows/reusable_test.yaml
+    uses: ./.github/workflows/reusable/test.yaml
