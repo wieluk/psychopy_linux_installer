@@ -35,7 +35,7 @@ Options:
   --python-version=3.8|3.9|3.10                 Specify Python version (default: ${default_opts[python_version]}).
   --wxpython-version=VERSION                    Specify wxPython version (default: ${default_opts[wxpython_version]}).
   --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
-  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn’t work as expected.
+  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn't work as expected.
   --install-dir=DIR                             Specify installation directory (default: "${default_opts[install_dir]}").
   --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default.
   --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2. No version is latest.
