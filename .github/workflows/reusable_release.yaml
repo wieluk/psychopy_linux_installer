@@ -14,7 +14,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          # Re-use the same extraction logic to get the installer version
           INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
           if [ -z "$INSTALLER_VERSION" ]; then
             echo "Failed to extract version from script."
