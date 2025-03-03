@@ -305,47 +305,48 @@ jobs:
       - name: Install build dependencies
         if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
-          # Extract install_dependencies function block.
           func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
-          # Narrow to the case block.
-          case_block=$(echo "$func_block" | awk '/^ *case *\$PKG_MANAGER *in/,/^esac/')
-          # Extract the sub-block for the detected PKG_MANAGER.
-          pkg_block=$(echo "$case_block" | awk -v pkg="$PKG_MANAGER" '$0 ~ "^[[:space:]]*"pkg"\\)" {in=1} in {print} $0 ~ ";;" && in {exit}')
-          
-          # Function to extract dependencies from a variable declaration.
+          case_block=$(echo "$func_block" | awk '/^ *case *\$pkg_manager *in/,/^esac/')
+          pkg_block=$(echo "$case_block" | awk -v pkg="$PKG_MANAGER" '$0 ~ "^[[:space:]]*"pkg"\\)" {found=1} found {print} $0 ~ ";;" && found {exit}')
+
           extract_deps() {
-            echo "$pkg_block" | grep -E "^[[:space:]]*$1=\(" | sed -E "s/^[[:space:]]*$1=\(//; s/\)[[:space:]]*$//"
+              echo "$pkg_block" | grep -E "^[[:space:]]*$1=\(" | sed -E "s/^[[:space:]]*$1=\(//; s/\)[[:space:]]*$//"
           }
-          
+
           all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
-          echo "Installing packages: $all_deps"
-      
+
+          echo "Extracted packages to install: $all_deps"
+
           case "$PKG_MANAGER" in
-            apt-get)
-              for pkg in $all_deps; do
-                sudo apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-              done
-              ;;
-            dnf)
-              for pkg in $all_deps; do
-                sudo dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-              done
-              ;;
-            yum)
-              for pkg in $all_deps; do
-                sudo yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-              done
-              ;;
-            pacman)
-              for pkg in $all_deps; do
-                sudo pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
-              done
-              ;;
-            zypper)
-              for pkg in $all_deps; do
-                sudo zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-              done
-              ;;
+              apt-get)
+                  for pkg in $all_deps; do
+                      sudo apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              dnf)
+                  for pkg in $all_deps; do
+                      sudo dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              yum)
+                  for pkg in $all_deps; do
+                      sudo yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              pacman)
+                  for pkg in $all_deps; do
+                      sudo pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              zypper)
+                  for pkg in $all_deps; do
+                      sudo zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              *)
+                  echo "Error: Unsupported package manager."
+                  exit 1
+                  ;;
           esac
 
       - name: Build Python

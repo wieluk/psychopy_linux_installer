@@ -1,16 +1,16 @@
-name: reusable release creation
+name: pre-release creation
 
 on:
   workflow_call:
 
 jobs:
-  create-release:
+  create-pre-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Create release if not exists
-        id: create_release
+        id: create_pre_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -41,7 +41,7 @@ jobs:
             "tag_name": "${RELEASE_TAG}",
             "name": "${RELEASE_TAG}",
             "draft": false,
-            "prerelease": false,
+            "prerelease": true,
             "generate_release_notes": true
           }
           EOF
