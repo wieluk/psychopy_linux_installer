@@ -268,14 +268,6 @@ jobs:
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
 
-          ###
-          # Temporarly disable the transfer from previous release #TODO: Remove this line
-          echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-          echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-          echo "SKIP_PYTHON_PROCESS=false" >> $GITHUB_ENV
-          echo "SKIP_WXPYTHON_PROCESS=false" >> $GITHUB_ENV
-          ###
-          
       - name: Transfer Python from previous release
         if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
         run: |
