@@ -113,11 +113,12 @@ parse_requirements_file() {
     done < "$file"
 
     backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
-        if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" ]]; then
+        if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" &&  "$pkg" != "winrt" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
             echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
-        elif [[ "$pkg" != "winrt" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
-            echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
+        else
+            if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" ]]; then
             log_message "Warning: $pkg python package from requirements.txt not available for Linux, skipping" >&2
+            fi
         fi
     done | tr '\n' ',' | sed 's/,$//')
 
