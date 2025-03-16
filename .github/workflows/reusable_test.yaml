@@ -118,7 +118,6 @@ jobs:
         env:
           REQ_FILE: ${{ matrix.req_file }}
         run: |
-          set -euo pipefail
           differences_found=0
 
           # Read the requirements file line by line.
@@ -139,7 +138,7 @@ jobs:
             fi
 
             # Get the installed version using pip show.
-            installed_version="$(/tmp_dir/psychopy/bin/pip show "$pkg" 2>/dev/null | grep -i '^Version:' | awk '{print $2}')"
+            installed_version="$(/tmp_dir/psychopy/bin/pip show "$pkg" 2>/dev/null | grep -i '^Version:' | awk '{print $2}' || true)"
             if [[ -z "$installed_version" ]]; then
               echo "Missing: $pkg (required ${req_ver:-any version})"
               differences_found=1
