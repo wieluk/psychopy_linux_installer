@@ -145,7 +145,7 @@ parse_requirements_file() {
             new_spec="$pkg_lower>=$version"
             if [[ "$backup_additional_packages" == *"$original_spec"* ]]; then
                 backup_additional_packages=${backup_additional_packages//"$original_spec"/"$new_spec"}
-                log_message "Warning: $pkg '$original_spec' may be platform-specific; adjusted to '$new_spec' for Linux psychopy compatibility. To use '$original_spec', install $pkg $original_spec manually in the psychopy venv after install." >&2
+                log_message "Warning: '$pkg' from 'requirements.txt' was installed with a more flexible version. '$original_spec' may be platform-specific and was adjusted to '$new_spec' for Linux PsychoPy compatibility. If needed, you can manually install the exact version in the PsychoPy venv." >&2
             fi
         fi
     done
