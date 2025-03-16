@@ -137,18 +137,18 @@ parse_requirements_file() {
     fi
 
     # Adjust Linux dependencies
-    for pkg in pyglet python-vlc; do
-        pkg_lower="${pkg,,}"
-        if [[ -n "${package_versions[$pkg_lower]}" ]]; then
-            version="${package_versions[$pkg_lower]}"
-            original_spec="$pkg_lower${package_operators[$pkg_lower]}$version"
-            new_spec="$pkg_lower>=$version"
-            if [[ "$backup_additional_packages" == *"$original_spec"* ]]; then
-                backup_additional_packages=${backup_additional_packages//"$original_spec"/"$new_spec"}
-                log_message "Warning: $pkg python package from requirements.txt not compatible with Linux; adjusting dependency from '$original_spec' to '$new_spec'" >&2
-            fi
-        fi
-    done
+    # for pkg in pyglet python-vlc; do
+    #     pkg_lower="${pkg,,}"
+    #     if [[ -n "${package_versions[$pkg_lower]}" ]]; then
+    #         version="${package_versions[$pkg_lower]}"
+    #         original_spec="$pkg_lower${package_operators[$pkg_lower]}$version"
+    #         new_spec="$pkg_lower>=$version"
+    #         if [[ "$backup_additional_packages" == *"$original_spec"* ]]; then
+    #             backup_additional_packages=${backup_additional_packages//"$original_spec"/"$new_spec"}
+    #             log_message "Warning: $pkg python package from requirements.txt not compatible with Linux; adjusting dependency from '$original_spec' to '$new_spec'" >&2
+    #         fi
+    #     fi
+    # done
 }
 
 # Wrapper function to handle sudo requests and permissions dynamically
