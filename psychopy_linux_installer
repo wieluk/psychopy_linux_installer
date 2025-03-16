@@ -85,7 +85,7 @@ parse_requirements_file() {
     local -A package_operators
 
     if [ ! -f "$file" ] || [ ! -s "$file" ] || [ ! -r "$file" ]; then
-        log_message "Error: File '$file' is not accessible or empty."
+        log_message "Error: File '$file' is not accessible or empty. Exiting"
         exit 1
     fi
 
@@ -113,8 +113,11 @@ parse_requirements_file() {
     done < "$file"
 
     backup_additional_packages=$(for pkg in "${!package_versions[@]}"; do
-        if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
+        if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" ]]; then
             echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
+        elif [[ "$pkg" != "winrt" && "$pkg" != "pywin32" && "$pkg" != "pypiwin32" && "$pkg" != "pywinhook" ]]; then
+            echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
+            log_message "Warning: $pkg python package from requirements.txt not available for Linux, skipping" >&2
         fi
     done | tr '\n' ',' | sed 's/,$//')
 
@@ -122,12 +125,12 @@ parse_requirements_file() {
     wxpython_version="${package_versions["wxpython"]:-}"
     psychopy_version="${package_versions["psychopy"]:-}"
 
-    [[ -z "$python_version" ]] && log_message "Warning: Python version not specified in requirements.txt, using default."
-    [[ -z "$wxpython_version" ]] && log_message "Warning: wxPython version not specified in requirements.txt, using default."
+    [[ -z "$python_version" ]] && log_message "Warning: Python version not specified in requirements.txt, using default  (python==${default_opts[python_version]})."
+    [[ -z "$wxpython_version" ]] && log_message "Warning: wxPython version not specified in requirements.txt, using default (wxpython==${default_opts[wxpython_version]})."
 
     if [ -z "$psychopy_version" ]; then
-        log_message "Warning: PsychoPy version not specified in requirements.txt, using default."
-        backup_additional_packages="${backup_additional_packages:+$backup_additional_packages,}psychopy"
+        log_message "Error: PsychoPy version not specified in requirements.txt. Exiting."
+        exit 1
     else
         backup_additional_packages="${backup_additional_packages:+$backup_additional_packages,}psychopy==$psychopy_version"
     fi
@@ -137,7 +140,12 @@ parse_requirements_file() {
         pkg_lower="${pkg,,}"
         if [[ -n "${package_versions[$pkg_lower]}" ]]; then
             version="${package_versions[$pkg_lower]}"
-            backup_additional_packages=${backup_additional_packages//"$pkg_lower${package_operators[$pkg_lower]}$version"/"$pkg_lower>=$version"}
+            original_spec="$pkg_lower${package_operators[$pkg_lower]}$version"
+            new_spec="$pkg_lower>=$version"
+            if [[ "$backup_additional_packages" == *"$original_spec"* ]]; then
+                backup_additional_packages=${backup_additional_packages//"$original_spec"/"$new_spec"}
+                log_message "Warning: $pkg python package from requirements.txt not compatible with Linux; adjusting dependency from '$original_spec' to '$new_spec'" >&2
+            fi
         fi
     done
 }
