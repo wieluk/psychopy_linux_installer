@@ -114,6 +114,44 @@ jobs:
         run: |
             /tmp_dir/psychopy/bin/psychopy -v
 
+      - name: Compare installed packages with requirements.txt
+        env:
+          REQ_FILE: ${{ matrix.req_file }}
+        run: |
+          differences_found=0
+
+          # Read the requirements file line by line.
+          while IFS= read -r line || [[ -n "$line" ]]; do
+            line="$(echo "$line" | xargs)"
+            if [[ -z "$line" || "$line" =~ ^# ]]; then
+              continue
+            fi
+
+            # Check if the line has a version specifier.
+            if [[ "$line" == *"=="* ]]; then
+              pkg="$(echo "$line" | cut -d'=' -f1 | xargs | tr '[:upper:]' '[:lower:]')"
+              # Assuming the format "package==version", field 3 is the version.
+              req_ver="$(echo "$line" | cut -d'=' -f3 | xargs)"
+            else
+              pkg="$(echo "$line" | tr '[:upper:]' '[:lower:]')"
+              req_ver=""
+            fi
+
+            # Get the installed version using pip show.
+            installed_version="$(/tmp_dir/psychopy/bin/pip show "$pkg" 2>/dev/null | grep -i '^Version:' | awk '{print $2}' || true)"
+            if [[ -z "$installed_version" ]]; then
+              echo "Missing: $pkg (required ${req_ver:-any version})"
+              differences_found=1
+            elif [[ -n "$req_ver" && "$installed_version" != "$req_ver" ]]; then
+              echo "Version mismatch: $pkg (required $req_ver, installed $installed_version)"
+              differences_found=1
+            fi
+          done < "$REQ_FILE"
+
+          if [[ $differences_found -eq 0 ]]; then
+            echo "All requirements match the installed environment."
+          fi
+
       - name: Install xvfb
         if: ${{ inputs.quick-mode }}
         run: |
