@@ -21,7 +21,7 @@ jobs:
 
       - name: Run ShellCheck
         run: |
-          shellcheck -x -e $GITHUB_WORKSPACE/psychopy_linux_installer
+          shellcheck -x $GITHUB_WORKSPACE/psychopy_linux_installer
 
       - name: Run bashate
         run: |
