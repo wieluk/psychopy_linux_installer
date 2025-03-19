@@ -308,7 +308,7 @@ show_gui() {
         FORCE_OVERWRITE=true
     fi
 
-    if [[ $OPTIONS == *"Enable verbose output"* ]]; then
+    if [[ $options == *"Enable verbose output"* ]]; then
         VERBOSE=true
     fi
 
