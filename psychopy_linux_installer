@@ -186,7 +186,7 @@ process_arguments() {
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
     local wxpython_versions psychopy_versions use_requirements options
-    
+
     # Optional: Select requirements.txt
     if zenity --question --title="Use requirements.txt (optional)" \
         --text="Do you want to use a requirements.txt file?\n\nIf you don't know what this is, choose 'No' to proceed with manual setup." \
