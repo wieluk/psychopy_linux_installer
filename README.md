@@ -30,6 +30,7 @@ These distributions have been tested for compatibility, but the script may also 
 - After successful wxPython installation, the downloaded .whl file is cached in `/usr/local/psychopy_python/wx_wheels`.
 - If the downloads fail, building Python and wxPython may take a some time.
 - The script provides minimal output by default. Use the `--verbose` option for detailed logging.
+- Logs are written to a timestamped file in `/tmp/psychopy_linux_installer_YYYYMMDD_HHMMSS.log` first and then moved into the `install-dir`.
 
 ## Usage
 
@@ -79,7 +80,7 @@ Install curl with your package manger. On most distros curl is already installed
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
 | `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
 | `-f`, `--force` | Force overwrite of the existing installation directory. |
-| `-v`, `--verbose` | Enable verbose output. |
+| `-v`, `--verbose` | Enable verbose output for the terminal (logfile output is always verbose). |
 | `-h`, `--help` | Show help message. |
 
 **Note:**

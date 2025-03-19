@@ -46,41 +46,55 @@ Options:
   --disable-path                                Disable adding psychopy to system path.
   --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode.
   -f, --force                                   Force overwrite of existing installation directory.
-  -v, --verbose                                 Enable verbose output.
+  -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose).
   -h, --help                                    Show this help message.
 EOF
 }
 
-# Prints timestamped log messages with color coding for severity.
+# Log message function that writes colored output to terminal and plain text to the log file.
 log_message() {
-    local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m" timestamp
+    local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m"
+    local timestamp formatted_message plain_message
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    # Disable colors if not a terminal (e.g., redirected output)
+    # Disable colors if output is not a terminal.
     if [[ ! -t 1 ]]; then
         reset=""; green=""; yellow=""; red=""
     fi
 
     case "$1" in
-        Info:*)    printf "%s - %b%s%b\n" "$timestamp" "$green" "$1" "$reset" ;;
-        Warning:*) printf "%s - %b%s%b\n" "$timestamp" "$yellow" "$1" "$reset" ;;
-        Error:*)   printf "%s - %b%s%b\n" "$timestamp" "$red" "$1" "$reset" ;;
-        *)         printf "%s - %s\n" "$timestamp" "$1" ;;
+        Info:*)
+            formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$green" "$1" "$reset")
+            ;;
+        Warning:*)
+            formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$yellow" "$1" "$reset")
+            ;;
+        Error:*)
+            formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$red" "$1" "$reset")
+            ;;
+        *)
+            formatted_message=$(printf "%s - %s" "$timestamp" "$1")
+            ;;
     esac
+
+    plain_message="$timestamp - $1"
+    echo "$plain_message" >> "$LOG_FILE"
+    printf "%s\n" "$formatted_message"
 }
 
 # Wrapper to control command output based on verbosity.
 log() {
     if [ "$verbose" = true ]; then
-        "$@"
+        "$@" 2>&1 | tee -a "$LOG_FILE"
     else
-        "$@" >/dev/null 2>&1
+        "$@" >> "$LOG_FILE" 2>&1
     fi
     return $?
 }
 
 # Parses the command-line arguments and sets appropriate variables.
 process_arguments() {
+    local sudo_mode_set build_arg
     sudo_mode_set=false
 
     for arg in "$@"; do
@@ -171,6 +185,8 @@ process_arguments() {
 
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
+    local wxpython_versions psychopy_versions use_requirements options
+    
     # Optional: Select requirements.txt
     if zenity --question --title="Use requirements.txt (optional)" \
         --text="Do you want to use a requirements.txt file?\n\nIf you don't know what this is, choose 'No' to proceed with manual setup." \
@@ -345,9 +361,10 @@ create_rerun_command() {
 
 # Reads and parses a requirements file, adjusting dependency versions as needed.
 parse_requirements_file() {
-    local file="$1"
+    local file current_version operator package_name package_version pkg_lower version original_spec new_spec
     local -A package_versions
     local -A package_operators
+    file="$1"
 
     if [ ! -f "$file" ] || [ ! -s "$file" ] || [ ! -r "$file" ]; then
         log_message "Error: File '$file' is not accessible or empty. Exiting"
@@ -556,6 +573,7 @@ check_script_update() {
 
 # Determines the operating system and its version.
 detect_os_version() {
+    local major_version version ID VERSION_ID
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
@@ -654,8 +672,10 @@ install_packages() {
 
 # Installs dependency groups (e.g. script_deps, python_build_deps, etc.).
 install_dependencies() {
-    local dep_type="$1"
-    local dependencies=()
+    local dep_type dependencies script_deps psychopy_deps fonts python_build_deps wxpython_deps python_with_venv
+
+    dep_type="$1"
+    dependencies=()
 
     case $pkg_manager in
         apt-get)
@@ -795,7 +815,7 @@ is_version_greater() {
 
 # Retrieves and sorts available versions for a package from PyPI.
 fetch_versions_from_pypi() {
-    package="$1"
+    local package="$1"
     curl -s "https://pypi.org/pypi/$package/json" | jq -r '.releases // {} | keys[]' | sort -Vr
 }
 
@@ -1152,6 +1172,10 @@ main() {
     temporary_sudo_setup_done=false
     use_gui=false
 
+    tmp_log_file="/tmp/psychopy_linux_installer_$(date +%Y%m%d_%H%M%S).log"
+    LOG_FILE="$tmp_log_file"
+    log_message "Info: Starting installation. Logging to temporary file: ${LOG_FILE}"
+
     for arg in "$@"; do
         if [[ "$arg" == "--gui" ]]; then
             use_gui=true
@@ -1251,6 +1275,15 @@ main() {
         log_message "Error: Failed to access or change directory to ${psychopy_dir}. Exiting."
         exit 1
     fi
+
+    # Transition logs into psychopy_dir while keeping the same filename
+    final_log_file="${psychopy_dir}/$(basename "$tmp_log_file")"
+
+    if [ -f "$tmp_log_file" ]; then
+        mv "$tmp_log_file" "$final_log_file"
+    fi
+    LOG_FILE="$final_log_file"
+    log_message "Info: Installation directory is set. Complete log has been moved here. Now logging to: ${LOG_FILE}"
 
     # Install python and create venv
     if [ "$build_python" = true ] || ! check_python_in_package_manager; then
