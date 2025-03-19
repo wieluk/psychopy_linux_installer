@@ -39,6 +39,18 @@ jobs:
           ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
+      - name: Show installation logs
+        if: always()
+        run: |
+          LOG_FILE=$(find /tmp /tmp_dir -name 'psychopy_linux_installer_*.log' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n1)
+          if [ -n "$LOG_FILE" ]; then
+            echo "=== Found installation log: $LOG_FILE ==="
+            cat "$LOG_FILE"
+            echo "==== End of log ===="
+          else
+            echo "No installation logs found in either /tmp or /tmp_dir"
+          fi
+
       - name: Verify PsychoPy installation and version
         run: |
           if [ "$PSYCHOPY_VERSION" = "latest" ]; then
@@ -110,6 +122,18 @@ jobs:
           ARGS="--install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --requirements-file=$REQ_FILE"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
+      - name: Show installation logs
+        if: always()
+        run: |
+          LOG_FILE=$(find /tmp /tmp_dir -name 'psychopy_linux_installer_*.log' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n1)
+          if [ -n "$LOG_FILE" ]; then
+            echo "=== Found installation log: $LOG_FILE ==="
+            cat "$LOG_FILE"
+            echo "==== End of log ===="
+          else
+            echo "No installation logs found in either /tmp or /tmp_dir"
+          fi
+          
       - name: Verify PsychoPy installation and version
         run: |
             /tmp_dir/psychopy/bin/psychopy -v

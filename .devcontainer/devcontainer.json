@@ -16,5 +16,6 @@
             ]
         }
     },
-    "onCreateCommand": "chmod +x psychopy_linux_installer && ./psychopy_linux_installer -f --non-interactive --additional-packages=pytest --disable-shortcut"
+    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y python3-pip && sudo pip3 install bashate",
+    "postCreateCommand": "chmod +x psychopy_linux_installer && ./psychopy_linux_installer -f --non-interactive --additional-packages=pytest --disable-shortcut"
 }
