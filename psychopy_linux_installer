@@ -45,7 +45,7 @@ Options:
   --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
   --disable-path                                Disable adding psychopy to system path.
   --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode.
-  -f, --force                                   Force overwrite of existing installation directory.
+  -f, --force-overwrite                         Force overwrite of existing installation directory.
   -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose).
   -h, --help                                    Show this help message.
 EOF
@@ -105,7 +105,7 @@ process_arguments() {
             --python-version=*)
                 PYTHON_VERSION="${arg#*=}"
                 if [[ ! $PYTHON_VERSION =~ ^3\.(8|9|10)$ ]]; then
-                    log_message "Error: Invalid Python version specified. Only versions 3.8, 3.9, or 3.10 are allowed."
+                    log_message "Error: Unsupported Python version '$PYTHON_VERSION'. Allowed versions are 3.8, 3.9, or 3.10."
                     exit 1
                 fi
                 ;;
@@ -367,7 +367,7 @@ parse_requirements_file() {
     file="$1"
 
     if [ ! -f "$file" ] || [ ! -s "$file" ] || [ ! -r "$file" ]; then
-        log_message "Error: File '$file' is not accessible or empty. Exiting"
+        log_message "Error: The requirements file '$file' is either missing, empty, or inaccessible. Exiting."
         exit 1
     fi
 
@@ -408,8 +408,8 @@ parse_requirements_file() {
     WXPYTHON_VERSION="${package_versions["wxpython"]:-}"
     PSYCHOPY_VERSION="${package_versions["psychopy"]:-}"
 
-    [[ -z "$PYTHON_VERSION" ]] && log_message "Warning: Python version not specified in requirements.txt, using default  (python==${DEFAULT_OPTS[PYTHON_VERSION]})."
-    [[ -z "$WXPYTHON_VERSION" ]] && log_message "Warning: wxPython version not specified in requirements.txt, using default (wxpython==${DEFAULT_OPTS[WXPYTHON_VERSION]})."
+    [[ -z "$PYTHON_VERSION" ]] && log_message "Warning: Python version not specified in requirements file. Using default: ${DEFAULT_OPTS[PYTHON_VERSION]}."
+    [[ -z "$WXPYTHON_VERSION" ]] && log_message "Warning: wxPython version not specified in requirements file. Using default: ${DEFAULT_OPTS[WXPYTHON_VERSION]}."
 
     if [ -z "$PSYCHOPY_VERSION" ]; then
         log_message "Error: PsychoPy version not specified in requirements.txt. Exiting."
@@ -457,9 +457,9 @@ sudo_wrapper() {
             return
         fi
         TEMP_SUDOERS="/etc/sudoers.d/temporary_timeout"
-        trap 'echo; log_message "Info: Removing temporary sudoers file ($TEMP_SUDOERS) to restore original sudoers configuration."; sudo_wrapper rm -f "$TEMP_SUDOERS"' EXIT
+        trap 'echo; log log_message "Info: Removing temporary sudoers file ($TEMP_SUDOERS) to restore original sudoers configuration."; sudo_wrapper rm -f "$TEMP_SUDOERS"' EXIT
         TEMPORARY_SUDO_SETUP_DONE=true
-        log_message "Info: Setting temporary sudo timeout to 300 minutes..."
+        log_message "Info: Temporary sudo timeout set to 300 minutes (configured in $TEMP_SUDOERS)."
         sudo_wrapper sh -c "echo 'Defaults        timestamp_timeout=300' > $TEMP_SUDOERS"
         sudo_wrapper chmod 440 $TEMP_SUDOERS
     }
@@ -562,7 +562,6 @@ check_script_update() {
                 rerun_cmd=$(create_rerun_command)
                 echo "To re-run the installer with the current settings, use:"
                 echo "$rerun_cmd"
-                echo
                 exit 0
             else
                 log_message "Warning: Failed to download the update. Continuing with the current version."
@@ -894,7 +893,7 @@ check_python_env() {
 # Builds Python from source, using the specified version.
 build_python() {
     local official_base_url latest_patch_version official_url temp_file temp_dir
-    log_message "Info: Building Python ${PYTHON_VERSION} from source this might take a while ..."
+    log_message "Info: Building Python ${PYTHON_VERSION} from source. This may take some time..."
     official_base_url="https://www.python.org/ftp/python/"
 
     latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
@@ -904,7 +903,7 @@ build_python() {
     temp_dir="Python-${latest_patch_version}_temp"
 
     if ! log curl -L -o "${temp_file}" "${official_url}"; then
-        log_message "Error: Failed to download Python-${latest_patch_version} from python.org"
+        log_message "Error: Failed to download Python source from ${official_url}."
         exit 1
     fi
 
@@ -1073,7 +1072,7 @@ create_desktop_shortcut() {
     fi
 
     if [ ! -d "$desktop_shortcut" ]; then
-        log_message "Warning: Desktop directory $desktop_shortcut does not exist. Skipping desktop shortcut creation."
+        log_message "Warning: Desktop directory '$desktop_shortcut' does not exist. Skipping shortcut creation."
         return
     fi
 
@@ -1114,7 +1113,7 @@ Categories=Education;Science;"
         gio set "$desktop_file" metadata::trusted true
         sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
     done
-    log_message "Info: Desktop shortcuts created."
+    log_message "Info: Desktop shortcuts created successfully."
 }
 
 # Adds the PsychoPy installation's bin directory to the user's PATH.
@@ -1159,9 +1158,9 @@ add_psychopy_to_path() {
 
     if ! grep -Fxq "$path_line" "$config_file"; then
         sh -c "echo '$path_line' >> \"$config_file\""
-        log_message "Info: PsychoPy path added to $config_file"
+        log_message "Info: Added PsychoPy to the PATH in $config_file."
     else
-        log_message "Info: PsychoPy path already exists in $config_file"
+        log_message "Info: PsychoPy is already in the PATH in $config_file."
     fi
 }
 
@@ -1174,7 +1173,7 @@ main() {
 
     tmp_log_file="/tmp/psychopy_linux_installer_$(date +%Y%m%d_%H%M%S).log"
     LOG_FILE="$tmp_log_file"
-    log_message "Info: Starting installation. Logging to temporary file: ${LOG_FILE}"
+    log_message "Info: Logging to temporary file: ${LOG_FILE}"
 
     for arg in "$@"; do
         if [[ "$arg" == "--gui" ]]; then
@@ -1458,7 +1457,7 @@ main() {
     echo
     echo "Please reboot to apply security limits and refresh the system path."
     echo
-    log_message "PsychoPy installation complete!"
+    log_message "Info: PsychoPy installation completed successfully!"
 }
 
 main "$@"
