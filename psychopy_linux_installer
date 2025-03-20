@@ -164,7 +164,7 @@ process_arguments() {
                     SUDO_MODE=auto
                 fi
                 ;;
-            -f|--force)
+            -f|--force-overwrite)
                 FORCE_OVERWRITE=true
                 ;;
             -v|--verbose)
@@ -344,8 +344,13 @@ create_rerun_command() {
         [[ "$key" == "BUILD_PYTHON" || "$key" == "BUILD_WX" ]] && continue
         local curr="${!key}"
         local def="${DEFAULT_OPTS[$key]}"
+        local lowercase_key=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
         if [[ "$curr" != "$def" ]]; then
-            [[ "$curr" == "true" && "$def" == "false" ]] && cmd+=" --${key//_/-}" || cmd+=" --${key//_/-}=$curr"
+            if [[ "$curr" == "true" && "$def" == "false" ]]; then
+                cmd+=" --$lowercase_key"
+            elif [[ -n "$curr" ]]; then
+                cmd+=" --$lowercase_key=$curr"
+            fi
         fi
     done
     if [[ "$BUILD_PYTHON" == true && "$BUILD_WX" == true ]]; then
@@ -1260,7 +1265,7 @@ main() {
             sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
             sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
         else
-            log_message "Error: Directory ${PSYCHOPY_DIR} already exists. Use the --force flag to overwrite. Exiting."
+            log_message "Error: Directory ${PSYCHOPY_DIR} already exists. Use the --force-overwrite flag to overwrite. Exiting."
             exit 1
         fi
     else
