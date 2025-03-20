@@ -1460,7 +1460,7 @@ main() {
     log_message "Note: To start PsychoPy using the absolute path, use:"
     log_message "Note: ${PSYCHOPY_DIR}/bin/psychopy"
     log_message "Note: Please reboot to apply security limits and to refresh the system path."
-    
+
     if "${PSYCHOPY_DIR}/bin/psychopy" -v &>/dev/null; then
         log_message "Info: PsychoPy installation completed successfully!"
     else
