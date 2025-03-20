@@ -338,13 +338,13 @@ show_gui() {
 
 # Reconstructs a command string to re-run the installer with the current settings.
 create_rerun_command() {
-    local cmd
+    local cmd lowercase_key curr def
     cmd=$(readlink -f "$0")
     for key in "${!DEFAULT_OPTS[@]}"; do
         [[ "$key" == "BUILD_PYTHON" || "$key" == "BUILD_WX" ]] && continue
-        local curr="${!key}"
-        local def="${DEFAULT_OPTS[$key]}"
-        local lowercase_key=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+        curr="${!key}"
+        def="${DEFAULT_OPTS[$key]}"
+        lowercase_key=$(echo "$key" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
         if [[ "$curr" != "$def" ]]; then
             if [[ "$curr" == "true" && "$def" == "false" ]]; then
                 cmd+=" --$lowercase_key"
