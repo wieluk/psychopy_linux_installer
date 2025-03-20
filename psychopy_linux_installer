@@ -53,13 +53,13 @@ EOF
 
 # Log message function that writes colored output to terminal and plain text to the log file.
 log_message() {
-    local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m"
+    local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m" cyan="\033[36m"
     local timestamp formatted_message plain_message
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
     # Disable colors if output is not a terminal.
     if [[ ! -t 1 ]]; then
-        reset=""; green=""; yellow=""; red=""
+        reset=""; green=""; yellow=""; red=""; cyan=""
     fi
 
     case "$1" in
@@ -71,6 +71,9 @@ log_message() {
             ;;
         Error:*)
             formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$red" "$1" "$reset")
+            ;;
+        Note:*)
+            formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$cyan" "$1" "$reset")
             ;;
         *)
             formatted_message=$(printf "%s - %s" "$timestamp" "$1")
@@ -1178,7 +1181,7 @@ main() {
 
     tmp_log_file="/tmp/psychopy_linux_installer_$(date +%Y%m%d_%H%M%S).log"
     LOG_FILE="$tmp_log_file"
-    log_message "Info: Logging to temporary file: ${LOG_FILE}"
+    log_message "Note: Logging to temporary file: ${LOG_FILE}"
 
     for arg in "$@"; do
         if [[ "$arg" == "--gui" ]]; then
@@ -1261,7 +1264,7 @@ main() {
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
         if [ "$FORCE_OVERWRITE" = true ]; then
-            log_message "Info: Directory ${PSYCHOPY_DIR} already exists. Overwriting ..."
+            log_message "Warning: Directory ${PSYCHOPY_DIR} already exists. Overwriting ..."
             sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
             sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
         else
@@ -1287,7 +1290,7 @@ main() {
         mv "$tmp_log_file" "$FINAL_LOG_FILE"
     fi
     LOG_FILE="$FINAL_LOG_FILE"
-    log_message "Info: Installation directory is set. Complete log has been moved here. Now logging to: ${LOG_FILE}"
+    log_message "Note: Installation directory is set. Log has been moved to: ${LOG_FILE}"
 
     # Install python and create venv
     if [ "$BUILD_PYTHON" = true ] || ! check_python_in_package_manager; then
@@ -1447,22 +1450,22 @@ main() {
     # Add PsychoPy to PATH
     if [ "$DISABLE_PATH" = false ]; then
         add_psychopy_to_path
-        echo
-        log_message "Info: To start PsychoPy from the system path, use:"
+        log_message "Note: To start PsychoPy from the system path, use:"
         if [ -n "$VENV_NAME" ]; then
-            log_message "Info: ${VENV_NAME}"
+            log_message "Note: ${VENV_NAME}"
         else
-            log_message "Info: psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}"
+            log_message "Note: psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}"
         fi
     fi
-
-    echo
-    echo "To start PsychoPy using the absolute path, use:"
-    echo "${PSYCHOPY_DIR}/bin/psychopy"
-    echo
-    echo "Please reboot to apply security limits and refresh the system path."
-    echo
-    log_message "Info: PsychoPy installation completed successfully!"
+    log_message "Note: To start PsychoPy using the absolute path, use:"
+    log_message "Note: ${PSYCHOPY_DIR}/bin/psychopy"
+    log_message "Note: Please reboot to apply security limits and to refresh the system path."
+    
+    if "${PSYCHOPY_DIR}/bin/psychopy" -v &>/dev/null; then
+        log_message "Info: PsychoPy installation completed successfully!"
+    else
+        log_message "Error: PsychoPy installation verification failed!"
+    fi
 }
 
 main "$@"
