@@ -79,7 +79,7 @@ Install curl with your package manger. On most distros curl is already installed
 | `--disable-path` | Disable adding psychopy to system path. |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
 | `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
-| `-f`, `--force` | Force overwrite of the existing installation directory. |
+| `-f`, `--force-overwrite` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output for the terminal (logfile output is always verbose). |
 | `-h`, `--help` | Show help message. |
 
@@ -91,7 +91,7 @@ Install curl with your package manger. On most distros curl is already installed
 ## Example
 
 ```bash
-./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/user1 --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force
+./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/user1 --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force-overwrite
 ```
 
 ## Script Details
