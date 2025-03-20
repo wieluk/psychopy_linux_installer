@@ -462,7 +462,7 @@ sudo_wrapper() {
             return
         fi
         TEMP_SUDOERS="/etc/sudoers.d/temporary_timeout"
-        trap 'echo; log log_message "Info: Removing temporary sudoers file ($TEMP_SUDOERS) to restore original sudoers configuration."; sudo_wrapper rm -f "$TEMP_SUDOERS"' EXIT
+        trap 'log log_message "Info: Removing temporary sudoers file ($TEMP_SUDOERS) to restore original sudoers configuration."; sudo_wrapper rm -f "$TEMP_SUDOERS"' EXIT
         TEMPORARY_SUDO_SETUP_DONE=true
         log_message "Info: Temporary sudo timeout set to 300 minutes (configured in $TEMP_SUDOERS)."
         sudo_wrapper sh -c "echo 'Defaults        timestamp_timeout=300' > $TEMP_SUDOERS"
