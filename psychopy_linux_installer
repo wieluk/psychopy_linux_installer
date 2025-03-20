@@ -435,7 +435,7 @@ parse_requirements_file() {
             new_spec="$pkg_lower>=$version"
             if [[ "$BACKUP_ADDITIONAL_PACKAGES" == *"$original_spec"* ]]; then
                 BACKUP_ADDITIONAL_PACKAGES=${BACKUP_ADDITIONAL_PACKAGES//"$original_spec"/"$new_spec"}
-                log_message "Warning: '$pkg' from 'requirements.txt' was installed with a more flexible version. '$original_spec' may be platform-specific and was adjusted to '$new_spec' for Linux PsychoPy compatibility. If needed, you can manually install the exact version in the PsychoPy venv." >&2
+                log_message "Warning: '$pkg' from  requirements file was installed with a more flexible version. '$original_spec' may be platform-specific and was adjusted to '$new_spec' for Linux PsychoPy compatibility. If needed, you can manually install the exact version in the PsychoPy venv." >&2
             fi
         fi
     done
@@ -568,8 +568,8 @@ check_script_update() {
             if curl -sLo "$script_path" "$latest_url"; then
                 log_message "Info: Update completed successfully."
                 rerun_cmd=$(create_rerun_command)
-                echo "To re-run the installer with the current settings, use:"
-                echo "$rerun_cmd"
+                log_message "Note: To re-run the installer with the current settings, use:"
+                log_message "Note: $rerun_cmd"
                 exit 0
             else
                 log_message "Warning: Failed to download the update. Continuing with the current version."
@@ -645,7 +645,7 @@ install_packages() {
 
     # Check if the available_packages array is empty
     if [ ${#available_packages[@]} -eq 0 ]; then
-        log_message "No valid packages found for installation."
+        log_message "Warning: No valid packages found for installation."
         return
     fi
 
@@ -1217,8 +1217,8 @@ main() {
 
     if $use_gui; then
         rerun_cmd=$(create_rerun_command)
-        log_message "Info: To re-run the installer with the current --gui settings, use:"
-        log_message "Info: $rerun_cmd"
+        log_message "Note: To re-run the installer with the current --gui settings, use:"
+        log_message "Note: $rerun_cmd"
         echo
     fi
 
