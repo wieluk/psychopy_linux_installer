@@ -906,17 +906,17 @@ check_pypi_for_version() {
 check_python_env() {
     local python_cmd="$1"
     if ! command -v "$python_cmd" > /dev/null 2>&1; then
-        log_message "Error: $python_cmd not found. Exiting."
+        log_message "Error: $python_cmd not found. Something went wrong while installing/building. Try --build=python as argument. Exiting."
         exit 1
     fi
 
     if ! "$python_cmd" -m venv --help > /dev/null 2>&1; then
-        log_message "Error: $python_cmd found, but venv module is not available. Exiting."
+        log_message "Error: $python_cmd found, but venv module is not available. Something went wrong while installing/building. Try --build=python as argument. Exiting."
         exit 1
     fi
 
     if ! "$python_cmd" -m pip --version > /dev/null 2>&1; then
-        log_message "Error: $python_cmd found, but pip is not installed. Exiting."
+        log_message "Error: $python_cmd found, but pip is not installed. Something went wrong while installing/building. Try --build=python as argument. Exiting."
         exit 1
     fi
 }
@@ -1335,11 +1335,11 @@ main() {
             fi
         fi
 
+        check_python_env "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}"
         if [ ! -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
             log_message "Error: python${PYTHON_VERSION} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments. Exiting."
             exit 1
         fi
-        export PATH=/usr/local/psychopy_python/bin:$PATH
         /usr/local/psychopy_python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     else
         log_message "Info: Python${PYTHON_VERSION} can be installed via package manager. Installing ..."
