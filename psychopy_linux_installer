@@ -89,10 +89,11 @@ log_message() {
 log() {
     if [ "$VERBOSE" = true ]; then
         "$@" 2>&1 | tee -a "$LOG_FILE"
+        return ${PIPESTATUS[0]}
     else
         "$@" >> "$LOG_FILE" 2>&1
+        return $?
     fi
-    return $?
 }
 
 # Parses the command-line arguments and sets appropriate variables.
@@ -1021,7 +1022,7 @@ build_wxpython() {
     [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
 
     log_message "Info: Building wxPython $WXPYTHON_VERSION from source. This might take a while ..."
-    if pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$WXPYTHON_VERSION"; then
+    if "$PYTHON_VENV_COMMAND" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$WXPYTHON_VERSION"; then
         log_message "Info: Successfully built wxPython from source."
     else
         log_message "Error: Building wxPython from source failed. Exiting."
@@ -1061,7 +1062,7 @@ install_wxpython_from_github() {
         log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name..."
         renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
         mv "$wheel_name" "$renamed_wheel"
-        if log pip install "$renamed_wheel"; then
+        if log "$PYTHON_VENV_COMMAND" -m pip install "$renamed_wheel"; then
             log_message "Info: Installed wxPython from $renamed_wheel"
             sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
             sudo_wrapper mv "$renamed_wheel" /usr/local/psychopy_python/wx_wheels/
@@ -1348,17 +1349,17 @@ main() {
     fi
 
     # Activate venv
-    log_message "Info: Succesfully created Python${PYTHON_VERSION} venv in ${PSYCHOPY_DIR} ... Activating."
-    log source "${PSYCHOPY_DIR}/bin/activate"
-    check_python_env "python"
+    log_message "Info: Succesfully created Python${PYTHON_VERSION} venv in ${PSYCHOPY_DIR}."
+    PYTHON_VENV_COMMAND="${PSYCHOPY_DIR}/bin/python"
+    check_python_env "$PYTHON_VENV_COMMAND"
 
     # Upgrade pip and install required Python packages
     log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox, attrdict, setuptools, wheel ..."
-    log pip install -U pip distro sip six psychtoolbox setuptools wheel
+    log "$PYTHON_VENV_COMMAND" -m pip install -U pip distro sip six psychtoolbox setuptools wheel
     if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
-        log pip install -U attrdict
+        log "$PYTHON_VENV_COMMAND" -m pip install -U attrdict
     elif [[ "${PYTHON_VERSION}" == "3.10" ]]; then
-        log pip install -U attrdict3
+        log "$PYTHON_VENV_COMMAND" -m pip install -U attrdict3
     fi
 
     # Determine wxPython version and install it
@@ -1373,22 +1374,22 @@ main() {
         log_message "Info: Installing wxPython build dependencies. This might take a while ..."
         install_dependencies wxpython_deps
         log_message "Info: Building wxPython from git. This might take a while ..."
-        log pip install git+https://github.com/wxWidgets/Phoenix
+        log "$PYTHON_VENV_COMMAND" -m pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "$BUILD_WX" = true ]; then
         build_wxpython
     else
-        if log pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==$WXPYTHON_VERSION"; then
+        if log "$PYTHON_VENV_COMMAND" -m pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==$WXPYTHON_VERSION"; then
             log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from local wheel."
-        elif log pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/$OS_VERSION_LINK/" "wxPython==$WXPYTHON_VERSION"; then
+        elif log "$PYTHON_VENV_COMMAND" -m pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/$OS_VERSION_LINK/" "wxPython==$WXPYTHON_VERSION"; then
             log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from extras.wxpython.org."
         elif install_wxpython_from_github; then
             :
-        else build_wxpython
-            :
+        else 
+            build_wxpython
         fi
     fi
 
-    if ! pip show wxPython &> /dev/null; then
+    if ! "$PYTHON_VENV_COMMAND" -m pip show wxPython &> /dev/null; then
         log_message "Error: wxPython is not installed. Something went wrong during the installation. Try --build=wxpython and --verbose as arguments. Exiting."
         exit 1
     fi
@@ -1399,7 +1400,7 @@ main() {
             convert_psychopy_req_to_git_url "$pkg"
         done)
 
-        if log pip install -r <(echo "$transformed_packages"); then
+        if log "$PYTHON_VENV_COMMAND" -m pip install -r <(echo "$transformed_packages"); then
             log_message "Info: Packages from $REQUIREMENTS_FILE installed successfully."
         else
             log_message "Warning: Failed to install packages from $REQUIREMENTS_FILE. Installing packages one by one ..."
@@ -1407,9 +1408,9 @@ main() {
             for package in "${PACKAGES[@]}"; do
                 log_message "Info: Installing $package..."
                 transformed_pkg=$(convert_psychopy_req_to_git_url "$package")
-                if log pip install "$transformed_pkg"; then
+                if log "$PYTHON_VENV_COMMAND" -m pip install "$transformed_pkg"; then
                     pkg_name="${package%%=*}"
-                    installed_version=$(pip show "$pkg_name" | grep Version | cut -d' ' -f2)
+                    installed_version=$("$PYTHON_VENV_COMMAND" -m pip show "$pkg_name" | grep Version | cut -d' ' -f2)
                     log_message "Info: $pkg_name version $installed_version installed successfully."
                 else
                     log_message "Warning: Failed to install $package. Skipping."
@@ -1420,14 +1421,14 @@ main() {
         # Install PsychoPy
         log_message "Info: Installing PsychoPy version ${PSYCHOPY_VERSION}"
         if [ "$PSYCHOPY_VERSION" == "git" ]; then
-            log pip install git+https://github.com/psychopy/psychopy.git@dev
+            log "$PYTHON_VENV_COMMAND" -m pip install git+https://github.com/psychopy/psychopy.git@dev
         elif [ "$PSYCHOPY_GIT_TAG" = "true" ]; then
-            log pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
+            log "$PYTHON_VENV_COMMAND" -m pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
         else
-            log pip install psychopy=="${PSYCHOPY_VERSION}"
+            log "$PYTHON_VENV_COMMAND" -m pip install psychopy=="${PSYCHOPY_VERSION}"
         fi
 
-        if ! pip show psychopy &> /dev/null; then
+        if ! "$PYTHON_VENV_COMMAND" -m pip show psychopy &> /dev/null; then
             log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use the --verbose flag. Exiting."
             exit 1
         fi
@@ -1438,8 +1439,8 @@ main() {
             IFS=',' read -ra PACKAGES <<< "$ADDITIONAL_PACKAGES"
             for package in "${PACKAGES[@]}"; do
                 log_message "Info: Installing $package..."
-                if log pip install "$package"; then
-                    installed_version=$(pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+                if log "$PYTHON_VENV_COMMAND" -m pip install "$package"; then
+                    installed_version=$("$PYTHON_VENV_COMMAND" -m pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
                     log_message "Info: ${package%%=*} version $installed_version installed successfully."
                 else
                     log_message "Warning: Failed to install $package. Skipping."
@@ -1451,11 +1452,8 @@ main() {
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
     if is_version_greater "2024.2.0" "$PSYCHOPY_VERSION"; then
         log_message "Warning: PsychoPy version < 2024.2.0, installing numpy<2"
-        log pip install "numpy<2"
+        log "$PYTHON_VENV_COMMAND" -m pip install "numpy<2"
     fi
-
-    # Deactivate virtual environment
-    deactivate
 
     # Install some basic fonts for PsychoPy
     log_message "Info: Installing some basic fonts for PsychoPy."
