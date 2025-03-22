@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2025-03-20
-#  Version:       1.5.2
+#  Date:          2025-03-22
+#  Version:       1.5.3
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -29,26 +29,28 @@ declare -A DEFAULT_OPTS=(
 
 # Displays usage information and available options.
 show_help() {
-    cat << EOF
-Usage: ./psychopy_linux_installer [options]
-Options:
-  --psychopy-version=VERSION                    Specify PsychoPy version (default: ${DEFAULT_OPTS[PSYCHOPY_VERSION]}).
-  --python-version=3.8|3.9|3.10                 Specify Python version (default: ${DEFAULT_OPTS[PYTHON_VERSION]}).
-  --wxpython-version=VERSION                    Specify wxPython version (default: ${DEFAULT_OPTS[WXPYTHON_VERSION]}).
-  --requirements-file=FILE                      Specify a requirements.txt file to define dependencies.
-  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn't work as expected.
-  --install-dir=DIR                             Specify installation directory (default: "${DEFAULT_OPTS[INSTALL_DIR]}").
-  --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default.
-  --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2.
-  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ${DEFAULT_OPTS[SUDO_MODE]}).
-  --disable-shortcut                            Disable desktop shortcut creation.
-  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set.
-  --disable-path                                Disable adding psychopy to system path.
-  --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode.
-  -f, --force-overwrite                         Force overwrite of existing installation directory.
-  -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose).
-  -h, --help                                    Show this help message.
-EOF
+    local help_text
+    help_text=$(printf "%s\n" \
+        "Usage: ./psychopy_linux_installer [options]" \
+        "Options:" \
+        "  --psychopy-version=VERSION                    Specify PsychoPy version (default: ${DEFAULT_OPTS[PSYCHOPY_VERSION]})." \
+        "  --python-version=3.8|3.9|3.10                 Specify Python version (default: ${DEFAULT_OPTS[PYTHON_VERSION]})." \
+        "  --wxpython-version=VERSION                    Specify wxPython version (default: ${DEFAULT_OPTS[WXPYTHON_VERSION]})." \
+        "  --requirements-file=FILE                      Specify a requirements.txt file to define dependencies." \
+        "  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn't work as expected." \
+        "  --install-dir=DIR                             Specify installation directory (default: \"${DEFAULT_OPTS[INSTALL_DIR]}\")." \
+        "  --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default." \
+        "  --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2." \
+        "  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ${DEFAULT_OPTS[SUDO_MODE]})." \
+        "  --disable-shortcut                            Disable desktop shortcut creation." \
+        "  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set." \
+        "  --disable-path                                Disable adding PsychoPy to system path." \
+        "  --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode." \
+        "  -f, --force-overwrite                         Force overwrite of existing installation directory." \
+        "  -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose)." \
+        "  -h, --help                                    Show this help message."
+    )
+    echo "$help_text"
 }
 
 # Log message function that writes colored output to terminal and plain text to the log file.
@@ -264,7 +266,7 @@ show_gui() {
 
     # Prompt for custom virtual environment name
     if VENV_NAME=$(zenity --entry --title="Custom Virtual Environment Name (optional)" --width=800 --height=500 \
-        --text="Enter a custom name for the virtual environment folder.\n\nIf left blank, the default versioned name will be used: psychopy_{PSYCHOPY_VERSION}_py{PYTHON_VERSION}.\n\nThis folder will be created inside:\n$INSTALL_DIR\n\nNote: Spaces in the name will be replaced with underscores.\n\n" \
+        --text="Enter a custom name for the virtual environment folder.\n\nIf left blank, the default versioned name will be used: PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}.\n\nThis folder will be created inside:\n$INSTALL_DIR\n\nNote: Spaces in the name will be replaced with underscores.\n\n" \
         --entry-text=""); then
         VENV_NAME=$(echo "$VENV_NAME" | xargs)
         :
@@ -991,12 +993,12 @@ install_python_from_github() {
     if log curl -L -o "$asset_name" "$github_download_url"; then
         log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${SCRIPT_VERSION}. Making an altinstall ..."
         temp_dir="${asset_name%.tar.gz}_temp"
-        mkdir -p "$temp_dir" || { log_message "Warning: Failed to create temp directory."; return 1; }
+        mkdir -p "$temp_dir" || { log_message "Warning: Failed to create ${temp_dir}."; return 1; }
 
         if tar -xf "$asset_name" -C "$temp_dir"; then
             cd "$temp_dir" || { log_message "Warning: Failed to change directory."; return 1; }
             sudo_wrapper make altinstall
-            cd "${PSYCHOPY_DIR}" || { log_message "Warning: Failed to return to psychopy directory."; return 1; }
+            cd "${PSYCHOPY_DIR}" || { log_message "Warning: Failed to return to ${PSYCHOPY_DIR}."; return 1; }
             sudo_wrapper rm -rf "$temp_dir" "$asset_name"
             return 0
         else
@@ -1080,27 +1082,23 @@ install_wxpython_from_github() {
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local desktop_shortcut
-    local desktop_dir="${HOME}/.local/share/applications/"
-    local psychopy_exec="${PSYCHOPY_DIR}/bin/psychopy"
-    local resources_dir="${PSYCHOPY_DIR}/Resources"
+    local desktop_shortcut desktop_dir psychopy_exec resources_dir desktop_content
+    desktop_dir="${HOME}/.local/share/applications"
+    psychopy_exec="${PSYCHOPY_DIR}/bin/psychopy"
+    resources_dir="${PSYCHOPY_DIR}/Resources"
     local shortcuts=()
 
-    desktop_shortcut="$(xdg-user-dir DESKTOP)"
-
-    if [ -n "$VENV_NAME" ]; then
-        shortcuts+=(
-            "--no-splash" "$VENV_NAME" "psychopy.png"
-            "--builder --no-splash" "Builder $VENV_NAME" "builder.png"
-            "--coder --no-splash" "Coder $VENV_NAME" "coder.png"
-        )
-    else
-        shortcuts+=(
-            "--no-splash" "PsychoPy (v${PSYCHOPY_VERSION}) Python(v${PYTHON_VERSION})" "psychopy.png"
-            "--builder --no-splash" "PsychoPy Builder (v${PSYCHOPY_VERSION}) Python(v${PYTHON_VERSION})" "builder.png"
-            "--coder --no-splash" "PsychoPy Coder (v${PSYCHOPY_VERSION}) Python(v${PYTHON_VERSION})" "coder.png"
-        )
+    # Get the desktop directory; return if xdg-user-dir fails.
+    if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
+        log_message "Warning: xdg-user-dir not found. Desktop shortcut creation failed."
+        return
     fi
+
+    shortcuts+=(
+        "--no-splash" "$(basename "$PSYCHOPY_DIR")" "psychopy.png"
+        "--builder --no-splash" "Builder $(basename "$PSYCHOPY_DIR")" "builder.png"
+        "--coder --no-splash" "Coder $(basename "$PSYCHOPY_DIR")" "coder.png"
+    )
 
     if [ ! -d "$desktop_shortcut" ]; then
         log_message "Warning: Desktop directory '$desktop_shortcut' does not exist. Skipping shortcut creation."
@@ -1124,41 +1122,46 @@ create_desktop_shortcut() {
         fi
 
         local icon_line=""
-        if [ -f "$icon_path" ]; then
-            icon_line="Icon=${icon_path}"
-        fi
+        [ -f "$icon_path" ] && icon_line="Icon=${icon_path}"
 
-        local desktop_content="[Desktop Entry]
-Version=1.0
-Name=${pretty_name}
-Comment=Run PsychoPy version ${PSYCHOPY_VERSION} with ${exec_args}
-Exec=${psychopy_exec} ${exec_args}
-${icon_line}
-Terminal=false
-Type=Application
-Categories=Education;Science;"
+        desktop_content=$(printf "%s\n" \
+            "[Desktop Entry]" \
+            "Version=1.0" \
+            "Type=Application" \
+            "Name=${pretty_name}" \
+            "GenericName=PsychoPy Experiment Builder" \
+            "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python ${PYTHON_VERSION} with ${exec_args}" \
+            "Exec=${psychopy_exec} ${exec_args}" \
+            "${icon_line}" \
+            "Terminal=false" \
+            "Categories=Education;Science;Development;" \
+            "MimeType=application/x-psyexp;" \
+            "Keywords=psychopy;experiment;builder;psyexp;design;" \
+            "TryExec=${psychopy_exec}" \
+            "StartupNotify=true" \
+            "StartupWMClass=PsychoPy" )
 
         sh -c "echo '$desktop_content' > '$desktop_file'"
         sudo_wrapper chmod +x "$desktop_file"
         sudo_wrapper chown "$USER" "$desktop_file"
-        gio set "$desktop_file" metadata::trusted true
-        sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}${pretty_name}.desktop"
+
+        if command -v gio >/dev/null 2>&1; then
+            gio set "$desktop_file" metadata::trusted true
+        fi
+
+        sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}/${pretty_name}.desktop"
     done
     log_message "Info: Desktop shortcuts created successfully."
 }
 
 # Adds the PsychoPy installation's bin directory to the user's PATH.
 add_psychopy_to_path() {
-    local shell_name
+    local shell_name target_bin
     local bin_dir="${PSYCHOPY_DIR}/.bin"
 
-    if [ -n "$VENV_NAME" ]; then
-        local target_bin="${bin_dir}/${VENV_NAME}"
-    else
-        local target_bin="${bin_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}"
-    fi
-
+    target_bin="${bin_dir}/$(basename "$PSYCHOPY_DIR")"
     shell_name=$(basename "$SHELL")
+
     mkdir -p "$bin_dir"
     ln -sf "${PSYCHOPY_DIR}/bin/psychopy" "$target_bin"
 
@@ -1249,7 +1252,7 @@ main() {
     detect_os_version
     PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
     SCRIPT_VERSION=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
-    log_message "Info: Initiating PsychoPy(${PSYCHOPY_VERSION}) installation using psychopy_linux_installer v${SCRIPT_VERSION} on ${OS_VERSION} (${PROCESSOR_STRUCTURE})."
+    log_message "Info: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION} (${PROCESSOR_STRUCTURE})."
 
     # Detect package manager
     PKG_MANAGER=$(detect_package_manager)
@@ -1282,7 +1285,7 @@ main() {
     if [ -n "$VENV_NAME" ]; then
         PSYCHOPY_DIR="${INSTALL_DIR}/${VENV_NAME}"
     else
-        PSYCHOPY_DIR="${INSTALL_DIR}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}"
+        PSYCHOPY_DIR="${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}"
     fi
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
@@ -1474,12 +1477,9 @@ main() {
     if [ "$DISABLE_PATH" = false ]; then
         add_psychopy_to_path
         log_message "Note: To start PsychoPy from the system path, use:"
-        if [ -n "$VENV_NAME" ]; then
-            log_message "Note: ${VENV_NAME}"
-        else
-            log_message "Note: psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}"
-        fi
+        log_message "Note: $(basename "$PSYCHOPY_DIR")"
     fi
+
     log_message "Note: To start PsychoPy using the absolute path, use:"
     log_message "Note: ${PSYCHOPY_DIR}/bin/psychopy"
     log_message "Note: Please reboot to apply security limits and to refresh the system path."

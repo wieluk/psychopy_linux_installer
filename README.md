@@ -23,14 +23,14 @@ These distributions have been tested for compatibility, but the script may also 
 
 - This script will install multiple dependencies based on your Linux distribution. A detailed list of packages that may be installed is available [here](#optional-remove-dependencies) (click "Uninstall dependencies by package manager" to expand).
 - PsychoPy supports Python versions 3.8, 3.9, and 3.10.
-- A directory is created at `{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}` (`--install-dir`, default: `$HOME`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`{install_dir}/${NAME}`).
+- A directory is created at `{install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (`--install-dir`, default: `$HOME`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`{install_dir}/${NAME}`).
 - The script attempts to install Python via the package manager; if not found, it downloads a pre-packaged .tar.gz from GitHub releases or, if unavailable, from python.org to build from source.
 - Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python` if not available via package manager.
 - wxPython is downloaded from the [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/); if this fails, the script tries GitHub releases or builds from source.
 - After successful wxPython installation, the downloaded .whl file is cached in `/usr/local/psychopy_python/wx_wheels`.
 - If the downloads fail, building Python and wxPython may take a some time.
 - The script provides minimal output to terminal. Use the `--verbose` option for detailed logging (logfile output is always verbose).
-- Logs are written to a timestamped file in `/tmp/psychopy_linux_installer_YYYYMMDD_HHMMSS.log` first and then moved into the `install-dir`.
+- Logs are written to a timestamped file in `/tmp/psychopy_linux_installer_YYYYMMDD_HHMMSS.log` first and then moved into the installation folder.
 
 ## Usage
 
@@ -70,13 +70,13 @@ Install curl with your package manger. On most distros curl is already installed
 | `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `latest`). |
 | `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
 | `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
-| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Not recommended, as the script will automatically fall back to building from source if downloading fails. This option is intended for cases where the script does not fail, but the installation does not work as expected. |
-| `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/{user}` instead. |
-| `--venv-name=NAME` | Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default. Spaces in the name will be replaced with underscores (_). |
+| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Not recommended, only use if installation doesn't work as expected. |
+| `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/user` instead. |
+| `--venv-name=NAME` | Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default. |
 | `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
 | `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
-| `--disable-path` | Disable adding psychopy to system path. |
+| `--disable-path` | Disable adding PsychoPy to system path. |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
 | `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
 | `-f`, `--force-overwrite` | Force overwrite of the existing installation directory. |
@@ -114,7 +114,7 @@ The script performs the following steps:
 
 After installation, desktop icons for PsychoPy will be created automatically, and the application will be added to your system's PATH as:
 
-`psychopy_${PSYCHOPY_VERSION}_py_${PYTHON_VERSION}`
+`PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}`
 
 You can also launch PsychoPy directly using the absolute path:
 
@@ -133,13 +133,13 @@ To completely remove PsychoPy, you’ll need to delete its virtual environment f
 
 By default, PsychoPy installs its files in the following locations:
 
-- **PsychoPy installation directory:** `~/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}`
+- **PsychoPy installation directory:** `~/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}`
 - **PsychoPy’s Python and wxPython:** `/usr/local/psychopy_python`
 
 To uninstall PsychoPy, delete both directories:
 
 ```bash
-# rm -rf {install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}  # Use your version/venv-name and install_dir (default is the home directory)
+# rm -rf {install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}  # Use your version/venv-name and install_dir (default is the home directory)
 sudo rm -rf /usr/local/psychopy_python
 ```  
 
@@ -167,7 +167,7 @@ rm ~/.local/share/applications/PsychoPy*.desktop
 During installation, a line is added to the end of your shell’s configuration file. The line typically looks like:
 
 ```bash
-export PATH="{install_dir}/psychopy_${PSYCHOPY_VERSION}_py${PYTHON_VERSION}/.bin:$PATH"
+export PATH="{install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}/.bin:$PATH"
 ```
 
 Locate and edit the configuration file for your shell to remove this line:
