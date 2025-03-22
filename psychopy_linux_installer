@@ -1379,7 +1379,7 @@ main() {
     else
         if log pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==$WXPYTHON_VERSION"; then
             log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from local wheel."
-        elif log pip install --only-binary=:all: --find-links https://extras.wxpython.org/wxPython4/extras/linux/gtk3/$OS_VERSION_LINK/ "wxPython==$WXPYTHON_VERSION"; then
+        elif log pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/$OS_VERSION_LINK/" "wxPython==$WXPYTHON_VERSION"; then
             log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from extras.wxpython.org."
         elif install_wxpython_from_github; then
             :
