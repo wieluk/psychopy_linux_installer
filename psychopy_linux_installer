@@ -1343,6 +1343,7 @@ main() {
             log_message "Error: python${PYTHON_VERSION} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments. Exiting."
             exit 1
         fi
+        export PATH=/usr/local/psychopy_python/bin:$PATH
         /usr/local/psychopy_python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     else
         log_message "Info: Python${PYTHON_VERSION} can be installed via package manager. Installing ..."
