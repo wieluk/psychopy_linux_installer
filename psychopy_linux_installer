@@ -89,7 +89,7 @@ log_message() {
 log() {
     if [ "$VERBOSE" = true ]; then
         "$@" 2>&1 | tee -a "$LOG_FILE"
-        return ${PIPESTATUS[0]}
+        return "${PIPESTATUS[0]}"
     else
         "$@" >> "$LOG_FILE" 2>&1
         return $?
