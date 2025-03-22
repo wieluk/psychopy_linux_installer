@@ -1384,7 +1384,7 @@ main() {
             log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from extras.wxpython.org."
         elif install_wxpython_from_github; then
             :
-        else 
+        else
             build_wxpython
         fi
     fi
