@@ -1024,7 +1024,7 @@ build_wxpython() {
     [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
 
     log_message "Info: Building wxPython $WXPYTHON_VERSION from source. This might take a while ..."
-    if "$PYTHON_VENV_COMMAND" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$WXPYTHON_VERSION"; then
+    if log "$PYTHON_VENV_COMMAND" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$WXPYTHON_VERSION"; then
         log_message "Info: Successfully built wxPython from source."
     else
         log_message "Error: Building wxPython from source failed. Exiting."
