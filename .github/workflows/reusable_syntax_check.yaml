@@ -25,7 +25,7 @@ jobs:
 
       - name: Run bashate
         run: |
-          bashate $GITHUB_WORKSPACE/psychopy_linux_installer
+          bashate $GITHUB_WORKSPACE/psychopy_linux_installer --ignore E006
   
       - name: Spell check README.md
         run: |

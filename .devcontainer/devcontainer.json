@@ -1,8 +1,8 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
-    "name": "Ubuntu 22 with PsychoPy",
-    "image": "mcr.microsoft.com/devcontainers/base:jammy",
+    "name": "Ubuntu 24 with PsychoPy",
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
     "features": {
         "ghcr.io/lukewiwa/features/shellcheck:0": {}
     },
@@ -12,10 +12,12 @@
                 "mads-hartmann.bash-ide-vscode",
                 "formulahendry.code-runner",
                 "timonwong.shellcheck",
-                "ms-vscode.powershell"
+                "ms-vscode.powershell",
+                "davidanson.vscode-markdownlint"
             ]
         }
     },
-    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y python3-pip && sudo pip3 install bashate",
-    "postCreateCommand": "chmod +x psychopy_linux_installer && ./psychopy_linux_installer -f --non-interactive --additional-packages=pytest --disable-shortcut"
+    "onCreateCommand": "sudo apt-get update && sudo apt-get install -y python3 python3-pip shellcheck && pip install bashate codespell --break-system-packages",
+    "postCreateCommand": "ln -sf $HOME/psychopy-test-installation /workspaces/psychopy_linux_installer/ && sudo chmod +x psychopy_linux_installer && ./psychopy_linux_installer --venv-name=psychopy-test-installation -f --non-interactive --additional-packages=pytest && ~/psychopy-test-installation/bin/python -m pytest .github/psychopy_tests/pytest_installation.py -v --disable-warnings",
+    "postStartCommand":  "./.devcontainer/.run_checks.sh"
 }
