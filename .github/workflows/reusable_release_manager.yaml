@@ -1,0 +1,155 @@
+name: reusable combined workflow
+
+on:
+  workflow_call:
+    inputs:
+      release-method:
+        required: true
+        type: string
+        description: "Specify the release method: check-release, create-pre-release, or create-release"
+    outputs:
+      result:
+        description: "Result of the check-release step"
+        value: ${{ jobs.check-release.outputs.result }}
+
+jobs:
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      installer-version: ${{ steps.extract.outputs.installer_version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Extract Installer Version
+        id: extract
+        run: |
+          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          if [ -z "$INSTALLER_VERSION" ]; then
+            echo "Error: Failed to extract version from script."
+            exit 1
+          fi
+          echo "installer_version=$INSTALLER_VERSION" >> $GITHUB_OUTPUT
+
+  check-release:
+    if: ${{ inputs.release-method == 'check-release' }}
+    needs: extract-version
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.release-checker.outputs.result }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Check if release exists
+        id: release-checker
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
+        run: |
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          
+          if echo "$RESPONSE" | grep -q '"id":'; then
+            echo "Release ${RELEASE_TAG} already exists."
+            echo "result=no_release" >> $GITHUB_OUTPUT
+          else
+            echo "No existing release for version ${RELEASE_TAG}."
+            echo "result=release" >> $GITHUB_OUTPUT
+          fi
+
+  create-pre-release:
+    if: ${{ inputs.release-method == 'create-pre-release' }}
+    needs: extract-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release if not exists
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
+        run: |
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          if echo "$RESPONSE" | grep -q '"id":'; then
+            echo "Release ${RELEASE_TAG} already exists."
+            echo "release_exists=true" >> $GITHUB_ENV
+            UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+            echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+          else
+            echo "Release ${RELEASE_TAG} does not exist. Creating release with auto-generated notes."
+            CREATE_RESPONSE=$(curl -s -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d @- "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" <<EOF
+          {
+            "tag_name": "${RELEASE_TAG}",
+            "name": "${RELEASE_TAG}",
+            "draft": false,
+            "prerelease": true,
+            "generate_release_notes": true
+          }
+          EOF
+          )
+            
+            if echo "$CREATE_RESPONSE" | grep -q '"id":'; then
+              echo "release_exists=false" >> $GITHUB_ENV
+              UPLOAD_URL=$(echo "$CREATE_RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+              echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+            else
+              echo "Failed to create release."
+              echo "Error response: $CREATE_RESPONSE"
+              exit 1
+            fi
+          fi
+
+          if [ -f "README.md" ]; then
+            curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: text/markdown" \
+              --data-binary @README.md \
+              "${UPLOAD_URL}?name=README.md"
+          fi
+
+          if [ -f "psychopy_linux_installer" ]; then
+            curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/x-shellscript" \
+              --data-binary @psychopy_linux_installer \
+              "${UPLOAD_URL}?name=psychopy_linux_installer"
+          fi 
+
+  create-release:
+    if: ${{ inputs.release-method == 'create-release' }}
+    needs: extract-version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update release from pre-release to full release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
+        run: |
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          if [ -z "$RELEASE_ID" ] || [ "$RELEASE_ID" == "null" ]; then
+            echo "Failed to retrieve release ID for tag ${RELEASE_TAG}"
+            exit 1
+          fi
+
+          PATCH_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"
+          PATCH_RESPONSE=$(curl -s -X PATCH \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"prerelease": false}' \
+            "$PATCH_URL")
+          if echo "$PATCH_RESPONSE" | grep -q '"id":'; then
+            echo "Successfully updated release ${RELEASE_TAG} to a full release."
+          else
+            echo "Failed to update release."
+            echo "Response: $PATCH_RESPONSE"
+            exit 1
+          fi

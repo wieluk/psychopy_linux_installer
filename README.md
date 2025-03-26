@@ -1,3 +1,8 @@
+![GitHub Release](https://img.shields.io/github/v/release/wieluk/psychopy_linux_installer)
+![GitHub commits since latest release (branch)](https://img.shields.io/github/commits-since/wieluk/psychopy_linux_installer/latest/main)
+![GitHub Downloads (specific asset, all releases)](https://img.shields.io/github/downloads/wieluk/psychopy_linux_installer/psychopy_linux_installer)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/wieluk/psychopy_linux_installer/push_workflow.yaml?branch=main)
+
 # PsychoPy Installation Script for Linux
 
 This script facilitates the installation of [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
@@ -34,7 +39,7 @@ These distributions have been tested for compatibility, but the script may also 
 
 ## Usage
 
-Install curl with your package manger. On most distros curl is already installed.
+Install curl with your package manager. On most distros curl is already installed.
 
 1. **Download the script:**
 
@@ -134,14 +139,14 @@ To completely remove PsychoPy, you’ll need to delete its virtual environment f
 By default, PsychoPy installs its files in the following locations:
 
 - **PsychoPy installation directory:** `~/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}`
-- **PsychoPy’s Python and wxPython:** `/usr/local/psychopy_python`
+- **PsychoPy's Python and wxPython:** `/usr/local/psychopy_python`
 
 To uninstall PsychoPy, delete both directories:
 
 ```bash
 # rm -rf {install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}  # Use your version/venv-name and install_dir (default is the home directory)
 sudo rm -rf /usr/local/psychopy_python
-```  
+```
 
 ### Remove the PsychoPy settings folder
 
