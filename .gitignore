@@ -1,3 +1,5 @@
 .pyc
 __pycache__ 
 .github/psychopy_tests/test_program/data
+psychopy-test-installation
+.vscode
