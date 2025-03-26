@@ -585,6 +585,7 @@ check_script_update() {
 detect_os_version() {
     OS_VERSION=""
     OS_VERSION_LINK=""
+    OS_VERSION_FULL=""
 
     local major_version version ID VERSION_ID
     if [ -f /etc/os-release ]; then
@@ -595,7 +596,7 @@ detect_os_version() {
             major_version=$(echo "$VERSION_ID" | cut -d. -f1)
 
             OS_VERSION="${ID}-${major_version}"
-
+            OS_VERSION_FULL="${ID}-${VERSION_ID}"
             if [ "$ID" = "ubuntu" ]; then
                 OS_VERSION_LINK="${ID}-${VERSION_ID}"
             else
@@ -611,7 +612,7 @@ detect_os_version() {
         major_version=$(echo "$version" | cut -d. -f1)
 
         OS_VERSION="${ID}-${major_version}"
-
+        OS_VERSION_FULL="${ID}-${major_version}"
         if [ "$ID" = "ubuntu" ]; then
             OS_VERSION_LINK="${ID}-${version}"
         else
@@ -623,6 +624,7 @@ detect_os_version() {
     log_message "Warning: Unable to detect OS version."
     OS_VERSION="unknown"
     OS_VERSION_LINK="unknown"
+    OS_VERSION_FULL="unknown"
     return
 }
 
@@ -765,7 +767,7 @@ filter_installable_packages() {
     local filtered_packages=()
 
     for package in "$@"; do
-        # Skip conflicting packages for specific OS versions
+        # Skip conficting packages for specific OS versions
         case "$OS_VERSION" in
             ubuntu-24) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
             ubuntu-20) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
@@ -1250,7 +1252,7 @@ main() {
     detect_os_version
     PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
     SCRIPT_VERSION=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
-    log_message "Info: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION} (${PROCESSOR_STRUCTURE})."
+    log_message "Info: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
 
     # Detect package manager
     PKG_MANAGER=$(detect_package_manager)
