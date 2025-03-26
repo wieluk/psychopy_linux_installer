@@ -3,25 +3,20 @@ name: reusable test workflow
 on:
   workflow_call:
     inputs:
-      build-mode:
+      test-mode:
         required: false
-        type: boolean
-        default: false
-        description: 'Whether to run tests with build mode enabled'
-      quick-mode:
-        required: false
-        type: boolean
-        default: false
-        description: 'Run in quick mode with only ubuntu-latest as the OS'
+        type: string
+        default: 'normal'
+        description: 'The test mode to run (normal, build, quick)'
 
 jobs:
   run-installer:
-    runs-on: ${{ inputs.quick-mode && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
+    runs-on: ${{ inputs.test-mode == 'quick' && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
     strategy:
       matrix:
-        os: ${{ inputs.quick-mode && fromJson('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"]') || fromJson('["ubuntu-24", "ubuntu-22", "ubuntu-20", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "pop-22", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15", "linuxmint-22"]') }}
-        python_version: ${{ inputs.build-mode && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
-        psychopy_version: ${{ inputs.build-mode && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
+        os: ${{ inputs.test-mode == 'quick' && fromJson('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"]') || fromJson('["ubuntu-24", "ubuntu-22", "ubuntu-20", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "pop-22", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15", "linuxmint-22"]') }}
+        python_version: ${{ inputs.test-mode == 'build' && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
+        psychopy_version: ${{ inputs.test-mode == 'build' && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +30,7 @@ jobs:
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
-          BUILD_FLAG="${{ inputs.build-mode && '--build=both' || '' }}"
+          BUILD_FLAG="${{ inputs.test-mode == 'build' && '--build=both' || '' }}"
           ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
@@ -65,14 +60,14 @@ jobs:
           fi
         
       - name: Install xvfb
-        if: ${{ inputs.quick-mode }}
+        if: ${{ inputs.test-mode == 'quick' }}
         run: |
           sudo apt-get update && sudo apt-get install -y xvfb
 
       - name: Run PsychoPy pytest
         run: |
           echo "Starting PsychoPy pytest..."
-          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+          if [ "${{ inputs.test-mode }}" = "quick" ]; then
             sleep 3
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m pytest .github/psychopy_tests/pytest_installation.py -v --disable-warnings
           else
@@ -85,7 +80,7 @@ jobs:
         if: ${{ matrix.psychopy_version == 'latest' }}
         run: |
           echo "Starting PsychoPy program..."
-          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+          if [ "${{ inputs.test-mode }}" = "quick" ]; then
             sleep 3
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python .github/psychopy_tests/test_program/test_program_lastrun.py
           else
@@ -100,11 +95,11 @@ jobs:
 
   run-installer-with-requirements-txt:
     name: Run installer with requirements file
-    if: ${{ !inputs.build-mode }}
-    runs-on: ${{ inputs.quick-mode && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
+    if: ${{ inputs.test-mode != 'build' }}
+    runs-on: ${{ inputs.test-mode == 'quick' && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
     strategy:
       matrix:
-        os: ${{ inputs.quick-mode && fromJson('["ubuntu-latest"]') || fromJson('["ubuntu-24"]') }}
+        os: ${{ inputs.test-mode == 'quick' && fromJson('["ubuntu-latest"]') || fromJson('["ubuntu-24"]') }}
         req_file:
           - ".github/psychopy_tests/test_windows_requirements.txt"
           - ".github/psychopy_tests/test_linux_requirements.txt"
@@ -177,14 +172,14 @@ jobs:
           fi
 
       - name: Install xvfb
-        if: ${{ inputs.quick-mode }}
+        if: ${{ inputs.test-mode == 'quick' }}
         run: |
           sudo apt-get update && sudo apt-get install -y xvfb
 
       - name: Run PsychoPy pytest
         run: |
           echo "Starting PsychoPy pytest..."
-          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+          if [ "${{ inputs.test-mode }}" = "quick" ]; then
             sleep 3
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python -m pytest .github/psychopy_tests/pytest_installation.py -v --disable-warnings
           else
@@ -196,7 +191,7 @@ jobs:
         id: run_psychopy_program
         run: |
           echo "Starting PsychoPy program..."
-          if [ "${{ inputs.quick-mode }}" = "true" ]; then
+          if [ "${{ inputs.test-mode }}" = "quick" ]; then
             sleep 3
             xvfb-run -s "-screen 0 1024x768x24" /tmp_dir/psychopy/bin/python .github/psychopy_tests/test_program/test_program_lastrun.py
           else

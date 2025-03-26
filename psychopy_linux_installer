@@ -765,7 +765,7 @@ filter_installable_packages() {
     local filtered_packages=()
 
     for package in "$@"; do
-        # Skip conficting packages for specific OS versions
+        # Skip conflicting packages for specific OS versions
         case "$OS_VERSION" in
             ubuntu-24) [[ "$package" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
             ubuntu-20) [[ "$package" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
@@ -1019,7 +1019,7 @@ build_wxpython() {
     log_message "Info: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
-    # Check /tmp size and warn if ≤2GB (non-blocking)
+    # Check /tmp size and warn if ≤2GB
     tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
     [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
 
@@ -1053,7 +1053,6 @@ install_wxpython_from_github() {
         download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
     fi
 
-    # If still not found, exit with an error
     if [ -z "$download_url" ]; then
         log_message "Warning: No matching wxPython wheel found in v${SCRIPT_VERSION} or latest release ($latest_release_tag) for wxPython ${WXPYTHON_VERSION}."
         return 1
@@ -1088,7 +1087,6 @@ create_desktop_shortcut() {
     resources_dir="${PSYCHOPY_DIR}/Resources"
     local shortcuts=()
 
-    # Get the desktop directory; return if xdg-user-dir fails.
     if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
         log_message "Warning: xdg-user-dir not found. Desktop shortcut creation failed."
         return
@@ -1352,8 +1350,7 @@ main() {
         python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     fi
 
-    # Activate venv
-    log_message "Info: Succesfully created Python${PYTHON_VERSION} venv in ${PSYCHOPY_DIR}."
+    log_message "Info: Successfully created Python${PYTHON_VERSION} venv in ${PSYCHOPY_DIR}."
     PYTHON_VENV_COMMAND="${PSYCHOPY_DIR}/bin/python"
     check_python_env "$PYTHON_VENV_COMMAND"
 

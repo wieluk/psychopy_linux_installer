@@ -13,7 +13,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck python3-pip
-          sudo pip3 install bashate
+          sudo pip3 install bashate codespell
 
       - name: Run Bash Syntax Check
         run: |
@@ -26,3 +26,11 @@ jobs:
       - name: Run bashate
         run: |
           bashate $GITHUB_WORKSPACE/psychopy_linux_installer
+  
+      - name: Spell check README.md
+        run: |
+          codespell README.md
+
+      - name: Spell check psychopy_linux_installer
+        run: |
+          codespell psychopy_linux_installer
