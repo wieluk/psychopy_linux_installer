@@ -18,10 +18,9 @@
                 "leosj29.bash-sh-runner",
                 "davidanson.vscode-markdownlint",
                 "vscode-icons-team.vscode-icons",
-                "redhat.vscode-yaml",
-                "zainchen.json",
-                "donjayamanne.githistory",
-                "github.vscode-pull-request-github"
+                "github.vscode-github-actions",
+                "github.vscode-pull-request-github",
+                "donjayamanne.githistory"
             ]
         }
     },
