@@ -6,8 +6,8 @@ on:
       test-mode:
         required: false
         type: string
-        default: 'normal'
-        description: 'The test mode to run (normal, build, quick)'
+        default: "normal"
+        description: "The test mode to run (normal, build, quick)"
 
 jobs:
   run-installer:
@@ -20,12 +20,12 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup environment and install
         env:
           PYTHON_VERSION: ${{ matrix.python_version }}
           PSYCHOPY_VERSION: ${{ matrix.psychopy_version }}
-        run: |    
+        run: |
           sudo chmod +x $GITHUB_WORKSPACE/psychopy_linux_installer
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
@@ -51,14 +51,14 @@ jobs:
           if [ "$PSYCHOPY_VERSION" = "latest" ]; then
             PSYCHOPY_VERSION=$(curl -s "https://pypi.org/pypi/psychopy/json" | jq -r .info.version)
           fi
-          
+
           if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
               echo "PsychoPy version check failed. Expected version: $PSYCHOPY_VERSION"
               exit 1
           else
               /tmp_dir/psychopy/bin/psychopy -v
           fi
-        
+
       - name: Install xvfb
         if: ${{ inputs.test-mode == 'quick' }}
         run: |
@@ -74,7 +74,7 @@ jobs:
             /tmp_dir/psychopy/bin/python -m pytest .github/psychopy_tests/pytest_installation.py -v --disable-warnings
           fi
           echo "PsychoPy pytest completed"
-      
+
       - name: Run PsychoPy program
         id: run_psychopy_program
         if: ${{ matrix.psychopy_version == 'latest' }}
@@ -91,7 +91,7 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/* 
+          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
 
   run-installer-with-requirements-txt:
     name: Run installer with requirements file
@@ -128,10 +128,10 @@ jobs:
           else
             echo "No installation logs found in either /tmp or /tmp_dir"
           fi
-          
+
       - name: Verify PsychoPy installation and version
         run: |
-            /tmp_dir/psychopy/bin/psychopy -v
+          /tmp_dir/psychopy/bin/psychopy -v
 
       - name: Compare installed packages with requirements.txt
         env:
