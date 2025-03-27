@@ -1,4 +1,6 @@
 #!/bin/bash
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -26,27 +28,27 @@ report_result() {
 
 # Run bash syntax check
 print_header "Checking Bash syntax"
-bash -n psychopy_linux_installer
+bash -n "$PARENT_DIR/psychopy_linux_installer"
 report_result $? "Bash syntax check"
 
 # Run shellcheck
 print_header "Running ShellCheck"
-shellcheck -x psychopy_linux_installer
+shellcheck -x "$PARENT_DIR/psychopy_linux_installer"
 report_result $? "ShellCheck analysis"
 
 # Run bashate
 print_header "Running Bashate"
-bashate psychopy_linux_installer --ignore E006
+bashate "$PARENT_DIR/psychopy_linux_installer" --ignore E006
 report_result $? "Bashate style check"
 
 # Check spelling in README
 print_header "Checking spelling in README.md"
-codespell README.md
+codespell "$PARENT_DIR/README.md"
 report_result $? "README.md spell check"
 
 # Check spelling in script
 print_header "Checking spelling in psychopy_linux_installer"
-codespell psychopy_linux_installer
+codespell "$PARENT_DIR/psychopy_linux_installer"
 report_result $? "psychopy_linux_installer spell check"
 
 # Print summary
