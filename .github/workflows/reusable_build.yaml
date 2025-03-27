@@ -24,8 +24,8 @@ jobs:
           - manjarolinux-25
           - opensuse-leap-15
           - linuxmint-22
-        python_version: ['3.8', '3.9', '3.10']
-        wxpython_version: ['grab', '4.2.1', '4.2.0', '4.1.1']
+        python_version: ["3.8", "3.9", "3.10"]
+        wxpython_version: ["grab", "4.2.1", "4.2.0", "4.1.1"]
       fail-fast: false
     permissions:
       contents: write
@@ -41,13 +41,13 @@ jobs:
           else
             echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
           fi
-          
+
       - name: Install dependencies
         run: |
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
-          
+
           if command -v apt-get > /dev/null; then
             sudo apt-get update
             sudo apt-get install -y jq curl
@@ -120,23 +120,23 @@ jobs:
         run: |
           RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
-          
+
           CURRENT_VERSION="${INSTALLER_VERSION}"
-          
+
           PREVIOUS_RELEASE_ID=$(echo "$RELEASES" | jq -r "
             map(select(.tag_name != \"v${CURRENT_VERSION}\"))
             | sort_by(.created_at)
             | reverse
             | .[0].id
           ")
-          
+
           PYTHON_VERSION="${{ matrix.python_version }}"
           PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
           if [ -z "$PYTHON_FULL_VERSION" ]; then
             echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
             exit 1
           fi
-          
+
           # Function to detect the OS version
           detect_os_version() {
               if [ -f /etc/os-release ]; then
@@ -165,7 +165,7 @@ jobs:
 
           PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-          
+
           check_assets() {
             local release_id=$1
             local page=1
@@ -190,7 +190,7 @@ jobs:
           if [ ! -z "$RELEASE_ID" ]; then
             CURRENT_ASSETS=$(check_assets "$RELEASE_ID")
           fi
-          
+
           PREVIOUS_ASSETS=""
           if [ ! -z "$PREVIOUS_RELEASE_ID" ] && [ "$PREVIOUS_RELEASE_ID" != "null" ]; then
             PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
@@ -374,9 +374,9 @@ jobs:
           export PATH=/usr/local/psychopy_python/bin:$PATH
           /usr/local/psychopy_python/bin/python$PYTHON_VERSION -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
-          
+
           pip install -U pip distro sip six psychtoolbox setuptools wheel
-          
+
           if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
               pip install attrdict
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
@@ -389,13 +389,13 @@ jobs:
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
           cd "$WXPYTHON_DIR"
-          
+
           python --version
           python -m pip wheel .
-          
+
           # Use a case-insensitive glob to capture the wheel file.
           WXPYTHON_WHEEL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.whl)
-          
+
           # If the wheel file does not start with "wxPython-"
           if [[ "$WXPYTHON_WHEEL" != wxPython-* ]]; then
               NEW_WXPYTHON_WHEEL="wxPython-${WXPYTHON_WHEEL:9}"
@@ -406,7 +406,7 @@ jobs:
           WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
           cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
           echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
-          
+
           deactivate
 
       - name: Upload wxPython to Release
@@ -421,4 +421,3 @@ jobs:
         if: always()
         run: |
           sudo rm -rf /tmp_dir
-

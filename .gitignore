@@ -1,5 +1,6 @@
 .pyc
-__pycache__ 
+__pycache__
+.pytest_cache
 .github/psychopy_tests/test_program/data
 psychopy-test-installation
 .vscode
