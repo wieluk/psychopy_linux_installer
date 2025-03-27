@@ -16,7 +16,12 @@
                 "timonwong.shellcheck",
                 "foxundermoon.shell-format",
                 "leosj29.bash-sh-runner",
-                "davidanson.vscode-markdownlint"
+                "davidanson.vscode-markdownlint",
+                "vscode-icons-team.vscode-icons",
+                "redhat.vscode-yaml",
+                "zainchen.json",
+                "donjayamanne.githistory",
+                "github.vscode-pull-request-github"
             ]
         }
     },
