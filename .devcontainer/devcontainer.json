@@ -26,5 +26,5 @@
         }
     },
     "postCreateCommand": "ln -sf /psychopy/psychopy-test-installation /workspaces/psychopy_linux_installer/",
-    "postStartCommand": "./.devcontainer/.run_checks.sh"
+    "postStartCommand": "sudo chmod +x .devcontainer/.run_checks.sh && ./.devcontainer/.run_checks.sh"
 }
