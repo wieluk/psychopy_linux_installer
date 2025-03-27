@@ -492,12 +492,22 @@ sudo_wrapper() {
         case "$SUDO_MODE" in
         ask)
             if $is_pkg_manager_command; then
-                log_message "WARNING: Command '${command[*]}' failed with error: '${error_output}'."
-                read -r -p "Retry with sudo for this and all future $PKG_MANAGER commands(r), continue(c), quit(q), or auto sudo when needed(a)? [r/c/q/a] " response
+                retry_text="[r] Retry with sudo (this and future $PKG_MANAGER commands)"
             else
-                log_message "WARNING: Command '${command[*]}' failed with error: '${error_output}'."
-                read -r -p "Retry with sudo(r), continue without sudo(c), quit(q), or auto sudo when needed(a)? [r/c/q/a] " response
+                retry_text="[r] Retry with sudo"
             fi
+
+            log_message "WARNING: Command '${command[*]}' failed with error: '${error_output}'."
+            echo
+            read -r -p "How would you like to proceed?
+
+            $retry_text
+            [a] Automatically use sudo when needed  (this and future commands)
+            [c] Continue without sudo (this command will be skipped)
+            [q] Quit
+
+            Enter your choice [r/a/c/q]: " response
+            echo
 
             case "$response" in
             [Rr])
@@ -573,6 +583,7 @@ check_script_update() {
         script_path=$(readlink -f "$0")
 
         read -r -p "Would you like to update? (y/n) " response
+        echo
         if [[ "$response" =~ ^[Yy]$ ]]; then
             log_message "INFO: Updating to version $latest_version ..."
 
