@@ -70,16 +70,16 @@ log_message() {
     fi
 
     case "$1" in
-    Info:*)
+    INFO:*)
         formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$green" "$1" "$reset")
         ;;
-    Warning:*)
+    WARNING:*)
         formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$yellow" "$1" "$reset")
         ;;
-    Error:*)
+    ERROR:*)
         formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$red" "$1" "$reset")
         ;;
-    Note:*)
+    NOTE:*)
         formatted_message=$(printf "%s - %b%s%b" "$timestamp" "$cyan" "$1" "$reset")
         ;;
     *)
@@ -90,6 +90,10 @@ log_message() {
     plain_message="$timestamp - $1"
     echo "$plain_message" >>"$LOG_FILE"
     printf "%s\n" "$formatted_message"
+
+    if [[ "$1" == ERROR:* ]]; then
+        printf "%bPlease check the log file at %s for more details. Exiting.%b\n" "$red" "$LOG_FILE" "$reset"
+    fi
 }
 
 # Wrapper to control command output based on verbosity.
@@ -116,7 +120,7 @@ process_arguments() {
         --python-version=*)
             PYTHON_VERSION="${arg#*=}"
             if [[ ! $PYTHON_VERSION =~ ^3\.(8|9|10)$ ]]; then
-                log_message "Error: Unsupported Python version '$PYTHON_VERSION'. Allowed versions are 3.8, 3.9, or 3.10."
+                log_message "ERROR: Unsupported Python version '$PYTHON_VERSION'. Supported versions: 3.8, 3.9, or 3.10."
                 exit 1
             fi
             ;;
@@ -143,7 +147,7 @@ process_arguments() {
                 BUILD_WX=true
                 ;;
             *)
-                log_message "Error: Invalid option for --build: $BUILD_ARG"
+                log_message "ERROR: Invalid --build option: '$BUILD_ARG'."
                 show_help
                 exit 1
                 ;;
@@ -158,7 +162,7 @@ process_arguments() {
         --sudo-mode=*)
             SUDO_MODE="${arg#*=}"
             if [[ "$SUDO_MODE" != "ask" && "$SUDO_MODE" != "continue" && "$SUDO_MODE" != "auto" && "$SUDO_MODE" != "error" && "$SUDO_MODE" != "force" ]]; then
-                log_message "Error: Invalid value for --sudo_mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
+                log_message "ERROR: Invalid value for --sudo-mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'."
                 exit 1
             fi
             SUDO_MODE_SET=true
@@ -186,7 +190,7 @@ process_arguments() {
             exit 0
             ;;
         *)
-            log_message "Error: Unknown option: $arg"
+            log_message "ERROR: Unknown option: '$arg'."
             show_help
             exit 1
             ;;
@@ -228,7 +232,7 @@ show_gui() {
 
         # Select Python version
         if PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
-            --text="Choose the Python version for this installation.\n\nPython ${DEFAULT_OPTS[PYTHON_VERSION]} is recommended for best compatibility." \
+            --text="Choose the Python version for this installation.\n\nPython${DEFAULT_OPTS[PYTHON_VERSION]} is recommended for best compatibility." \
             --radiolist --column="Select" --column="Version" \
             TRUE "3.10" FALSE "3.9" FALSE "3.8") && [ -n "$PYTHON_VERSION" ]; then
             PYTHON_VERSION=$(echo "$PYTHON_VERSION" | xargs)
@@ -383,7 +387,7 @@ parse_requirements_file() {
     file="$1"
 
     if [ ! -f "$file" ] || [ ! -s "$file" ] || [ ! -r "$file" ]; then
-        log_message "Error: The requirements file '$file' is either missing, empty, or inaccessible. Exiting."
+        log_message "ERROR: Requirements file '$file' is missing, empty, or inaccessible."
         exit 1
     fi
 
@@ -415,7 +419,7 @@ parse_requirements_file() {
             echo "$pkg${package_operators[$pkg]}${package_versions[$pkg]}"
         else
             if [[ "$pkg" != "wxpython" && "$pkg" != "psychopy" ]]; then
-                log_message "Warning: $pkg python package from requirements.txt not available for Linux, skipping" >&2
+                log_message "WARNING: The $pkg Python package (from requirements.txt) is not available on Linux; skipping." >&2
             fi
         fi
     done | tr '\n' ',' | sed 's/,$//')
@@ -424,11 +428,11 @@ parse_requirements_file() {
     WXPYTHON_VERSION="${package_versions["wxpython"]:-}"
     PSYCHOPY_VERSION="${package_versions["psychopy"]:-}"
 
-    [[ -z "$PYTHON_VERSION" ]] && log_message "Warning: Python version not specified in requirements file. Using default: ${DEFAULT_OPTS[PYTHON_VERSION]}."
-    [[ -z "$WXPYTHON_VERSION" ]] && log_message "Warning: wxPython version not specified in requirements file. Using default: ${DEFAULT_OPTS[WXPYTHON_VERSION]}."
+    [[ -z "$PYTHON_VERSION" ]] && log_message "WARNING: Python version not specified in the requirements file; using default: ${DEFAULT_OPTS[PYTHON_VERSION]}."
+    [[ -z "$WXPYTHON_VERSION" ]] && log_message "WARNING: wxPython version not specified in the requirements file; using default: ${DEFAULT_OPTS[WXPYTHON_VERSION]}."
 
     if [ -z "$PSYCHOPY_VERSION" ]; then
-        log_message "Error: PsychoPy version not specified in requirements.txt. Exiting."
+        log_message "ERROR: PsychoPy version not specified in requirements.txt."
         exit 1
     else
         BACKUP_ADDITIONAL_PACKAGES="${BACKUP_ADDITIONAL_PACKAGES:+$BACKUP_ADDITIONAL_PACKAGES,}psychopy==$PSYCHOPY_VERSION"
@@ -443,7 +447,7 @@ parse_requirements_file() {
             new_spec="$pkg_lower>=$version"
             if [[ "$BACKUP_ADDITIONAL_PACKAGES" == *"$original_spec"* ]]; then
                 BACKUP_ADDITIONAL_PACKAGES=${BACKUP_ADDITIONAL_PACKAGES//"$original_spec"/"$new_spec"}
-                log_message "Warning: '$pkg' from  requirements file was installed with a more flexible version. '$original_spec' may be platform-specific and was adjusted to '$new_spec' for Linux PsychoPy compatibility. If needed, you can manually install the exact version in the PsychoPy venv." >&2
+                log_message "WARNING: '$pkg' from the requirements file was installed with a flexible version specification. '$original_spec' may be platform-specific and was adjusted to '$new_spec' for Linux compatibility. You may manually install the exact version in the PsychoPy venv." >&2
             fi
         fi
     done
@@ -463,7 +467,7 @@ sudo_wrapper() {
         0) return 1 ;;
         1 | 2 | 5 | 10 | 13 | 77 | 100 | 126 | 127) return 0 ;;
         *)
-            log_message "Warning: Unhandled exit code $exit_code. Error output: $error_output. Trying to continue ..."
+            log_message "WARNING: Unhandled exit code $exit_code. Error output: $error_output. Attempting to continue ..."
             return 1
             ;;
         esac
@@ -474,9 +478,9 @@ sudo_wrapper() {
             return
         fi
         TEMP_SUDOERS="/etc/sudoers.d/temporary_timeout"
-        trap 'log log_message "Info: Removing temporary sudoers file ($TEMP_SUDOERS) to restore original sudoers configuration."; sudo_wrapper rm -f "$TEMP_SUDOERS"' EXIT
+        trap 'log log_message "INFO: Removing temporary sudoers file ($TEMP_SUDOERS) to restore the original sudoers configuration."; sudo_wrapper rm -f "$TEMP_SUDOERS"' EXIT
         TEMPORARY_SUDO_SETUP_DONE=true
-        log_message "Info: Temporary sudo timeout set to 300 minutes (configured in $TEMP_SUDOERS)."
+        log_message "INFO: Temporary sudo timeout set to 300 minutes (configured in $TEMP_SUDOERS)."
         sudo_wrapper sh -c "echo 'Defaults        timestamp_timeout=300' > $TEMP_SUDOERS"
         sudo_wrapper chmod 440 $TEMP_SUDOERS
     }
@@ -488,10 +492,10 @@ sudo_wrapper() {
         case "$SUDO_MODE" in
         ask)
             if $is_pkg_manager_command; then
-                log_message "Warning: Command '${command[*]}' failed with '${error_output}'."
+                log_message "WARNING: Command '${command[*]}' failed with error: '${error_output}'."
                 read -r -p "Retry with sudo for this and all future $PKG_MANAGER commands(r), continue(c), quit(q), or auto sudo when needed(a)? [r/c/q/a] " response
             else
-                log_message "Warning: Command '${command[*]}' failed with '${error_output}'."
+                log_message "WARNING: Command '${command[*]}' failed with error: '${error_output}'."
                 read -r -p "Retry with sudo(r), continue without sudo(c), quit(q), or auto sudo when needed(a)? [r/c/q/a] " response
             fi
 
@@ -500,18 +504,18 @@ sudo_wrapper() {
                 if $is_pkg_manager_command; then
                     PKG_MANAGER_PERMISSION=true
                 fi
-                log_message "Info: Retrying ${command[*]} with sudo ..."
+                log_message "INFO: Retrying command '${command[*]}' with sudo ..."
                 log sudo "${command[@]}"
                 ;;
             [Cc]) ;;
             [aA])
                 SUDO_MODE=auto
                 setup_temporary_sudo_timeout
-                log_message "Info: Retrying ${command[*]} with sudo and setting sudo-mode=auto ..."
+                log_message "INFO: Retrying command '${command[*]}' with sudo (sudo-mode set to auto) ..."
                 log sudo "${command[@]}"
                 ;;
             *)
-                log_message "Info: Exiting."
+                log_message "INFO: Exiting."
                 exit 1
                 ;;
             esac
@@ -521,14 +525,14 @@ sudo_wrapper() {
             if $is_pkg_manager_command; then
                 PKG_MANAGER_PERMISSION=true
             fi
-            log log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Using sudo..."
+            log log_message "WARNING: Command '${command[*]}' failed with: '${error_output}'. Using sudo ..."
             log sudo "${command[@]}"
             ;;
         continue)
-            log_message "Warning: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo..."
+            log_message "WARNING: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo ..."
             ;;
         error)
-            log_message "Error: Command '${command[*]}' failed with '${error_output}'. Sudo is required, but mode is set to 'error'. Exiting."
+            log_message "WARNING: Command '${command[*]}' failed with '${error_output}'. Sudo is required, but mode is set to 'error'."
             exit 1
             ;;
         esac
@@ -570,17 +574,17 @@ check_script_update() {
 
         read -r -p "Would you like to update? (y/n) " response
         if [[ "$response" =~ ^[Yy]$ ]]; then
-            log_message "Info: Updating to version $latest_version..."
+            log_message "INFO: Updating to version $latest_version ..."
 
             # Download and replace the current script with the latest release.
             if curl -sLo "$script_path" "$latest_url"; then
-                log_message "Info: Update completed successfully."
+                log_message "INFO: Update completed successfully."
                 rerun_cmd=$(create_rerun_command)
-                log_message "Note: To re-run the installer with the current settings, use:"
-                log_message "Note: $rerun_cmd"
+                log_message "NOTE: To re-run the installer with the current settings, use:"
+                log_message "NOTE: $rerun_cmd"
                 exit 0
             else
-                log_message "Warning: Failed to download the update. Continuing with the current version."
+                log_message "WARNING: Failed to download the update. Continuing with the current version."
             fi
         fi
     fi
@@ -626,7 +630,7 @@ detect_os_version() {
         return
     fi
 
-    log_message "Warning: Unable to detect OS version."
+    log_message "WARNING: Unable to detect OS version."
     OS_VERSION="unknown"
     OS_VERSION_LINK="unknown"
     OS_VERSION_FULL="unknown"
@@ -646,7 +650,7 @@ detect_package_manager() {
     elif command -v zypper >/dev/null 2>&1; then
         echo "zypper"
     else
-        log_message "Error: No compatible package manager found. Exiting."
+        log_message "ERROR: No compatible package manager found."
         exit 1
     fi
 }
@@ -657,10 +661,10 @@ update_package_manager() {
     apt-get) sudo_wrapper apt-get update -qq ;;
     yum) sudo_wrapper yum makecache -q ;;
     dnf) sudo_wrapper dnf makecache -q ;;
-    pacman) log_message "Warning: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
+    pacman) log_message "WARNING: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
     zypper) sudo_wrapper zypper refresh ;;
     *)
-        log_message "Error: No compatible package manager found. Exiting."
+        log_message "ERROR: No compatible package manager found."
         exit 1
         ;;
     esac
@@ -676,11 +680,11 @@ install_packages() {
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
-    [ -n "$diff" ] && log_message "Warning: The following packages are not available and will be skipped: $diff"
+    [ -n "$diff" ] && log_message "WARNING: The following packages are not available and will be skipped: $diff"
 
     # Check if the available_packages array is empty
     if [ ${#available_packages[@]} -eq 0 ]; then
-        log_message "Warning: No valid packages found for installation."
+        log_message "WARNING: No valid packages found for installation."
         return
     fi
 
@@ -692,26 +696,26 @@ install_packages() {
         pacman) sudo_wrapper pacman -S --needed --noconfirm "${available_packages[@]}" ;;
         zypper) sudo_wrapper zypper install -y "${available_packages[@]}" ;;
         *)
-            log_message "Error: No compatible package manager found. Exiting."
+            log_message "ERROR: No compatible package manager found."
             exit 1
             ;;
         esac
     } then
         return 0
     else
-        log_message "Warning: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
+        log_message "WARNING: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
     fi
 
     # If batch install fails, fallback to installing packages one by one
     for package in "${packages[@]}"; do
         case $PKG_MANAGER in
-        apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "Warning: Package $package not found, skipping." ;;
-        yum) sudo_wrapper yum install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
-        dnf) sudo_wrapper dnf install -y -q "$package" || log_message "Warning: Package $package not found, skipping." ;;
-        pacman) sudo_wrapper pacman -S --needed --noconfirm "$package" || log_message "Warning: Package $package not found, skipping." ;;
-        zypper) sudo_wrapper zypper install -y "$package" || log_message "Warning: Package $package not found, skipping." ;;
+        apt-get) sudo_wrapper apt-get install -y -qq "$package" || log_message "WARNING: Package $package not found, skipping." ;;
+        yum) sudo_wrapper yum install -y -q "$package" || log_message "WARNING: Package $package not found, skipping." ;;
+        dnf) sudo_wrapper dnf install -y -q "$package" || log_message "WARNING: Package $package not found, skipping." ;;
+        pacman) sudo_wrapper pacman -S --needed --noconfirm "$package" || log_message "WARNING: Package $package not found, skipping." ;;
+        zypper) sudo_wrapper zypper install -y "$package" || log_message "WARNING: Package $package not found, skipping." ;;
         *)
-            log_message "Error: No compatible package manager found. Exiting."
+            log_message "ERROR: No compatible package manager found."
             exit 1
             ;;
         esac
@@ -759,7 +763,7 @@ install_dependencies() {
         python_with_venv=(python3 python3-devel python3-pip python3-virtualenv)
         ;;
     *)
-        log_message "Error: No compatible package manager found. Exiting."
+        log_message "ERROR: No compatible package manager found."
         exit 1
         ;;
     esac
@@ -772,7 +776,7 @@ install_dependencies() {
     wxpython_deps) dependencies=("${wxpython_deps[@]}") ;;
     python_with_venv) dependencies=("${python_with_venv[@]}") ;;
     *)
-        log_message "Error: Invalid dependency type specified. Exiting."
+        log_message "ERROR: Invalid dependency type specified."
         exit 1
         ;;
     esac
@@ -844,7 +848,7 @@ check_python_in_package_manager() {
         available_version=$(zypper info python3 2>/dev/null | grep -m 1 Version | awk '{print $3}' | cut -d'.' -f1,2)
         ;;
     *)
-        log_message "Error: No compatible package manager found. Exiting."
+        log_message "ERROR: No compatible package manager found."
         exit 1
         ;;
     esac
@@ -852,7 +856,7 @@ check_python_in_package_manager() {
     if [ "$available_version" == "$PYTHON_VERSION" ]; then
         return 0
     else
-        log_message "Warning: Python $PYTHON_VERSION not available in $PKG_MANAGER."
+        log_message "WARNING: Python$PYTHON_VERSION not available in $PKG_MANAGER."
         return 1
     fi
 }
@@ -880,7 +884,7 @@ get_latest_pypi_version() {
     local version
     version=$(curl -s "https://pypi.org/pypi/$pkg/json" | jq -r '.info.version')
     if [ -z "$version" ] || [ "$version" = "null" ]; then
-        log_message "Error: Unable to fetch the latest version for package ${package_name}. Exiting."
+        log_message "ERROR: Unable to fetch the latest version for package ${package_name}."
         exit 1
     fi
     declare -n result=$var_name
@@ -915,13 +919,13 @@ check_pypi_for_version() {
     if [ "${package}" = "psychopy" ]; then
         if curl -s -H "Accept: application/vnd.github.v3+json" \
             "${github_api}/${version}" | jq -e .ref >/dev/null; then
-            log_message "Warning: ${package} version ${version} not found on PyPi but as git tag"
+            log_message "WARNING: ${package} version ${version} not found on PyPi but as git tag"
             PSYCHOPY_GIT_TAG=true
             return 0
         fi
     fi
 
-    log_message "Error: ${package} version ${version} not found on PyPI. Exiting."
+    log_message "ERROR: ${package} version ${version} not found on PyPI."
     exit 1
 }
 
@@ -929,17 +933,17 @@ check_pypi_for_version() {
 check_python_env() {
     local python_cmd="$1"
     if ! command -v "$python_cmd" >/dev/null 2>&1; then
-        log_message "Error: $python_cmd not found. Something went wrong while installing/building. Try --build=python as argument. Exiting."
+        log_message "ERROR: $python_cmd not found. Something went wrong while installing/building. Try --build=python as argument."
         exit 1
     fi
 
     if ! "$python_cmd" -m venv --help >/dev/null 2>&1; then
-        log_message "Error: $python_cmd found, but venv module is not available. Something went wrong while installing/building. Try --build=python as argument. Exiting."
+        log_message "ERROR: $python_cmd found, but venv module is not available. Something went wrong while installing/building. Try --build=python as argument."
         exit 1
     fi
 
     if ! "$python_cmd" -m pip --version >/dev/null 2>&1; then
-        log_message "Error: $python_cmd found, but pip is not installed. Something went wrong while installing/building. Try --build=python as argument. Exiting."
+        log_message "ERROR: $python_cmd found, but pip is not installed. Something went wrong while installing/building. Try --build=python as argument."
         exit 1
     fi
 }
@@ -947,7 +951,7 @@ check_python_env() {
 # Builds Python from source, using the specified version.
 build_python() {
     local official_base_url latest_patch_version official_url temp_file temp_dir
-    log_message "Info: Building Python ${PYTHON_VERSION} from source. This may take some time..."
+    log_message "INFO: Building Python${PYTHON_VERSION} from source. This may take some time ..."
     official_base_url="https://www.python.org/ftp/python/"
 
     latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
@@ -957,29 +961,29 @@ build_python() {
     temp_dir="Python-${latest_patch_version}_temp"
 
     if ! log curl -L -o "${temp_file}" "${official_url}"; then
-        log_message "Error: Failed to download Python source from ${official_url}. Exiting."
+        log_message "ERROR: Failed to download Python source from ${official_url}."
         exit 1
     fi
 
     mkdir -p "${temp_dir}" || {
-        log_message "Error: Failed to create temp directory. Exiting."
+        log_message "ERROR: Failed to create temp directory."
         exit 1
     }
 
     if ! tar -xf "${temp_file}" -C "${temp_dir}"; then
-        log_message "Error: Failed to extract ${temp_file}.  Exiting."
+        log_message "ERROR: Failed to extract ${temp_file}."
         exit 1
     fi
 
     cd "${temp_dir}/Python-${latest_patch_version}" || {
-        log_message "Error: Failed to change directory.  Exiting."
+        log_message "ERROR: Failed to change directory."
         exit 1
     }
     log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
     log make -j "$(nproc)"
     sudo_wrapper make altinstall
     cd "${PSYCHOPY_DIR}" || {
-        log_message "Error: Failed to return to psychopy directory. Exiting."
+        log_message "ERROR: Failed to return to psychopy directory."
         exit 1
     }
 
@@ -1001,52 +1005,52 @@ install_python_from_github() {
 
     # If no matching asset is found AND the script version is NOT the latest, check the latest release
     if [[ -z "$asset_name" && "v${SCRIPT_VERSION}" != "$latest_release_tag" ]]; then
-        log_message "Warning: No matching Python version found in v${SCRIPT_VERSION}. Checking the latest release ($latest_release_tag)..."
+        log_message "WARNING: No matching Python version found in v${SCRIPT_VERSION}. Checking the latest release ($latest_release_tag) ..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
         assets_json=$(curl -s -H "$github_api_header" "$api_url")
         asset_name=$(echo "$assets_json" | jq -r '.assets // [] | .[].name' | grep -E "$python_version_pattern" | sort -V | tail -n 1)
     fi
 
     if [ -z "$asset_name" ]; then
-        log_message "Warning: No matching Python version found in v${SCRIPT_VERSION} or latest release ($latest_release_tag) for Python ${PYTHON_VERSION}."
+        log_message "WARNING: No matching Python version found in v${SCRIPT_VERSION} or latest release ($latest_release_tag) for Python${PYTHON_VERSION}."
         return 1
     fi
 
     github_download_url=$(echo "$assets_json" | jq -r --arg name "$asset_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
 
     if [ -z "$github_download_url" ]; then
-        log_message "Warning: Could not find a download URL for asset $asset_name."
+        log_message "WARNING: Could not find a download URL for asset $asset_name."
         return 1
     fi
 
-    log_message "Info: Downloading $asset_name from GitHub ..."
+    log_message "INFO: Downloading $asset_name from GitHub ..."
     if log curl -L -o "$asset_name" "$github_download_url"; then
-        log_message "Info: Successfully downloaded ${asset_name} from GitHub release v${SCRIPT_VERSION}. Making an altinstall ..."
+        log_message "INFO: Successfully downloaded ${asset_name} from GitHub release v${SCRIPT_VERSION}. Making an altinstall ..."
         temp_dir="${asset_name%.tar.gz}_temp"
         mkdir -p "$temp_dir" || {
-            log_message "Warning: Failed to create ${temp_dir}."
+            log_message "WARNING: Failed to create ${temp_dir}."
             return 1
         }
 
         if tar -xf "$asset_name" -C "$temp_dir"; then
             cd "$temp_dir" || {
-                log_message "Warning: Failed to change directory."
+                log_message "WARNING: Failed to change directory."
                 return 1
             }
             sudo_wrapper make altinstall
             cd "${PSYCHOPY_DIR}" || {
-                log_message "Warning: Failed to return to ${PSYCHOPY_DIR}."
+                log_message "WARNING: Failed to return to ${PSYCHOPY_DIR}."
                 return 1
             }
             sudo_wrapper rm -rf "$temp_dir" "$asset_name"
             return 0
         else
-            log_message "Warning: Failed to extract $asset_name."
+            log_message "WARNING: Failed to extract $asset_name."
             sudo_wrapper rm -rf "$temp_dir"
             return 1
         fi
     else
-        log_message "Warning: Failed to download from GitHub release."
+        log_message "WARNING: Failed to download from GitHub release."
         return 1
     fi
 }
@@ -1055,18 +1059,18 @@ install_python_from_github() {
 build_wxpython() {
     local tmp_size_gb
 
-    log_message "Info: Installing wxPython build dependencies. This might take a while ..."
+    log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
     # Check /tmp size and warn if ≤2GB
     tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
-    [ "$tmp_size_gb" -le 2 ] && log_message "Warning: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
+    [ "$tmp_size_gb" -le 2 ] && log_message "WARNING: /tmp is only ${tmp_size_gb}GB. wxPython build may fail. Please increase your /tmp size."
 
-    log_message "Info: Building wxPython $WXPYTHON_VERSION from source. This might take a while ..."
+    log_message "INFO: Building wxPython $WXPYTHON_VERSION from source. This might take a while ..."
     if log "$PYTHON_VENV_COMMAND" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==$WXPYTHON_VERSION"; then
-        log_message "Info: Successfully built wxPython from source."
+        log_message "INFO: Successfully built wxPython from source."
     else
-        log_message "Error: Building wxPython from source failed. Exiting."
+        log_message "ERROR: Building wxPython from source failed."
         exit 1
     fi
 }
@@ -1086,34 +1090,34 @@ install_wxpython_from_github() {
 
     # If no matching wheel is found AND the script version is NOT the latest, check the latest release
     if [[ -z "$download_url" && "v${SCRIPT_VERSION}" != "$latest_release_tag" ]]; then
-        log_message "Info: No matching wxPython wheel found in v${SCRIPT_VERSION}. Checking the latest release ($latest_release_tag)..."
+        log_message "INFO: No matching wxPython wheel found in v${SCRIPT_VERSION}. Checking the latest release ($latest_release_tag) ..."
         api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
         assets_json=$(curl -s -H "$github_api_header" "$api_url")
         download_url=$(echo "$assets_json" | jq -r --arg name "$wheel_name" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
     fi
 
     if [ -z "$download_url" ]; then
-        log_message "Warning: No matching wxPython wheel found in v${SCRIPT_VERSION} or latest release ($latest_release_tag) for wxPython ${WXPYTHON_VERSION}."
+        log_message "WARNING: No matching wxPython wheel found in v${SCRIPT_VERSION} or latest release ($latest_release_tag) for wxPython ${WXPYTHON_VERSION}."
         return 1
     fi
 
-    log_message "Info: Downloading $wheel_name from GitHub ..."
+    log_message "INFO: Downloading $wheel_name from GitHub ..."
     if log curl -L -o "$wheel_name" "$download_url"; then
-        log_message "Info: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name..."
+        log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from $wheel_name ..."
         renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
         mv "$wheel_name" "$renamed_wheel"
         if log "$PYTHON_VENV_COMMAND" -m pip install "$renamed_wheel"; then
-            log_message "Info: Installed wxPython from $renamed_wheel"
+            log_message "INFO: Installed wxPython from $renamed_wheel"
             sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
             sudo_wrapper mv "$renamed_wheel" /usr/local/psychopy_python/wx_wheels/
             return 0
         else
-            log_message "Warning: Installing wxPython from $renamed_wheel failed."
+            log_message "WARNING: Installing wxPython from $renamed_wheel failed."
             rm "$renamed_wheel"
             return 1
         fi
     else
-        log_message "Warning: Downloading $wheel_name failed."
+        log_message "WARNING: Downloading $wheel_name failed."
         return 1
     fi
 }
@@ -1127,7 +1131,7 @@ create_desktop_shortcut() {
     local shortcuts=()
 
     if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
-        log_message "Warning: xdg-user-dir not found. Desktop shortcut creation failed."
+        log_message "WARNING: xdg-user-dir not found. Desktop shortcut creation failed."
         return
     fi
 
@@ -1138,7 +1142,7 @@ create_desktop_shortcut() {
     )
 
     if [ ! -d "$desktop_shortcut" ]; then
-        log_message "Warning: Desktop directory '$desktop_shortcut' does not exist. Skipping shortcut creation."
+        log_message "WARNING: Desktop directory '$desktop_shortcut' does not exist. Skipping shortcut creation."
         return
     fi
 
@@ -1155,7 +1159,7 @@ create_desktop_shortcut() {
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
             log curl -s -o "${icon_path}" "${icon_url}"
         else
-            log_message "Warning: Icon file ${icon_url} not found, skipping..."
+            log_message "WARNING: Icon file ${icon_url} not found, skipping ..."
         fi
 
         local icon_line=""
@@ -1167,7 +1171,7 @@ create_desktop_shortcut() {
             "Type=Application" \
             "Name=${pretty_name}" \
             "GenericName=PsychoPy Experiment Builder" \
-            "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python ${PYTHON_VERSION} with ${exec_args}" \
+            "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${exec_args}" \
             "Exec=${psychopy_exec} ${exec_args}" \
             "${icon_line}" \
             "Terminal=false" \
@@ -1188,7 +1192,7 @@ create_desktop_shortcut() {
 
         sudo_wrapper ln -sf "$desktop_file" "${desktop_dir}/${pretty_name}.desktop"
     done
-    log_message "Info: Desktop shortcuts created successfully."
+    log_message "INFO: Desktop shortcuts created successfully."
 }
 
 # Adds the PsychoPy installation's bin directory to the user's PATH.
@@ -1223,19 +1227,22 @@ add_psychopy_to_path() {
         path_line="setenv PATH ${bin_dir}:\$PATH"
         ;;
     *)
-        log_message "Warning: Unsupported shell: $shell_name; PsychoPy not added to path"
+        log_message "WARNING: Unsupported shell: $shell_name; PsychoPy not added to path"
         ;;
     esac
 
     if ! grep -Fxq "$path_line" "$config_file"; then
         sh -c "echo '$path_line' >> \"$config_file\""
-        log_message "Info: Added PsychoPy to the PATH in $config_file."
+        log_message "INFO: Added PsychoPy to the PATH in $config_file."
     else
-        log_message "Info: PsychoPy is already in the PATH in $config_file."
+        log_message "INFO: PsychoPy is already in the PATH in $config_file."
     fi
+    log_message "NOTE: To update your PATH, run 'source $config_file' or restart your terminal."
+    log_message "NOTE: To start PsychoPy from the system path, use: '$(basename "$PSYCHOPY_DIR")'"
 }
 
 main() {
+    local use_gui tmp_log_file final_log_file rerun_cmd
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1243,18 +1250,23 @@ main() {
 
     tmp_log_file="/tmp/psychopy_linux_installer_$(date +%Y%m%d_%H%M%S).log"
     LOG_FILE="$tmp_log_file"
-    log_message "Note: Logging to temporary file: ${LOG_FILE}"
+    log_message "NOTE: Logging to temporary file: ${LOG_FILE}"
 
     for arg in "$@"; do
         if [[ "$arg" == "--gui" ]]; then
-            use_gui=true
+            if [[ "$#" -eq 1 ]]; then
+                use_gui=true
+            else
+                log_message "ERROR: The --gui option must be used alone without any other arguments."
+                exit 1
+            fi
             break
         fi
     done
 
     if $use_gui; then
         if ! command -v zenity &>/dev/null; then
-            log_message "Error: zenity is not installed or not available in PATH. Cannot use GUI mode. Exiting."
+            log_message "ERROR: zenity is not installed or not available in PATH. Cannot use GUI mode."
             exit 1
         else
             show_gui
@@ -1264,7 +1276,7 @@ main() {
     fi
 
     if [ -n "$REQUIREMENTS_FILE" ]; then
-        log_message "Info: Parsing requirements file: $REQUIREMENTS_FILE..."
+        log_message "INFO: Parsing requirements file: $REQUIREMENTS_FILE ..."
         parse_requirements_file "$REQUIREMENTS_FILE"
     fi
 
@@ -1279,8 +1291,8 @@ main() {
 
     if $use_gui; then
         rerun_cmd=$(create_rerun_command)
-        log_message "Note: To re-run the installer with the current --gui settings, use:"
-        log_message "Note: $rerun_cmd"
+        log_message "NOTE: To re-run the installer with the current --gui settings, use:"
+        log_message "NOTE: $rerun_cmd"
         echo
     fi
 
@@ -1288,17 +1300,17 @@ main() {
     detect_os_version
     PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
     SCRIPT_VERSION=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
-    log_message "Info: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
+    log_message "INFO: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
 
     # Detect package manager
     PKG_MANAGER=$(detect_package_manager)
 
     # Update package manager
-    log_message "Info: Updating ${PKG_MANAGER} package manager."
+    log_message "INFO: Updating ${PKG_MANAGER} package manager."
     update_package_manager "$PKG_MANAGER"
 
     # Install basic dependencies
-    log_message "Info: Installing git, curl, and jq."
+    log_message "INFO: Installing git, curl, and jq."
     install_dependencies script_deps
 
     # Check for script update
@@ -1313,10 +1325,6 @@ main() {
         check_pypi_for_version psychopy "${PSYCHOPY_VERSION}"
     fi
 
-    # Install PsychoPy dependencies
-    log_message "Info: Installing PsychoPy dependencies. This might take a while ..."
-    install_dependencies psychopy_deps
-
     # Set up PsychoPy installation directory
     if [ -n "$VENV_NAME" ]; then
         PSYCHOPY_DIR="${INSTALL_DIR}/${VENV_NAME}"
@@ -1326,45 +1334,49 @@ main() {
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
         if [ "$FORCE_OVERWRITE" = true ]; then
-            log_message "Warning: Directory ${PSYCHOPY_DIR} already exists. Overwriting ..."
+            log_message "WARNING: Directory ${PSYCHOPY_DIR} already exists. Overwriting ..."
             sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
             sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
         else
-            log_message "Error: Directory ${PSYCHOPY_DIR} already exists. Use the --force-overwrite flag to overwrite. Exiting."
+            log_message "ERROR: Directory ${PSYCHOPY_DIR} already exists. Use the --force-overwrite flag to overwrite."
             exit 1
         fi
     else
-        log_message "Info: Creating PsychoPy directory at ${PSYCHOPY_DIR} ..."
+        log_message "INFO: Creating PsychoPy directory at ${PSYCHOPY_DIR} ..."
         sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
     fi
 
     [ -w "${PSYCHOPY_DIR}" ] || sudo_wrapper chown "$USER" "${PSYCHOPY_DIR}"
 
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
-        log_message "Error: Failed to access or change directory to ${PSYCHOPY_DIR}. Exiting."
+        log_message "ERROR: Failed to access or change directory to ${PSYCHOPY_DIR}."
         exit 1
     fi
 
     # Transition logs into psychopy_dir while keeping the same filename
-    FINAL_LOG_FILE="${PSYCHOPY_DIR}/$(basename "$tmp_log_file")"
+    final_log_file="${PSYCHOPY_DIR}/$(basename "$tmp_log_file")"
 
     if [ -f "$tmp_log_file" ]; then
-        mv "$tmp_log_file" "$FINAL_LOG_FILE"
+        mv "$tmp_log_file" "$final_log_file"
     fi
-    LOG_FILE="$FINAL_LOG_FILE"
-    log_message "Note: Installation directory is set. Log has been moved to: ${LOG_FILE}"
+    LOG_FILE="$final_log_file"
+    log_message "NOTE: Installation directory set. Log file moved to: ${LOG_FILE}."
+
+    # Install PsychoPy dependencies
+    log_message "INFO: Installing PsychoPy dependencies. This might take a while ..."
+    install_dependencies psychopy_deps
 
     # Install python and create venv
     if [ "$BUILD_PYTHON" = true ] || ! check_python_in_package_manager; then
         if [ "$BUILD_PYTHON" = true ]; then
-            log_message "Info: Installing python build dependencies ..."
+            log_message "INFO: Installing Python build dependencies ..."
             install_dependencies python_build_deps
             build_python
         else
             if [ -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
-                log_message "Info: Python version ${PYTHON_VERSION} is already installed in /usr/local/psychopy_python. Skipping installation."
+                log_message "INFO: Python${PYTHON_VERSION} is already installed in /usr/local/psychopy_python. Skipping installation."
             else
-                log_message "Info: Installing python build dependencies ..."
+                log_message "INFO: Installing Python build dependencies ..."
                 install_dependencies python_build_deps
                 if install_python_from_github; then
                     :
@@ -1376,24 +1388,24 @@ main() {
 
         check_python_env "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}"
         if [ ! -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
-            log_message "Error: python${PYTHON_VERSION} not found in /usr/local/psychopy_python. Something went wrong while installing/building. Try --build=python and --verbose as arguments. Exiting."
+            log_message "ERROR: python${PYTHON_VERSION} not found in /usr/local/psychopy_python. Something went wrong while installing/building. You can try --build=python."
             exit 1
         fi
         export PATH=/usr/local/psychopy_python/bin:$PATH
         /usr/local/psychopy_python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     else
-        log_message "Info: Python${PYTHON_VERSION} can be installed via package manager. Installing ..."
+        log_message "INFO: Python${PYTHON_VERSION} can be installed via package manager. Installing ..."
         install_dependencies python_with_venv
         check_python_env "python${PYTHON_VERSION}"
         python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     fi
 
-    log_message "Info: Successfully created Python${PYTHON_VERSION} venv in ${PSYCHOPY_DIR}."
+    log_message "INFO: Successfully created Python${PYTHON_VERSION} venv in ${PSYCHOPY_DIR}."
     PYTHON_VENV_COMMAND="${PSYCHOPY_DIR}/bin/python"
     check_python_env "$PYTHON_VENV_COMMAND"
 
     # Upgrade pip and install required Python packages
-    log_message "Info: Upgrading pip, distro, sip, six, psychtoolbox, attrdict, setuptools, wheel ..."
+    log_message "INFO: Upgrading pip, distro, sip, six, psychtoolbox, attrdict, setuptools, wheel ..."
     log "$PYTHON_VENV_COMMAND" -m pip install -U pip distro sip six psychtoolbox setuptools wheel
     if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
         log "$PYTHON_VENV_COMMAND" -m pip install -U attrdict
@@ -1402,7 +1414,7 @@ main() {
     fi
 
     # Determine wxPython version and install it
-    log_message "Info: Installing wxpython ..."
+    log_message "INFO: Installing wxpython $WXPYTHON_VERSION ..."
     if [ "$WXPYTHON_VERSION" = "latest" ]; then
         get_latest_pypi_version "wxPython" WXPYTHON_VERSION
     elif [ "$WXPYTHON_VERSION" != "git" ]; then
@@ -1410,17 +1422,17 @@ main() {
     fi
 
     if [ "$WXPYTHON_VERSION" = "git" ]; then
-        log_message "Info: Installing wxPython build dependencies. This might take a while ..."
+        log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
         install_dependencies wxpython_deps
-        log_message "Info: Building wxPython from git. This might take a while ..."
+        log_message "INFO: Building wxPython from git. This might take a while ..."
         log "$PYTHON_VENV_COMMAND" -m pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "$BUILD_WX" = true ]; then
         build_wxpython
     else
         if log "$PYTHON_VENV_COMMAND" -m pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==$WXPYTHON_VERSION"; then
-            log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from local wheel."
+            log_message "INFO: Successfully installed wxPython $WXPYTHON_VERSION from local wheel."
         elif log "$PYTHON_VENV_COMMAND" -m pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/$OS_VERSION_LINK/" "wxPython==$WXPYTHON_VERSION"; then
-            log_message "Info: Successfully installed wxPython $WXPYTHON_VERSION from extras.wxpython.org."
+            log_message "INFO: Successfully installed wxPython $WXPYTHON_VERSION from extras.wxpython.org."
         elif install_wxpython_from_github; then
             :
         else
@@ -1429,36 +1441,36 @@ main() {
     fi
 
     if ! "$PYTHON_VENV_COMMAND" -m pip show wxPython &>/dev/null; then
-        log_message "Error: wxPython is not installed. Something went wrong during the installation. Try --build=wxpython and --verbose as arguments. Exiting."
+        log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try --build=wxpython."
         exit 1
     fi
 
     if [ -n "$REQUIREMENTS_FILE" ]; then
-        log_message "Info: Installing packages from requirements file..."
+        log_message "INFO: Installing packages from requirements file ..."
         transformed_packages=$(echo "$BACKUP_ADDITIONAL_PACKAGES" | tr ',' '\n' | while read -r pkg; do
             convert_psychopy_req_to_git_url "$pkg"
         done)
 
         if log "$PYTHON_VENV_COMMAND" -m pip install -r <(echo "$transformed_packages"); then
-            log_message "Info: Packages from $REQUIREMENTS_FILE installed successfully."
+            log_message "INFO: Packages from $REQUIREMENTS_FILE installed successfully."
         else
-            log_message "Warning: Failed to install packages from $REQUIREMENTS_FILE. Installing packages one by one ..."
+            log_message "WARNING: Failed to install packages from $REQUIREMENTS_FILE. Installing packages one by one ..."
             IFS=',' read -ra PACKAGES <<<"$BACKUP_ADDITIONAL_PACKAGES"
             for package in "${PACKAGES[@]}"; do
-                log_message "Info: Installing $package..."
+                log_message "INFO: Installing $package ..."
                 transformed_pkg=$(convert_psychopy_req_to_git_url "$package")
                 if log "$PYTHON_VENV_COMMAND" -m pip install "$transformed_pkg"; then
                     pkg_name="${package%%=*}"
                     installed_version=$("$PYTHON_VENV_COMMAND" -m pip show "$pkg_name" | grep Version | cut -d' ' -f2)
-                    log_message "Info: $pkg_name version $installed_version installed successfully."
+                    log_message "INFO: $pkg_name version $installed_version installed successfully."
                 else
-                    log_message "Warning: Failed to install $package. Skipping."
+                    log_message "WARNING: Failed to install $package. Skipping."
                 fi
             done
         fi
     else
         # Install PsychoPy
-        log_message "Info: Installing PsychoPy version ${PSYCHOPY_VERSION}"
+        log_message "INFO: Installing PsychoPy ${PSYCHOPY_VERSION} ..."
         if [ "$PSYCHOPY_VERSION" == "git" ]; then
             log "$PYTHON_VENV_COMMAND" -m pip install git+https://github.com/psychopy/psychopy.git@dev
         elif [ "$PSYCHOPY_GIT_TAG" = "true" ]; then
@@ -1468,21 +1480,21 @@ main() {
         fi
 
         if ! "$PYTHON_VENV_COMMAND" -m pip show psychopy &>/dev/null; then
-            log_message "Error: PsychoPy is not installed successfully. Something went wrong during the installation. Use the --verbose flag. Exiting."
+            log_message "ERROR: PsychoPy installation failed."
             exit 1
         fi
 
         # Install additional packages if specified
         if [ -n "$ADDITIONAL_PACKAGES" ]; then
-            log_message "Info: Installing additional packages..."
+            log_message "INFO: Installing additional packages ..."
             IFS=',' read -ra PACKAGES <<<"$ADDITIONAL_PACKAGES"
             for package in "${PACKAGES[@]}"; do
-                log_message "Info: Installing $package..."
+                log_message "INFO: Installing $package ..."
                 if log "$PYTHON_VENV_COMMAND" -m pip install "$package"; then
                     installed_version=$("$PYTHON_VENV_COMMAND" -m pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
-                    log_message "Info: ${package%%=*} version $installed_version installed successfully."
+                    log_message "INFO: ${package%%=*} version $installed_version installed successfully."
                 else
-                    log_message "Warning: Failed to install $package. Skipping."
+                    log_message "WARNING: Failed to install $package. Skipping."
                 fi
             done
         fi
@@ -1490,19 +1502,20 @@ main() {
 
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
     if is_version_greater "2024.2.0" "$PSYCHOPY_VERSION"; then
-        log_message "Warning: PsychoPy version < 2024.2.0, installing numpy<2"
+        log_message "WARNING: PsychoPy version < 2024.2.0, installing numpy<2"
         log "$PYTHON_VENV_COMMAND" -m pip install "numpy<2"
     fi
 
     # Install some basic fonts for PsychoPy
-    log_message "Info: Installing some basic fonts for PsychoPy."
+    log_message "INFO: Installing basic fonts for PsychoPy."
     install_dependencies fonts
 
     # Add user to the 'psychopy' group and set security limits
-    log_message "Info: Adding ${USER} to psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
+    log_message "INFO: Adding ${USER} to the psychopy group and setting security limits in /etc/security/limits.d/99-psychopylimits.conf."
     sudo_wrapper groupadd --force psychopy
     sudo_wrapper usermod -a -G psychopy "$USER"
     sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+    log_message "NOTE: A system reboot is necessary to apply the security limits."
 
     # Create desktop shortcut
     if [ "$DISABLE_SHORTCUT" = false ]; then
@@ -1512,18 +1525,15 @@ main() {
     # Add PsychoPy to PATH
     if [ "$DISABLE_PATH" = false ]; then
         add_psychopy_to_path
-        log_message "Note: To start PsychoPy from the system path, use:"
-        log_message "Note: $(basename "$PSYCHOPY_DIR")"
     fi
 
-    log_message "Note: To start PsychoPy using the absolute path, use:"
-    log_message "Note: ${PSYCHOPY_DIR}/bin/psychopy"
-    log_message "Note: Please reboot to apply security limits and to refresh the system path."
+    log_message "NOTE: To start PsychoPy using the absolute path, run:"
+    log_message "NOTE: ${PSYCHOPY_DIR}/bin/psychopy"
 
     if "${PSYCHOPY_DIR}/bin/psychopy" -v &>/dev/null; then
-        log_message "Info: PsychoPy installation completed successfully!"
+        log_message "INFO: PsychoPy installation completed successfully!"
     else
-        log_message "Error: PsychoPy installation verification failed!"
+        log_message "ERROR: PsychoPy installation verification failed!"
     fi
 }
 
