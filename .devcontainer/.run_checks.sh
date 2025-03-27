@@ -15,7 +15,7 @@ print_header() {
 }
 
 report_result() {
-    if [ $1 -eq 0 ]; then
+    if [ "$1" -eq 0 ]; then
         echo -e "${GREEN}✓ PASS${NC}: $2\n"
     else
         echo -e "${RED}✗ FAIL${NC}: $2\n"
