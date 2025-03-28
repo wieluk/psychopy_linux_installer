@@ -250,4 +250,5 @@ zypper
 - Ensure the package manager is functioning correctly and not locked by another process.
 - If prebuilt wheels appear to install but still cause issues, use `--build=python`, `--build=wxpython`, or `--build=both` to force building from source.
 - Confirm `/tmp` has sufficient space when building wxpython.
-- Check the log file (path is shown in the terminal), and attach it when creating a GitHub issue.
+- Check the log file (path is shown in the terminal), and attach it when creating a [GitHub issue](https://github.com/wieluk/psychopy_linux_installer/issues).
+- Before creating a new issue, search the [existing issues](https://github.com/wieluk/psychopy_linux_installer/issues?q=is%3Aissue) to check if your problem has already been reported or resolved.
