@@ -1,9 +1,11 @@
-![GitHub Release](https://img.shields.io/github/v/release/wieluk/psychopy_linux_installer)
-![GitHub commits since latest release (branch)](https://img.shields.io/github/commits-since/wieluk/psychopy_linux_installer/latest/main)
-![GitHub Downloads (specific asset, all releases)](https://img.shields.io/github/downloads/wieluk/psychopy_linux_installer/psychopy_linux_installer)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/wieluk/psychopy_linux_installer/push_workflow.yaml?branch=main)
-
 # PsychoPy Installation Script for Linux
+
+[![GitHub Release](https://img.shields.io/github/v/release/wieluk/psychopy_linux_installer)](https://github.com/wieluk/psychopy_linux_installer/releases)
+[![GitHub commits since latest release (branch)](https://img.shields.io/github/commits-since/wieluk/psychopy_linux_installer/latest/main)](https://github.com/wieluk/psychopy_linux_installer/commits/main/)
+[![GitHub Downloads (specific asset, all releases)](https://img.shields.io/github/downloads/wieluk/psychopy_linux_installer/psychopy_linux_installer)](https://tooomm.github.io/github-release-stats/?username=wieluk&repository=psychopy_linux_installer)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/wieluk/psychopy_linux_installer/push_workflow.yaml?branch=main)](https://github.com/wieluk/psychopy_linux_installer/actions)
+
+---
 
 This script facilitates the installation of [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
 
@@ -23,6 +25,17 @@ These distributions have been tested for compatibility, but the script may also 
 
 - Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
 - Arch Linux worked in my testing. I had to increase /tmp size to be bigger than 2GB, and since there are no prebuilt wxPython wheels for Arch, it has to be built from source.
+
+## Table of Contents
+
+1. [Important Information](#important-information)
+2. [Usage](#usage)
+3. [Options](#options)
+4. [Example](#example)
+5. [Script Details](#script-details)
+6. [Post-Installation](#post-installation)
+7. [Uninstalling PsychoPy](#uninstalling-psychopy)
+8. [Troubleshooting](#troubleshooting)
 
 ## Important Information
 
@@ -72,14 +85,14 @@ Install curl with your package manager. On most distros curl is already installe
 
 | Option | Description |
 |--------|-------------|
-| `--psychopy-version=`<br>`VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `latest`). |
-| `--python-version=`<br>`[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
-| `--wxpython-version=`<br>`VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
-| `--build=`<br>`[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Not recommended, only use if installation doesn't work as expected. |
+| `--psychopy-version=VERSION` | Specify the [PsychoPy Version](https://pypi.org/project/psychopy/#history) to install (default: `latest`). |
+| `--python-version=[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
+| `--wxpython-version=VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
+| `--build=[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Not recommended, only use if installation doesn't work as expected. |
 | `--install-dir=DIR` | Specify the installation directory (default: `$HOME`); use absolute paths without a trailing `/`. Do not use `~/`; use `/home/user` instead. |
 | `--venv-name=NAME` | Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default. |
-| `--additional-packages=`<br>`PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
-| `--sudo-mode=`<br>`[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
+| `--additional-packages=PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
+| `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
 | `--disable-path` | Disable adding PsychoPy to system path. |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
@@ -231,3 +244,10 @@ zypper
 ```
 
 </details>
+
+## Troubleshooting
+
+- Ensure the package manager is functioning correctly and not locked by another process.
+- If prebuilt wheels appear to install but still cause issues, use `--build=python`, `--build=wxpython`, or `--build=both` to force building from source.
+- Confirm `/tmp` has sufficient space when building wxpython.
+- Check the log file (path is shown in the terminal), and attach it when creating a GitHub issue.
