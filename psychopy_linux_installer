@@ -202,6 +202,24 @@ process_arguments() {
 show_gui() {
     local wxpython_versions psychopy_versions use_requirements options
 
+    # Installation directory
+    if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory") && [ -n "$INSTALL_DIR" ]; then
+        INSTALL_DIR=$(echo "$INSTALL_DIR" | xargs)
+        :
+    else
+        exit 1
+    fi
+
+    # Prompt for custom virtual environment name
+    if VENV_NAME=$(zenity --entry --title="Custom Virtual Environment Name (optional)" --width=800 --height=500 \
+        --text="Enter a custom name for the virtual environment folder.\n\nIf left blank, the default versioned name will be used: PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}.\n\nThis folder will be created inside:\n$INSTALL_DIR\n\nNote: Spaces in the name will be replaced with underscores.\n\n" \
+        --entry-text=""); then
+        VENV_NAME=$(echo "$VENV_NAME" | xargs)
+        :
+    else
+        exit 1
+    fi
+
     # Optional: Select requirements.txt
     if zenity --question --title="Use requirements.txt (optional)" \
         --text="Do you want to use a requirements.txt file?\n\nIf you don't know what this is, choose 'No' to proceed with manual setup." \
@@ -265,30 +283,12 @@ show_gui() {
         fi
     fi
 
-    # Installation directory
-    if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory") && [ -n "$INSTALL_DIR" ]; then
-        INSTALL_DIR=$(echo "$INSTALL_DIR" | xargs)
-        :
-    else
-        exit 1
-    fi
-
-    # Prompt for custom virtual environment name
-    if VENV_NAME=$(zenity --entry --title="Custom Virtual Environment Name (optional)" --width=800 --height=500 \
-        --text="Enter a custom name for the virtual environment folder.\n\nIf left blank, the default versioned name will be used: PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}.\n\nThis folder will be created inside:\n$INSTALL_DIR\n\nNote: Spaces in the name will be replaced with underscores.\n\n" \
-        --entry-text=""); then
-        VENV_NAME=$(echo "$VENV_NAME" | xargs)
-        :
-    else
-        exit 1
-    fi
-
     # Additional options with tooltips
     if options=$(zenity --list --checklist --title="Additional Options" --width=800 --height=500 \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
-        TRUE "Create desktop shortcuts" \
         TRUE "Add PsychoPy to system PATH" \
+        TRUE "Create desktop shortcuts" \
         FALSE "Run in non-interactive mode" \
         FALSE "Force overwrite of existing directory" \
         FALSE "Build Python from source" \
@@ -299,12 +299,10 @@ show_gui() {
         exit 1
     fi
 
-    if [[ $options == *"Build Python from source"* ]]; then
-        BUILD_PYTHON=true
-    fi
-
-    if [[ $options == *"Build wxPython from source"* ]]; then
-        BUILD_WX=true
+    if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
+        DISABLE_PATH=false
+    else
+        DISABLE_PATH=true
     fi
 
     if [[ $options == *"Create desktop shortcuts"* ]]; then
@@ -313,14 +311,16 @@ show_gui() {
         DISABLE_SHORTCUT=true
     fi
 
-    if [[ $options == *"Add PsychoPy to system PATH"* ]]; then
-        DISABLE_PATH=false
-    else
-        DISABLE_PATH=true
-    fi
-
     if [[ $options == *"Force overwrite of existing directory"* ]]; then
         FORCE_OVERWRITE=true
+    fi
+
+    if [[ $options == *"Build Python from source"* ]]; then
+        BUILD_PYTHON=true
+    fi
+
+    if [[ $options == *"Build wxPython from source"* ]]; then
+        BUILD_WX=true
     fi
 
     if [[ $options == *"Enable verbose output"* ]]; then
