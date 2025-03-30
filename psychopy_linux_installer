@@ -1337,6 +1337,8 @@ main() {
     fi
 
     # Set up PsychoPy installation directory
+    INSTALL_DIR="${INSTALL_DIR/#\~/$HOME}"
+    INSTALL_DIR="${INSTALL_DIR%/}"
     if [ -n "$VENV_NAME" ]; then
         PSYCHOPY_DIR="${INSTALL_DIR}/${VENV_NAME}"
     else
