@@ -1001,11 +1001,8 @@ install_pyenv() {
     if [ -d "${HOME}/.pyenv" ] && [ -f "${HOME}/.pyenv/bin/pyenv" ]; then
         log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
     else
-        log_message "INFO: Installing pyenv using pyenv-installer..."
-        if ! log curl -L https://pyenv.run | bash; then
-            log_message "ERROR: Failed to install pyenv. Please install manually or try again."
-        fi
-        log_message "INFO: pyenv installed successfully."
+        log_message "INFO: Cloning pyenv..."
+        log git clone https://github.com/pyenv/pyenv.git ${HOME}/.pyenv
     fi
 }
 
