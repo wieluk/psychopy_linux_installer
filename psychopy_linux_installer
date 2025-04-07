@@ -995,63 +995,40 @@ check_python_env() {
 
 # Installs pyenv for Python version management
 install_pyenv() {
-    log_message "INFO: Installing pyenv dependencies and pyenv..."
+    log_message "INFO: Installing pyenv dependencies ..."
     install_dependencies pyenv_deps
 
     if [ -d "${HOME}/.pyenv" ] && [ -f "${HOME}/.pyenv/bin/pyenv" ]; then
         log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
     else
-        log_message "INFO: Installing pyenv using official pyenv-installer..."
+        log_message "INFO: Installing pyenv using pyenv-installer..."
         if ! log curl -L https://pyenv.run | bash; then
             log_message "ERROR: Failed to install pyenv. Please install manually or try again."
         fi
         log_message "INFO: pyenv installed successfully."
     fi
-
-    export PYENV_ROOT="${HOME}/.pyenv"
-    export PATH="${PYENV_ROOT}/bin:${PATH}"
-
-    if command -v pyenv > /dev/null; then
-        eval "$(pyenv init --path 2>/dev/null || echo "")"
-        eval "$(pyenv init - 2>/dev/null || echo "")"
-        log_message "INFO: pyenv initialized successfully."
-    else
-        log_message "ERROR: pyenv installation appears successful but command not found in PATH."
-    fi
 }
 
-# Install Python using pyenv
+# Install Python using pyenv with direct path references
 install_python_with_pyenv() {
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
-
-    if ! command -v pyenv > /dev/null; then
-        log_message "ERROR: pyenv not found in PATH. Cannot install Python."
+    local pyenv_cmd="${HOME}/.pyenv/bin/pyenv"
+    
+    if [ ! -x "${pyenv_cmd}" ]; then
+        log_message "ERROR: pyenv executable not found at ${pyenv_cmd}. Installation may have failed."
     fi
-
-    if pyenv versions | grep -q "${PYTHON_VERSION}"; then
+    
+    # Check if the version is already installed
+    if "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
         log_message "INFO: Python ${PYTHON_VERSION} is already installed with pyenv."
     else
         log_message "INFO: Building Python ${PYTHON_VERSION} with optimizations. This may take a while..."
-        PYTHON_CONFIGURE_OPTS="--enable-optimizations" log pyenv install "${PYTHON_VERSION}"
-
-        if ! pyenv versions | grep -q "${PYTHON_VERSION}"; then
+        PYTHON_CONFIGURE_OPTS="--enable-optimizations" log "${pyenv_cmd}" install "${PYTHON_VERSION}"
+        
+        if ! "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
             log_message "ERROR: Failed to install Python ${PYTHON_VERSION} with pyenv."
-            return 1
         fi
     fi
-
-    pyenv local "${PYTHON_VERSION}"
-    log_message "INFO: Python ${PYTHON_VERSION} is now the local version for this directory."
-
-    PYENV_PYTHON="${PYENV_ROOT}/versions/${PYTHON_VERSION}/bin/python"
-
-    if [ ! -x "${PYENV_PYTHON}" ]; then
-        log_message "ERROR: Python executable not found at ${PYENV_PYTHON} or not executable."
-        return 1
-    fi
-
-    log_message "INFO: Using Python at ${PYENV_PYTHON}"
-    return 0
 }
 
 # Attempts to install wxPython from a GitHub released wheel.
@@ -1364,30 +1341,39 @@ main() {
     install_dependencies psychopy_deps
 
     # Install python and create venv
-    if [ "${BUILD_PYTHON}" = true ] || ! check_python_in_package_manager; then
+    if ! check_python_in_package_manager; then
         install_pyenv
         install_python_with_pyenv
 
         # Create virtualenv using pyenv Python
         log_message "INFO: Creating virtual environment using pyenv Python ${PYTHON_VERSION}..."
-        python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
-
-        if [ ! -f "${python_cmd}" ]; then
-            log_message "WARNING: Failed to find pyenv Python executable at ${python_cmd}"
-            log_message "INFO: Trying to locate the Python executable in pyenv versions directory..."
-
-            if python_exe=$(find "${HOME}/.pyenv/versions/" -name "python" -path "*/${PYTHON_VERSION}*/bin/python" -type f 2>/dev/null | head -1); then
-                log_message "INFO: Found Python executable at ${python_exe}"
+        
+        if [[ "${PYTHON_VERSION}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            local pyenv_versions_dir="${HOME}/.pyenv/versions"
+            local actual_python_version
+            
+            if [ -d "${pyenv_versions_dir}" ]; then
+                actual_python_version=$(find "${pyenv_versions_dir}" -maxdepth 1 -type d -name "${PYTHON_VERSION}.*" | 
+                                       sed -e "s|${pyenv_versions_dir}/||" | 
+                                       sort -V | 
+                                       tail -n 1)
+                
+                if [ -n "${actual_python_version}" ]; then
+                    log_message "INFO: Using Python version ${actual_python_version} (matched from ${PYTHON_VERSION})"
+                    python_cmd="${pyenv_versions_dir}/${actual_python_version}/bin/python"
+                else
+                    log_message "WARNING: No specific patch version found for Python ${PYTHON_VERSION}, using default path"
+                    python_cmd="${pyenv_versions_dir}/${PYTHON_VERSION}/bin/python"
+                fi
             else
-                log_message "ERROR: Could not find any Python ${PYTHON_VERSION} executable installed by pyenv. Installation may have failed."
-                exit 1
+                log_message "ERROR: pyenv versions directory not found."
             fi
         else
-            python_exe="${python_cmd}"
+            python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
         fi
-
-        check_python_env "${python_exe}"
-        "${python_exe}" -m venv "${PSYCHOPY_DIR}"
+        
+        check_python_env "${python_cmd}"
+        ${python_cmd} -m venv "${PSYCHOPY_DIR}"
     else
         log_message "INFO: Python${PYTHON_VERSION} can be installed via package manager. Installing..."
         install_dependencies python_with_venv
@@ -1402,9 +1388,9 @@ main() {
     # Upgrade pip and install required Python packages
     log_message "INFO: Upgrading 'pip', 'distro', 'sip', 'six', 'psychtoolbox', 'attrdict', 'setuptools', 'wheel' ..."
     log "${PYTHON_VENV_COMMAND}" -m pip install -U pip distro sip six psychtoolbox setuptools wheel
-    if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
+    if [[ "${PYTHON_VERSION}" == 3.8* || "${PYTHON_VERSION}" == 3.9* ]]; then
         log "${PYTHON_VENV_COMMAND}" -m pip install -U attrdict
-    elif [[ "${PYTHON_VERSION}" == "3.10" ]]; then
+    elif [[ "${PYTHON_VERSION}" == 3.10* ]]; then
         log "${PYTHON_VENV_COMMAND}" -m pip install -U attrdict3
     fi
 
