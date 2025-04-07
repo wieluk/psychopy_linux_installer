@@ -1008,7 +1008,7 @@ install_pyenv() {
     fi
 
     log_message "INFO: Installing pyenv using official pyenv-installer..."
-    if curl -L https://pyenv.run | bash; then
+    if log curl -L https://pyenv.run | bash; then
         log_message "INFO: pyenv installed successfully."
 
         export PYENV_ROOT="${HOME}/.pyenv"
@@ -1028,7 +1028,7 @@ install_python_with_pyenv() {
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
 
     if ! pyenv versions | grep -q "${PYTHON_VERSION}"; then
-        PYTHON_CONFIGURE_OPTS="--enable-optimizations" pyenv install "${PYTHON_VERSION}"
+        PYTHON_CONFIGURE_OPTS="--enable-optimizations" log pyenv install "${PYTHON_VERSION}"
     fi
 
     pyenv local "${PYTHON_VERSION}"
@@ -1354,7 +1354,7 @@ main() {
         python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
 
         if [ ! -f "${python_cmd}" ]; then
-            log_message "ERROR: Failed to find pyenv Python executable at ${python_cmd}"
+            log_message "WARNING: Failed to find pyenv Python executable at ${python_cmd}"
             log_message "INFO: Trying to locate the Python executable in pyenv versions directory..."
 
             if python_exe=$(find "${HOME}/.pyenv/versions/" -name "python" -path "*/${PYTHON_VERSION}*/bin/python" -type f 2>/dev/null | head -1); then
