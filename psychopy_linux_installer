@@ -728,15 +728,15 @@ install_packages() {
     done
 
     if [ ${#already_installed[@]} -gt 0 ]; then
-        log_message "INFO: The following packages are already installed: '${already_installed[*]}'"
+        log log_message "INFO: The following packages are already installed: '${already_installed[*]}'"
     fi
 
     if [ ${#to_install[@]} -eq 0 ]; then
         if [ ${#already_installed[@]} -gt 0 ] && [ -n "${diff}" ]; then
-            log_message "INFO: Nothing to install - some packages already installed, others unavailable or skipped."
+            log log_message "INFO: Nothing to install - some packages already installed, others unavailable or skipped."
             return 0
         elif [ ${#already_installed[@]} -gt 0 ] && [ -z "${diff}" ]; then
-            log_message "INFO: Nothing to install - all requested packages are already installed."
+            log log_message "INFO: Nothing to install - all requested packages are already installed."
             return 0
         else
             log_message "WARNING: Nothing to install - all requested packages unavailable or skipped."
@@ -1002,7 +1002,7 @@ install_pyenv() {
     if [ -d "${DEFAULT_OPTS[PYENV_PATH]}" ] && [ -f "${DEFAULT_OPTS[PYENV_PATH]}/bin/pyenv" ]; then
         log_message "INFO: pyenv is already installed at ${DEFAULT_OPTS[PYENV_PATH]}."
     else
-        log_message "INFO: Cloning pyenv..."
+        log_message "INFO: Cloning pyenv into ${DEFAULT_OPTS[PYENV_PATH]}."
         log git clone https://github.com/pyenv/pyenv.git "${DEFAULT_OPTS[PYENV_PATH]}"
     fi
 }
@@ -1013,18 +1013,18 @@ install_python_with_pyenv() {
     local pyenv_cmd="${DEFAULT_OPTS[PYENV_PATH]}/bin/pyenv"
 
     if [ ! -x "${pyenv_cmd}" ]; then
-        log_message "ERROR: pyenv executable not found at ${pyenv_cmd}. Installation may have failed."
+        log_message "ERROR: pyenv executable not found at ${pyenv_cmd}."
     fi
 
     # Check if the version is already installed
     if "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
-        log_message "INFO: Python ${PYTHON_VERSION} is already installed with pyenv."
+        log_message "INFO: Python${PYTHON_VERSION} is already installed with pyenv."
     else
-        log_message "INFO: Building Python ${PYTHON_VERSION} with optimizations. This may take a while..."
+        log_message "INFO: Building Python${PYTHON_VERSION} with optimizations. This may take a while..."
         PYTHON_CONFIGURE_OPTS="--enable-optimizations" log "${pyenv_cmd}" install "${PYTHON_VERSION}"
 
         if ! "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
-            log_message "ERROR: Failed to install Python ${PYTHON_VERSION} with pyenv."
+            log_message "ERROR: Failed to install Python${PYTHON_VERSION} with pyenv."
         fi
     fi
 }
