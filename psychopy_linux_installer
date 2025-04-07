@@ -1013,18 +1013,18 @@ install_pyenv() {
 install_python_with_pyenv() {
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
     local pyenv_cmd="${HOME}/.pyenv/bin/pyenv"
-    
+
     if [ ! -x "${pyenv_cmd}" ]; then
         log_message "ERROR: pyenv executable not found at ${pyenv_cmd}. Installation may have failed."
     fi
-    
+
     # Check if the version is already installed
     if "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
         log_message "INFO: Python ${PYTHON_VERSION} is already installed with pyenv."
     else
         log_message "INFO: Building Python ${PYTHON_VERSION} with optimizations. This may take a while..."
         PYTHON_CONFIGURE_OPTS="--enable-optimizations" log "${pyenv_cmd}" install "${PYTHON_VERSION}"
-        
+
         if ! "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
             log_message "ERROR: Failed to install Python ${PYTHON_VERSION} with pyenv."
         fi
@@ -1217,7 +1217,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd python_exe
+    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1347,17 +1347,17 @@ main() {
 
         # Create virtualenv using pyenv Python
         log_message "INFO: Creating virtual environment using pyenv Python ${PYTHON_VERSION}..."
-        
+
         if [[ "${PYTHON_VERSION}" =~ ^[0-9]+\.[0-9]+$ ]]; then
             local pyenv_versions_dir="${HOME}/.pyenv/versions"
             local actual_python_version
-            
+
             if [ -d "${pyenv_versions_dir}" ]; then
-                actual_python_version=$(find "${pyenv_versions_dir}" -maxdepth 1 -type d -name "${PYTHON_VERSION}.*" | 
-                                       sed -e "s|${pyenv_versions_dir}/||" | 
-                                       sort -V | 
-                                       tail -n 1)
-                
+                actual_python_version=$(find "${pyenv_versions_dir}" -maxdepth 1 -type d -name "${PYTHON_VERSION}.*" |
+                                        sed -e "s|${pyenv_versions_dir}/||" |
+                                        sort -V |
+                                        tail -n 1)
+
                 if [ -n "${actual_python_version}" ]; then
                     log_message "INFO: Using Python version ${actual_python_version} (matched from ${PYTHON_VERSION})"
                     python_cmd="${pyenv_versions_dir}/${actual_python_version}/bin/python"
@@ -1371,7 +1371,7 @@ main() {
         else
             python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
         fi
-        
+
         check_python_env "${python_cmd}"
         ${python_cmd} -m venv "${PSYCHOPY_DIR}"
     else
