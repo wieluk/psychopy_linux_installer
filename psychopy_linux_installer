@@ -25,6 +25,7 @@ declare -A DEFAULT_OPTS=(
     [NON_INTERACTIVE]=false
     [FORCE_OVERWRITE]=false
     [VERBOSE]=false
+    [PYENV_PATH]="${HOME}/.pyenv"
 )
 
 # Displays usage information and available options.
@@ -998,18 +999,18 @@ install_pyenv() {
     log_message "INFO: Installing pyenv dependencies ..."
     install_dependencies pyenv_deps
 
-    if [ -d "${HOME}/.pyenv" ] && [ -f "${HOME}/.pyenv/bin/pyenv" ]; then
-        log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
+    if [ -d "${DEFAULT_OPTS[PYENV_PATH]}" ] && [ -f "${DEFAULT_OPTS[PYENV_PATH]}/bin/pyenv" ]; then
+        log_message "INFO: pyenv is already installed at ${DEFAULT_OPTS[PYENV_PATH]}."
     else
         log_message "INFO: Cloning pyenv..."
-        log git clone https://github.com/pyenv/pyenv.git "${HOME}"/.pyenv
+        log git clone https://github.com/pyenv/pyenv.git "${DEFAULT_OPTS[PYENV_PATH]}"
     fi
 }
 
-# Install Python using pyenv with direct path references
+# Install Python using pyenv
 install_python_with_pyenv() {
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
-    local pyenv_cmd="${HOME}/.pyenv/bin/pyenv"
+    local pyenv_cmd="${DEFAULT_OPTS[PYENV_PATH]}/bin/pyenv"
 
     if [ ! -x "${pyenv_cmd}" ]; then
         log_message "ERROR: pyenv executable not found at ${pyenv_cmd}. Installation may have failed."
@@ -1346,7 +1347,7 @@ main() {
         log_message "INFO: Creating virtual environment using pyenv Python ${PYTHON_VERSION}..."
 
         if [[ "${PYTHON_VERSION}" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            local pyenv_versions_dir="${HOME}/.pyenv/versions"
+            local pyenv_versions_dir="${DEFAULT_OPTS[PYENV_PATH]}/versions"
             local actual_python_version
 
             if [ -d "${pyenv_versions_dir}" ]; then
@@ -1366,7 +1367,7 @@ main() {
                 log_message "ERROR: pyenv versions directory not found."
             fi
         else
-            python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
+            python_cmd="${DEFAULT_OPTS[PYENV_PATH]}/versions/${PYTHON_VERSION}/bin/python"
         fi
 
         check_python_env "${python_cmd}"
