@@ -25,7 +25,6 @@ jobs:
           - opensuse-leap-15
           - linuxmint-22
         python_version: ["3.8", "3.9", "3.10"]
-        wxpython_version: ["grab", "4.2.1", "4.2.0", "4.1.1"]
       fail-fast: false
     permissions:
       contents: write
@@ -33,35 +32,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Determine if Failure is Allowed
-        id: check-failure
-        run: |
-          if [[ "${{ matrix.wxpython_version }}" == "grab" ]]; then
-            echo "ALLOW_FAILURE=false" >> $GITHUB_ENV
-          else
-            echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
-          fi
-
-      - name: Install dependencies
+      - name: Setup environment and dependencies
         run: |
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
 
           if command -v apt-get > /dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y jq curl
+            sudo apt-get update && sudo apt-get install -y jq curl
             PKG_MANAGER="apt-get"
           elif command -v pacman > /dev/null; then
             sudo pacman -Syu --noconfirm jq curl
             PKG_MANAGER="pacman"
           elif command -v dnf > /dev/null; then
-            sudo dnf makecache -q
-            sudo dnf install -y jq curl
+            sudo dnf makecache -q && sudo dnf install -y jq curl
             PKG_MANAGER="dnf"
           elif command -v yum > /dev/null; then
-            sudo yum makecache -q
-            sudo yum install -y jq curl
+            sudo yum makecache -q && sudo yum install -y jq curl
             PKG_MANAGER="yum"
           elif command -v zypper > /dev/null; then
             sudo zypper refresh
@@ -71,71 +58,25 @@ jobs:
             echo "Unsupported package manager"
             exit 1
           fi
-
           echo "PKG_MANAGER=$PKG_MANAGER" >> $GITHUB_ENV
 
-      - name: Extract versions from script
+      - name: Extract versions
         id: extract_versions
         run: |
           INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
-          if [ -z "$INSTALLER_VERSION" ]; then
+          WXPYTHON_VERSION=$(grep -m1 '^\s*\[WXPYTHON_VERSION\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
+          
+          if [ -z "$INSTALLER_VERSION" ] || [ -z "$WXPYTHON_VERSION" ]; then
             exit 1
           fi
-          if [ "${{ matrix.wxpython_version }}" = "grab" ]; then
-            WXPYTHON_VERSION=$(grep -m1 '^\s*\[WXPYTHON_VERSION\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
-            if [ -z "$WXPYTHON_VERSION" ]; then
-              exit 1
-            fi
-          else
-            WXPYTHON_VERSION="${{ matrix.wxpython_version }}"
-          fi
+          
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
-          echo "Installer Version extracted: $INSTALLER_VERSION"
-          echo "wxPython version extracted: $WXPYTHON_VERSION"
-
-      - name: Get release info
-        id: get_release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: |
-          RELEASE_TAG="v${INSTALLER_VERSION}"
-          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
-          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
-          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
-          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
-          if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
-            exit 1
-          fi
-          echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
-          echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
-
-      - name: Check existing files and set variables
-        id: check-files
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          RELEASE_ID: ${{ env.release_id }}
-        run: |
-          RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
-
-          CURRENT_VERSION="${INSTALLER_VERSION}"
-
-          PREVIOUS_RELEASE_ID=$(echo "$RELEASES" | jq -r "
-            map(select(.tag_name != \"v${CURRENT_VERSION}\"))
-            | sort_by(.created_at)
-            | reverse
-            | .[0].id
-          ")
-
-          PYTHON_VERSION="${{ matrix.python_version }}"
-          PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
-          if [ -z "$PYTHON_FULL_VERSION" ]; then
-            echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
-            exit 1
-          fi
+          
+          # Set OS and Python version variables
+          PYTHON_MAJOR=$(echo "${{ matrix.python_version }}" | cut -d. -f1)
+          PYTHON_MINOR=$(echo "${{ matrix.python_version }}" | cut -d. -f2)
+          PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
 
           # Function to detect the OS version
           detect_os_version() {
@@ -159,263 +100,189 @@ jobs:
           }
 
           OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
-          PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-          PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
-          PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
-
-          PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
+          
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
-
-          check_assets() {
-            local release_id=$1
-            local page=1
-            local assets=""
-            
-            while :; do
-              local response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-                "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100&page=$page")
-              
-              [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
-              
-              while read -r name && read -r url; do
-                assets+="$name"$'\n'"$url"$'\n'
-              done < <(echo "$response" | jq -r '.[] | (.name, .browser_download_url)')
-              
-              page=$((page + 1))
-            done
-            echo "$assets"
-          }
-
-          CURRENT_ASSETS=""
-          if [ ! -z "$RELEASE_ID" ]; then
-            CURRENT_ASSETS=$(check_assets "$RELEASE_ID")
-          fi
-
-          PREVIOUS_ASSETS=""
-          if [ ! -z "$PREVIOUS_RELEASE_ID" ] && [ "$PREVIOUS_RELEASE_ID" != "null" ]; then
-            PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
-          fi
-
-          PYTHON_EXISTS=false
-          WXPYTHON_EXISTS=false
-          PYTHON_URL=""
-          WXPYTHON_URL=""
-          FOUND_PYTHON_IN_CURRENT=false
-          FOUND_WXPYTHON_IN_CURRENT=false
-          FOUND_PYTHON_IN_PREVIOUS=false
-          FOUND_WXPYTHON_IN_PREVIOUS=false
-
-          while IFS= read -r line; do
-            if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
-              read -r url
-              PYTHON_EXISTS=true
-              PYTHON_URL="$url"
-              FOUND_PYTHON_IN_CURRENT=true
-            elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
-              read -r url
-              WXPYTHON_EXISTS=true
-              WXPYTHON_URL="$url"
-              FOUND_WXPYTHON_IN_CURRENT=true
-            fi
-          done <<< "$CURRENT_ASSETS"
-
-          if [ "$PYTHON_EXISTS" = false ] || [ "$WXPYTHON_EXISTS" = false ]; then
-            while IFS= read -r line; do
-              if [ "$line" = "$PYTHON_TARBALL_NAME" ] && [ "$PYTHON_EXISTS" = false ]; then
-                read -r url
-                PYTHON_EXISTS=true
-                PYTHON_URL="$url"
-                FOUND_PYTHON_IN_PREVIOUS=true
-              elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ] && [ "$WXPYTHON_EXISTS" = false ]; then
-                read -r url
-                WXPYTHON_EXISTS=true
-                WXPYTHON_URL="$url"
-                FOUND_WXPYTHON_IN_PREVIOUS=true
-              fi
-            done <<< "$PREVIOUS_ASSETS"
-          fi
-
-          if [ "$PYTHON_EXISTS" = true ]; then
-            echo "SKIP_PYTHON_PROCESS=true" >> $GITHUB_ENV
-            if [ "$FOUND_PYTHON_IN_PREVIOUS" = true ]; then
-              echo "TRANSFER_PYTHON_FROM_PREVIOUS=true" >> $GITHUB_ENV
-            else
-              echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-            fi
-            echo "PYTHON_URL=$PYTHON_URL" >> $GITHUB_ENV
-          else
-            echo "SKIP_PYTHON_PROCESS=false" >> $GITHUB_ENV
-            echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-          fi
-
-          if [ "$WXPYTHON_EXISTS" = true ]; then
-            echo "SKIP_WXPYTHON_PROCESS=true" >> $GITHUB_ENV
-            if [ "$FOUND_WXPYTHON_IN_PREVIOUS" = true ]; then
-              echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=true" >> $GITHUB_ENV
-            else
-              echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-            fi
-            echo "WXPYTHON_URL=$WXPYTHON_URL" >> $GITHUB_ENV
-          else
-            echo "SKIP_WXPYTHON_PROCESS=false" >> $GITHUB_ENV
-            echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-          fi
-
+          
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
-          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
-          echo "PYTHON_FULL_VERSION=${PYTHON_FULL_VERSION}" >> $GITHUB_ENV
-          echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
+          echo "PYTHON_VERSION=${{ matrix.python_version }}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
 
-      - name: Transfer Python from previous release
-        if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
+      - name: Get release info
+        id: get_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
-            "${{ env.PYTHON_URL }}"
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          
+          if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
+            exit 1
+          fi
+          
+          echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
+          echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
 
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/gzip" \
-            --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
-            "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
+      - name: Check wheel availability
+        id: check-wheel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check current release for wheel
+          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets")
+          
+          # Check if wheel exists in current release
+          WHEEL_EXISTS=$(echo "$ASSETS" | jq -r --arg name "${WXPYTHON_WHEEL_NAME}" '.[] | select(.name == $name) | .id')
+          
+          # If wheel exists in current release, no need to build
+          if [ ! -z "$WHEEL_EXISTS" ]; then
+            echo "SKIP_BUILD=true" >> $GITHUB_ENV
+            exit 0
+          fi
+          
+          # Check previous release for wheel
+          RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
+          
+          PREVIOUS_RELEASE_ID=$(echo "$RELEASES" | jq -r "
+            map(select(.tag_name != \"v${INSTALLER_VERSION}\"))
+            | sort_by(.created_at)
+            | reverse
+            | .[0].id
+          ")
+          
+          if [ ! -z "$PREVIOUS_RELEASE_ID" ] && [ "$PREVIOUS_RELEASE_ID" != "null" ]; then
+            PREVIOUS_ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${PREVIOUS_RELEASE_ID}/assets")
+            
+            WHEEL_URL=$(echo "$PREVIOUS_ASSETS" | jq -r --arg name "${WXPYTHON_WHEEL_NAME}" \
+              '.[] | select(.name == $name) | .browser_download_url')
+            
+            if [ ! -z "$WHEEL_URL" ] && [ "$WHEEL_URL" != "null" ]; then
+              echo "TRANSFER_FROM_PREVIOUS=true" >> $GITHUB_ENV
+              echo "WHEEL_URL=$WHEEL_URL" >> $GITHUB_ENV
+              exit 0
+            fi
+          fi
+          
+          # Need to build the wheel
+          echo "SKIP_BUILD=false" >> $GITHUB_ENV
+          echo "TRANSFER_FROM_PREVIOUS=false" >> $GITHUB_ENV
 
-      - name: Transfer wxPython from previous release
-        if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
+      - name: Transfer wheel from previous release
+        if: env.TRANSFER_FROM_PREVIOUS == 'true'
         run: |
           curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             -o "/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
-            "${{ env.WXPYTHON_URL }}"
-
+            "${{ env.WHEEL_URL }}"
+          
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/octet-stream" \
             --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
             "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Install build dependencies
-        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
+        if: env.SKIP_BUILD == 'false' && env.TRANSFER_FROM_PREVIOUS == 'false'
         run: |
-          func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
-          case_block=$(echo "$func_block" | awk '/^ *case *\$pkg_manager *in/,/^esac/')
-          pkg_block=$(echo "$case_block" | awk -v pkg="$PKG_MANAGER" '$0 ~ "^[[:space:]]*"pkg"\\)" {found=1} found {print} $0 ~ ";;" && found {exit}')
-
-          extract_deps() {
-              echo "$pkg_block" | grep -E "^[[:space:]]*$1=\(" | sed -E "s/^[[:space:]]*$1=\(//; s/\)[[:space:]]*$//"
-          }
-
-          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
-
-          echo "Extracted packages to install: $all_deps"
-
+          # Install pyenv dependencies
           case "$PKG_MANAGER" in
               apt-get)
-                  for pkg in $all_deps; do
-                      sudo apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-                  done
+                  sudo apt-get install -y build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev git
                   ;;
-              dnf)
-                  for pkg in $all_deps; do
-                      sudo dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-                  done
-                  ;;
-              yum)
-                  for pkg in $all_deps; do
-                      sudo yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-                  done
+              dnf|yum)
+                  sudo $PKG_MANAGER install -y make gcc zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel xz xz-devel libffi-devel findutils git
                   ;;
               pacman)
-                  for pkg in $all_deps; do
-                      sudo pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
-                  done
+                  sudo pacman -S --noconfirm base-devel openssl zlib xz git bzip2 libffi readline sqlite
                   ;;
               zypper)
-                  for pkg in $all_deps; do
-                      sudo zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
-                  done
+                  sudo zypper install -y gcc automake bzip2 libbz2-devel xz xz-devel openssl-devel ncurses-devel readline-devel zlib-devel tk-devel libffi-devel sqlite3-devel git
                   ;;
-              *)
-                  echo "Error: Unsupported package manager."
-                  exit 1
+          esac
+          
+          # Install wxPython build dependencies
+          case "$PKG_MANAGER" in
+              apt-get)
+                  sudo apt-get install -y freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools \
+                  gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make
+                  ;;
+              dnf|yum)
+                  sudo $PKG_MANAGER install -y freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel \
+                  libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel \
+                  libtiff-devel make glib2-devel
+                  ;;
+              pacman)
+                  sudo pacman -S --noconfirm freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm \
+                  libtiff make mesa
+                  ;;
+              zypper)
+                  sudo zypper install -y freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base \
+                  libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel
                   ;;
           esac
 
-      - name: Build Python
-        id: build-python
-        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
+      - name: Setup Python and build wxPython
+        if: env.SKIP_BUILD == 'false' && env.TRANSFER_FROM_PREVIOUS == 'false'
         run: |
-          cd /tmp_dir
-          curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
-          tar -xf "Python-${PYTHON_FULL_VERSION}.tgz"
-          cd "Python-${PYTHON_FULL_VERSION}"
-          ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
-          make -j "$(nproc)"
-
-          PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
-          tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${PYTHON_FULL_VERSION}/" .
-          echo "PYTHON_TARBALL_PATH=$PYTHON_TARBALL_PATH" >> $GITHUB_ENV
-
-          sudo make altinstall
-
-      - name: Upload Python
-        if: env.SKIP_PYTHON_PROCESS == 'false' && steps.build-python.outcome == 'success'
-        run: |
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Content-Type: application/gzip" \
-          --data-binary @"${PYTHON_TARBALL_PATH}" \
-          "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
-
-      - name: Build wxPython
-        if: env.SKIP_WXPYTHON_PROCESS == 'false'
-        continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
-        id: build-wxpython
-        run: |
-          export PATH=/usr/local/psychopy_python/bin:$PATH
-          /usr/local/psychopy_python/bin/python$PYTHON_VERSION -m venv /tmp_dir/psychopy_venv
+          # Install pyenv
+          curl -L https://github.com/pyenv/pyenv-installer/raw/master/bin/pyenv-installer | bash
+          
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init --path)"
+          eval "$(pyenv init -)"
+          
+          # Install Python
+          PYTHON_CONFIGURE_OPTS="--enable-optimizations" pyenv install $PYTHON_VERSION
+          pyenv global $PYTHON_VERSION
+          
+          # Create virtual environment
+          python -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
-
+          
+          # Install prerequisites
           pip install -U pip distro sip six psychtoolbox setuptools wheel
-
+          
           if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
               pip install attrdict
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
               pip install attrdict3
           fi
-
-          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+          
+          # Download and extract wxPython
+          mkdir -p /tmp_dir/wxpython && cd /tmp_dir/wxpython
           pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
           cd "$WXPYTHON_DIR"
-
-          python --version
+          
+          # Build wheel
           python -m pip wheel .
-
-          # Use a case-insensitive glob to capture the wheel file.
           WXPYTHON_WHEEL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.whl)
-
-          # If the wheel file does not start with "wxPython-"
+          
+          # Ensure correct naming
           if [[ "$WXPYTHON_WHEEL" != wxPython-* ]]; then
               NEW_WXPYTHON_WHEEL="wxPython-${WXPYTHON_WHEEL:9}"
               mv "$WXPYTHON_WHEEL" "$NEW_WXPYTHON_WHEEL"
               WXPYTHON_WHEEL="$NEW_WXPYTHON_WHEEL"
           fi
+          
+          # Copy to destination
+          cp "$WXPYTHON_WHEEL" "/tmp_dir/${WXPYTHON_WHEEL_NAME}"
 
-          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
-          cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
-          echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
-
-          deactivate
-
-      - name: Upload wxPython to Release
-        if: env.SKIP_WXPYTHON_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
+      - name: Upload wxPython wheel
+        if: env.SKIP_BUILD == 'false' && env.TRANSFER_FROM_PREVIOUS == 'false'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Content-Type: application/octet-stream" \
-          --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
-          "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
+            "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Cleanup
         if: always()

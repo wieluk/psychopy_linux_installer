@@ -124,8 +124,8 @@ process_arguments() {
             ;;
         --python-version=*)
             PYTHON_VERSION="${arg#*=}"
-            if [[ ! ${PYTHON_VERSION} =~ ^3\.(8|9|10)$ ]]; then
-                log_message "ERROR: Unsupported Python version '${PYTHON_VERSION}'. Supported versions: '3.8', '3.9', or '3.10'." nolog
+            if [[ ! ${PYTHON_VERSION} =~ ^3\.(8|9|10)(\.[0-9]+)?$ ]]; then
+                log_message "ERROR: Unsupported Python version '${PYTHON_VERSION}'. Supported major versions: '3.8', '3.9', or '3.10'. You can specify patch versions like '3.10.4'." nolog
             fi
             ;;
         --wxpython-version=*)
@@ -249,16 +249,25 @@ show_gui() {
             exit 0
         fi
 
-        # Select Python version
-        if PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
-            --text="Choose the Python version for this installation.\n\nPython${DEFAULT_OPTS[PYTHON_VERSION]} is recommended for best compatibility." \
-            --radiolist --column="Select" --column="Version" \
-            TRUE "3.10" FALSE "3.9" FALSE "3.8") && [ -n "${PYTHON_VERSION}" ]; then
-            PYTHON_VERSION=$(echo "${PYTHON_VERSION}" | xargs)
-            :
-        else
-            exit 0
+        patch_versions=$(curl -s --connect-timeout 3 "https://www.python.org/ftp/python/" \
+                        | grep -oP '(?<=href=")[^/]+(?=/")' \
+                        | grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
+
+        options=(TRUE "3.10" FALSE "3.9" FALSE "3.8")
+        if [ -n "$patch_versions" ]; then
+            for ver in $patch_versions; do
+                if [[ "$ver" != "3.10" && "$ver" != "3.9" && "$ver" != "3.8" ]]; then
+                    options+=(FALSE "$ver")
+                fi
+            done
         fi
+
+        PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
+            --text="Choose the Python version for this installation." \
+            --radiolist --column="Select" --column="Version" "${options[@]}")
+
+        [ -z "$PYTHON_VERSION" ] && exit 0
+        PYTHON_VERSION=$(echo "$PYTHON_VERSION" | xargs)
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
@@ -424,7 +433,7 @@ parse_requirements_file() {
         fi
     done | tr '\n' ',' | sed 's/,$//')
 
-    PYTHON_VERSION=$(grep -i -E '^# Python version:' "${file}" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
+    PYTHON_VERSION=$(grep -i -E '^# Python version:' "${file}" | cut -d':' -f2 | xargs | tr -d '[:space:]' || true)
     WXPYTHON_VERSION="${package_versions["wxpython"]:-}"
     PSYCHOPY_VERSION="${package_versions["psychopy"]:-}"
 
@@ -686,31 +695,60 @@ update_package_manager() {
     esac
 }
 
+is_package_installed() {
+    case "${PKG_MANAGER}" in
+        apt-get) dpkg -s "$1" &>/dev/null ;;
+        yum|dnf) rpm -q "$1" &>/dev/null ;;
+        pacman)  pacman -Q "$1" &>/dev/null ;;
+        zypper)  rpm -q "$1" &>/dev/null ;;
+        *)       return 1 ;;
+    esac
+}
+
 # Installs the provided packages via the identified package manager.
 install_packages() {
     local packages=("${@}")
-
-    # Try batch install first
     local available_packages
+    local to_install already_installed
+
     read -r -a available_packages <<<"$(filter_installable_packages "${packages[@]}")"
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
     [ -n "${diff}" ] && log_message "WARNING: The following packages are not available and will be skipped: '${diff}'"
 
-    # Check if the available_packages array is empty
-    if [ ${#available_packages[@]} -eq 0 ]; then
-        log_message "WARNING: No valid packages found for installation."
-        return
+    for package in "${available_packages[@]}"; do
+        if is_package_installed "${package}"; then
+            already_installed+=("${package}")
+        else
+            to_install+=("${package}")
+        fi
+    done
+
+    if [ ${#already_installed[@]} -gt 0 ]; then
+        log_message "INFO: The following packages are already installed: '${already_installed[*]}'"
+    fi
+
+    if [ ${#to_install[@]} -eq 0 ]; then
+        if [ ${#already_installed[@]} -gt 0 ] && [ -n "${diff}" ]; then
+            log_message "INFO: Nothing to install - some packages already installed, others unavailable or skipped."
+            return 0
+        elif [ ${#already_installed[@]} -gt 0 ] && [ -z "${diff}" ]; then
+            log_message "INFO: Nothing to install - all requested packages are already installed."
+            return 0
+        else
+            log_message "WARNING: Nothing to install - all requested packages unavailable or skipped."
+            return 0
+        fi
     fi
 
     if {
         case "${PKG_MANAGER}" in
-        apt-get) sudo_wrapper apt-get install -y -qq "${available_packages[@]}" ;;
-        yum) sudo_wrapper yum install -y -q "${available_packages[@]}" ;;
-        dnf) sudo_wrapper dnf install -y -q "${available_packages[@]}" ;;
-        pacman) sudo_wrapper pacman -S --needed --noconfirm "${available_packages[@]}" ;;
-        zypper) sudo_wrapper zypper install -y "${available_packages[@]}" ;;
+        apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
+        yum)     sudo_wrapper yum install -y -q "${to_install[@]}" ;;
+        dnf)     sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
+        pacman)  sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
+        zypper)  sudo_wrapper zypper install -y "${to_install[@]}" ;;
         *)
             log_message "ERROR: No compatible package manager found."
             ;;
@@ -736,9 +774,9 @@ install_packages() {
     done
 }
 
-# Installs dependency groups (e.g. script_deps, python_build_deps, etc.).
+# Installs dependency groups
 install_dependencies() {
-    local dep_type dependencies script_deps psychopy_deps fonts python_build_deps wxpython_deps python_with_venv
+    local dep_type dependencies script_deps psychopy_deps fonts wxpython_deps python_with_venv pyenv_deps
 
     dep_type="${1}"
     dependencies=()
@@ -748,7 +786,7 @@ install_dependencies() {
         script_deps=(curl git jq)
         psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
-        python_build_deps=(build-essential libbz2-dev libffi-dev libreadline-dev libsqlite3-dev libssl-dev make xz-utils zlib1g-dev)
+        pyenv_deps=(build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl git libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev)
         wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
         python_with_venv=(python3 python3-dev python3-pip python3-venv)
         ;;
@@ -756,7 +794,7 @@ install_dependencies() {
         script_deps=(curl git jq)
         psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
-        python_build_deps=(bzip2-devel gcc libffi-devel make openssl-devel readline-devel sqlite-devel xz-devel zlib-devel)
+        pyenv_deps=(make gcc patch zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel libuuid-devel gdbm-libs libnsl2)
         wxpython_deps=(freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
         python_with_venv=(python3 python3-devel python3-pip python3-venv)
         ;;
@@ -764,7 +802,7 @@ install_dependencies() {
         script_deps=(curl git jq)
         psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
-        python_build_deps=(base-devel bzip2 libffi make openssl readline sqlite xz zlib)
+        pyenv_deps=(base-devel openssl zlib xz tk)
         wxpython_deps=(freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
         python_with_venv=(python python-pip python-virtualenv)
         ;;
@@ -772,7 +810,7 @@ install_dependencies() {
         script_deps=(curl git jq)
         psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
-        python_build_deps=(gcc libffi-devel libopenssl-devel make readline-devel sqlite3-devel xz-devel zlib-devel)
+        pyenv_deps=(gcc automake bzip2 libbz2-devel xz xz-devel openssl-devel ncurses-devel readline-devel zlib-devel tk-devel libffi-devel sqlite3-devel gdbm-devel make findutils patch)
         wxpython_deps=(freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
         python_with_venv=(python3 python3-devel python3-pip python3-virtualenv)
         ;;
@@ -783,11 +821,11 @@ install_dependencies() {
 
     case ${dep_type} in
     script_deps) dependencies=("${script_deps[@]}") ;;
-    python_build_deps) dependencies=("${python_build_deps[@]}") ;;
     psychopy_deps) dependencies=("${psychopy_deps[@]}") ;;
     fonts) dependencies=("${fonts[@]}") ;;
     wxpython_deps) dependencies=("${wxpython_deps[@]}") ;;
     python_with_venv) dependencies=("${python_with_venv[@]}") ;;
+    pyenv_deps) dependencies=("${pyenv_deps[@]}") ;;
     *)
         log_message "ERROR: Invalid dependency type specified."
         ;;
@@ -954,125 +992,52 @@ check_python_env() {
     fi
 }
 
-# Builds Python from source, using the specified version.
-build_python() {
-    local official_base_url latest_patch_version official_url temp_file temp_dir
-    log_message "INFO: Building 'Python${PYTHON_VERSION}' from source. This may take some time ..."
-    official_base_url="https://www.python.org/ftp/python/"
-
-    latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
-
-    official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
-    temp_file="Python-${latest_patch_version}.tgz"
-    temp_dir="Python-${latest_patch_version}_temp"
-
-    if ! log curl -L -o "${temp_file}" "${official_url}"; then
-        log_message "ERROR: Failed to download Python source from '${official_url}'."
+# Installs pyenv for Python version management
+install_pyenv() {
+    log_message "INFO: Installing pyenv dependencies and pyenv..."
+    install_dependencies pyenv_deps
+    
+    # Check if pyenv is already installed by looking for the directory
+    if [ -d "${HOME}/.pyenv" ] && [ -f "${HOME}/.pyenv/bin/pyenv" ]; then
+        log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
+        # Set up environment variables for pyenv in the current session only
+        export PYENV_ROOT="${HOME}/.pyenv"
+        export PATH="${PYENV_ROOT}/bin:${PATH}"
+        eval "$(${PYENV_ROOT}/bin/pyenv init --path 2>/dev/null || echo "")"
+        eval "$(${PYENV_ROOT}/bin/pyenv init - 2>/dev/null || echo "")"
+        return 0
     fi
 
-    mkdir -p "${temp_dir}" || {
-        log_message "ERROR: Failed to create '${temp_dir}'."
-    }
-
-    if ! tar -xf "${temp_file}" -C "${temp_dir}"; then
-        log_message "ERROR: Failed to extract '${temp_file}'."
+    # Install pyenv using the official installer
+    log_message "INFO: Installing pyenv using official pyenv-installer..."
+    if curl -L https://pyenv.run | bash; then
+        log_message "INFO: pyenv installed successfully."
+        
+        # Set up environment variables for pyenv for the current session only
+        export PYENV_ROOT="${HOME}/.pyenv"
+        export PATH="${PYENV_ROOT}/bin:${PATH}"
+        eval "$(${PYENV_ROOT}/bin/pyenv init --path 2>/dev/null || echo "")"
+        eval "$(${PYENV_ROOT}/bin/pyenv init - 2>/dev/null || echo "")"
+        
+        return 0
+    else
+        log_message "ERROR: Failed to install pyenv. Please install manually or try again."
+        return 1
     fi
+}
 
-    cd "${temp_dir}/Python-${latest_patch_version}" || {
-        log_message "ERROR: Failed to change directory."
-    }
-    log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
-    log make -j "$(nproc)"
-    sudo_wrapper make altinstall
-    cd "${PSYCHOPY_DIR}" || {
-        log_message "ERROR: Failed to return to '${PSYCHOPY_DIR}'."
-    }
-
-    sudo_wrapper rm -rf "${temp_dir}" "${temp_file}"
+# Install Python using pyenv
+install_python_with_pyenv() {
+    log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
+    
+    # Check if the version is already installed
+    if ! pyenv versions | grep -q "${PYTHON_VERSION}"; then
+        PYTHON_CONFIGURE_OPTS="--enable-optimizations" pyenv install "${PYTHON_VERSION}"
+    fi
+    
+    # Set as local version
+    pyenv local "${PYTHON_VERSION}"
     return 0
-}
-
-# Attempts to install Python from a GitHub release asset.
-install_python_from_github() {
-    local asset_name api_url github_api_header assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
-
-    github_api_header="Accept: application/vnd.github.v3+json"
-    latest_release_tag=$(curl -s -H "${github_api_header}" "https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest" | jq -r .tag_name)
-    api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${SCRIPT_VERSION}"
-    assets_json=$(curl -s -H "${github_api_header}" "${api_url}")
-
-    python_version_pattern="python-${PYTHON_VERSION}\.[0-9]+-${PROCESSOR_STRUCTURE}-${OS_VERSION}\.tar\.gz"
-    asset_name=$(echo "${assets_json}" | jq -r '.assets // [] | .[].name' | grep -E "${python_version_pattern}" | sort -V | tail -n 1)
-
-    # If no matching asset is found AND the script version is NOT the latest, check the latest release
-    if [[ -z "${asset_name}" && "v${SCRIPT_VERSION}" != "${latest_release_tag}" ]]; then
-        log_message "WARNING: No matching Python version found in 'v${SCRIPT_VERSION}'. Checking the latest release '${latest_release_tag}' ..."
-        api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
-        assets_json=$(curl -s -H "${github_api_header}" "${api_url}")
-        asset_name=$(echo "${assets_json}" | jq -r '.assets // [] | .[].name' | grep -E "${python_version_pattern}" | sort -V | tail -n 1)
-    fi
-
-    if [ -z "${asset_name}" ]; then
-        log_message "WARNING: No matching Python version found in 'v${SCRIPT_VERSION}' or latest release '${latest_release_tag}' for Python${PYTHON_VERSION}."
-        return 1
-    fi
-
-    github_download_url=$(echo "${assets_json}" | jq -r --arg name "${asset_name}" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
-
-    if [ -z "${github_download_url}" ]; then
-        log_message "WARNING: Could not find a download URL for asset '${asset_name}'."
-        return 1
-    fi
-
-    log_message "INFO: Downloading '${asset_name}' from GitHub ..."
-    if log curl -L -o "${asset_name}" "${github_download_url}"; then
-        log_message "INFO: Successfully downloaded '${asset_name}' from GitHub release 'v${SCRIPT_VERSION}'. Making an altinstall ..."
-        temp_dir="${asset_name%.tar.gz}_temp"
-        mkdir -p "${temp_dir}" || {
-            log_message "WARNING: Failed to create '${temp_dir}'."
-            return 1
-        }
-
-        if tar -xf "${asset_name}" -C "${temp_dir}"; then
-            cd "${temp_dir}" || {
-                log_message "WARNING: Failed to change directory."
-                return 1
-            }
-            sudo_wrapper make altinstall
-            cd "${PSYCHOPY_DIR}" || {
-                log_message "WARNING: Failed to return to '${PSYCHOPY_DIR}'."
-                return 1
-            }
-            sudo_wrapper rm -rf "${temp_dir}" "${asset_name}"
-            return 0
-        else
-            log_message "WARNING: Failed to extract '${asset_name}'."
-            sudo_wrapper rm -rf "${temp_dir}"
-            return 1
-        fi
-    else
-        log_message "WARNING: Failed to download from GitHub release."
-        return 1
-    fi
-}
-
-# Builds wxPython from source with the necessary build dependencies.
-build_wxpython() {
-    local tmp_size_gb
-
-    log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
-    install_dependencies wxpython_deps
-
-    # Check /tmp size and warn if ≤2GB
-    tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
-    [ "${tmp_size_gb}" -le 2 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
-
-    log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
-    if log "${PYTHON_VENV_COMMAND}" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
-        log_message "INFO: Successfully built wxPython from source."
-    else
-        log_message "ERROR: Building wxPython from source failed."
-    fi
 }
 
 # Attempts to install wxPython from a GitHub released wheel.
@@ -1084,7 +1049,7 @@ install_wxpython_from_github() {
     api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/tags/v${SCRIPT_VERSION}"
     assets_json=$(curl -s -H "${github_api_header}" "${api_url}")
 
-    python_version_major_minor=$(echo "${PYTHON_VERSION}" | awk -F. '{printf "%s%s", $1, $2}')
+    python_version_major_minor=$(echo "${PYTHON_VERSION}" | cut -d'.' -f1,2 | sed 's/\.//')
     wheel_name="wxPython-${WXPYTHON_VERSION}-cp${python_version_major_minor}-cp${python_version_major_minor}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
     download_url=$(echo "${assets_json}" | jq -r --arg name "${wheel_name}" '.assets // [] | .[] | select(.name == $name) | .browser_download_url')
 
@@ -1119,6 +1084,25 @@ install_wxpython_from_github() {
     else
         log_message "WARNING: Downloading '${wheel_name}' failed."
         return 1
+    fi
+}
+
+# Builds wxPython from source with the necessary build dependencies.
+build_wxpython() {
+    local tmp_size_gb
+
+    log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
+    install_dependencies wxpython_deps
+
+    # Check /tmp size and warn if ≤2GB
+    tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
+    [ "${tmp_size_gb}" -le 2 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
+
+    log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
+    if log "${PYTHON_VENV_COMMAND}" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
+        log_message "INFO: Successfully built wxPython from source."
+    else
+        log_message "ERROR: Building wxPython from source failed."
     fi
 }
 
@@ -1242,7 +1226,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd
+    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd python_exe
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1367,32 +1351,32 @@ main() {
 
     # Install python and create venv
     if [ "${BUILD_PYTHON}" = true ] || ! check_python_in_package_manager; then
-        if [ "${BUILD_PYTHON}" = true ]; then
-            log_message "INFO: Installing Python build dependencies ..."
-            install_dependencies python_build_deps
-            build_python
-        else
-            if [ -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
-                log_message "INFO: 'Python${PYTHON_VERSION}' is already installed in '/usr/local/psychopy_python'. Skipping installation."
+        install_pyenv
+        install_python_with_pyenv
+        
+        # Create virtualenv using pyenv Python
+        log_message "INFO: Creating virtual environment using pyenv Python ${PYTHON_VERSION}..."
+        python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
+        
+        if [ ! -f "${python_cmd}" ]; then
+            log_message "ERROR: Failed to find pyenv Python executable at ${python_cmd}"
+            log_message "INFO: Trying to locate the Python executable in pyenv versions directory..."
+            
+            # Try to find any Python executable with the specified version
+            if python_exe=$(find "${HOME}/.pyenv/versions/" -name "python" -path "*/${PYTHON_VERSION}*/bin/python" -type f 2>/dev/null | head -1); then
+                log_message "INFO: Found Python executable at ${python_exe}"
             else
-                log_message "INFO: Installing Python build dependencies ..."
-                install_dependencies python_build_deps
-                if install_python_from_github; then
-                    :
-                else
-                    build_python
-                fi
+                log_message "ERROR: Could not find any Python ${PYTHON_VERSION} executable installed by pyenv. Installation may have failed."
+                exit 1
             fi
+        else
+            python_exe="${python_cmd}"
         fi
-
-        check_python_env "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}"
-        if [ ! -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
-            log_message "ERROR: 'python${PYTHON_VERSION}' not found in '/usr/local/psychopy_python'. Something went wrong while installing/building. You can try '--build=python'."
-        fi
-        export PATH=/usr/local/psychopy_python/bin:$PATH
-        /usr/local/psychopy_python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
+        
+        check_python_env "${python_exe}"
+        "${python_exe}" -m venv "${PSYCHOPY_DIR}"
     else
-        log_message "INFO: 'Python${PYTHON_VERSION}' can be installed via package manager. Installing ..."
+        log_message "INFO: Python${PYTHON_VERSION} can be installed via package manager. Installing..."
         install_dependencies python_with_venv
         check_python_env "python${PYTHON_VERSION}"
         python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
