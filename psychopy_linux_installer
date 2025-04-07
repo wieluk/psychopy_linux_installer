@@ -1002,7 +1002,7 @@ install_pyenv() {
         log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
     else
         log_message "INFO: Cloning pyenv..."
-        log git clone https://github.com/pyenv/pyenv.git ${HOME}/.pyenv
+        log git clone https://github.com/pyenv/pyenv.git "${HOME}"/.pyenv
     fi
 }
 
