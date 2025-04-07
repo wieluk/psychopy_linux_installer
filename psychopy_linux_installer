@@ -201,7 +201,7 @@ process_arguments() {
 
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
-    local wxpython_versions psychopy_versions use_requirements options
+    local wxpython_versions psychopy_versions use_requirements python_versions options ver patch_versions
 
     # Installation directory
     if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory") && [ -n "${INSTALL_DIR}" ]; then
@@ -249,25 +249,26 @@ show_gui() {
             exit 0
         fi
 
+        # Select Python version
         patch_versions=$(curl -s --connect-timeout 3 "https://www.python.org/ftp/python/" \
                         | grep -oP '(?<=href=")[^/]+(?=/")' \
                         | grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
 
-        options=(TRUE "3.10" FALSE "3.9" FALSE "3.8")
-        if [ -n "$patch_versions" ]; then
-            for ver in $patch_versions; do
-                if [[ "$ver" != "3.10" && "$ver" != "3.9" && "$ver" != "3.8" ]]; then
-                    options+=(FALSE "$ver")
+        python_versions=(TRUE "3.10" FALSE "3.9" FALSE "3.8")
+        if [ -n "${patch_versions}" ]; then
+            for ver in ${patch_versions}; do
+                if [[ "${ver}" != "3.10" && "${ver}" != "3.9" && "${ver}" != "3.8" ]]; then
+                    python_versions+=(FALSE "${ver}")
                 fi
             done
         fi
 
         PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
             --text="Choose the Python version for this installation." \
-            --radiolist --column="Select" --column="Version" "${options[@]}")
+            --radiolist --column="Select" --column="Version" "${python_versions[@]}")
 
-        [ -z "$PYTHON_VERSION" ] && exit 0
-        PYTHON_VERSION=$(echo "$PYTHON_VERSION" | xargs)
+        [ -z "${PYTHON_VERSION}" ] && exit 0
+        PYTHON_VERSION=$(echo "${PYTHON_VERSION}" | xargs)
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
@@ -996,29 +997,25 @@ check_python_env() {
 install_pyenv() {
     log_message "INFO: Installing pyenv dependencies and pyenv..."
     install_dependencies pyenv_deps
-    
-    # Check if pyenv is already installed by looking for the directory
+
     if [ -d "${HOME}/.pyenv" ] && [ -f "${HOME}/.pyenv/bin/pyenv" ]; then
         log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
-        # Set up environment variables for pyenv in the current session only
         export PYENV_ROOT="${HOME}/.pyenv"
         export PATH="${PYENV_ROOT}/bin:${PATH}"
-        eval "$(${PYENV_ROOT}/bin/pyenv init --path 2>/dev/null || echo "")"
-        eval "$(${PYENV_ROOT}/bin/pyenv init - 2>/dev/null || echo "")"
+        eval "$("${PYENV_ROOT}"/bin/pyenv init --path 2>/dev/null || echo "")"
+        eval "$("${PYENV_ROOT}"/bin/pyenv init - 2>/dev/null || echo "")"
         return 0
     fi
 
-    # Install pyenv using the official installer
     log_message "INFO: Installing pyenv using official pyenv-installer..."
     if curl -L https://pyenv.run | bash; then
         log_message "INFO: pyenv installed successfully."
-        
-        # Set up environment variables for pyenv for the current session only
+
         export PYENV_ROOT="${HOME}/.pyenv"
         export PATH="${PYENV_ROOT}/bin:${PATH}"
-        eval "$(${PYENV_ROOT}/bin/pyenv init --path 2>/dev/null || echo "")"
-        eval "$(${PYENV_ROOT}/bin/pyenv init - 2>/dev/null || echo "")"
-        
+        eval "$("${PYENV_ROOT}"/bin/pyenv init --path 2>/dev/null || echo "")"
+        eval "$("${PYENV_ROOT}"/bin/pyenv init - 2>/dev/null || echo "")"
+
         return 0
     else
         log_message "ERROR: Failed to install pyenv. Please install manually or try again."
@@ -1029,13 +1026,11 @@ install_pyenv() {
 # Install Python using pyenv
 install_python_with_pyenv() {
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
-    
-    # Check if the version is already installed
+
     if ! pyenv versions | grep -q "${PYTHON_VERSION}"; then
         PYTHON_CONFIGURE_OPTS="--enable-optimizations" pyenv install "${PYTHON_VERSION}"
     fi
-    
-    # Set as local version
+
     pyenv local "${PYTHON_VERSION}"
     return 0
 }
@@ -1353,16 +1348,15 @@ main() {
     if [ "${BUILD_PYTHON}" = true ] || ! check_python_in_package_manager; then
         install_pyenv
         install_python_with_pyenv
-        
+
         # Create virtualenv using pyenv Python
         log_message "INFO: Creating virtual environment using pyenv Python ${PYTHON_VERSION}..."
         python_cmd="${HOME}/.pyenv/versions/${PYTHON_VERSION}/bin/python"
-        
+
         if [ ! -f "${python_cmd}" ]; then
             log_message "ERROR: Failed to find pyenv Python executable at ${python_cmd}"
             log_message "INFO: Trying to locate the Python executable in pyenv versions directory..."
-            
-            # Try to find any Python executable with the specified version
+
             if python_exe=$(find "${HOME}/.pyenv/versions/" -name "python" -path "*/${PYTHON_VERSION}*/bin/python" -type f 2>/dev/null | head -1); then
                 log_message "INFO: Found Python executable at ${python_exe}"
             else
@@ -1372,7 +1366,7 @@ main() {
         else
             python_exe="${python_cmd}"
         fi
-        
+
         check_python_env "${python_exe}"
         "${python_exe}" -m venv "${PSYCHOPY_DIR}"
     else
