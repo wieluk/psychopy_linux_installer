@@ -1000,26 +1000,23 @@ install_pyenv() {
 
     if [ -d "${HOME}/.pyenv" ] && [ -f "${HOME}/.pyenv/bin/pyenv" ]; then
         log_message "INFO: pyenv is already installed at ${HOME}/.pyenv."
-        export PYENV_ROOT="${HOME}/.pyenv"
-        export PATH="${PYENV_ROOT}/bin:${PATH}"
-        eval "$("${PYENV_ROOT}"/bin/pyenv init --path 2>/dev/null || echo "")"
-        eval "$("${PYENV_ROOT}"/bin/pyenv init - 2>/dev/null || echo "")"
-        return 0
+    else
+        log_message "INFO: Installing pyenv using official pyenv-installer..."
+        if ! log curl -L https://pyenv.run | bash; then
+            log_message "ERROR: Failed to install pyenv. Please install manually or try again."
+        fi
+        log_message "INFO: pyenv installed successfully."
     fi
 
-    log_message "INFO: Installing pyenv using official pyenv-installer..."
-    if log curl -L https://pyenv.run | bash; then
-        log_message "INFO: pyenv installed successfully."
+    export PYENV_ROOT="${HOME}/.pyenv"
+    export PATH="${PYENV_ROOT}/bin:${PATH}"
 
-        export PYENV_ROOT="${HOME}/.pyenv"
-        export PATH="${PYENV_ROOT}/bin:${PATH}"
-        eval "$("${PYENV_ROOT}"/bin/pyenv init --path 2>/dev/null || echo "")"
-        eval "$("${PYENV_ROOT}"/bin/pyenv init - 2>/dev/null || echo "")"
-
-        return 0
+    if command -v pyenv > /dev/null; then
+        eval "$(pyenv init --path 2>/dev/null || echo "")"
+        eval "$(pyenv init - 2>/dev/null || echo "")"
+        log_message "INFO: pyenv initialized successfully."
     else
-        log_message "ERROR: Failed to install pyenv. Please install manually or try again."
-        return 1
+        log_message "ERROR: pyenv installation appears successful but command not found in PATH."
     fi
 }
 
@@ -1027,11 +1024,33 @@ install_pyenv() {
 install_python_with_pyenv() {
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
 
-    if ! pyenv versions | grep -q "${PYTHON_VERSION}"; then
+    if ! command -v pyenv > /dev/null; then
+        log_message "ERROR: pyenv not found in PATH. Cannot install Python."
+    fi
+
+    if pyenv versions | grep -q "${PYTHON_VERSION}"; then
+        log_message "INFO: Python ${PYTHON_VERSION} is already installed with pyenv."
+    else
+        log_message "INFO: Building Python ${PYTHON_VERSION} with optimizations. This may take a while..."
         PYTHON_CONFIGURE_OPTS="--enable-optimizations" log pyenv install "${PYTHON_VERSION}"
+
+        if ! pyenv versions | grep -q "${PYTHON_VERSION}"; then
+            log_message "ERROR: Failed to install Python ${PYTHON_VERSION} with pyenv."
+            return 1
+        fi
     fi
 
     pyenv local "${PYTHON_VERSION}"
+    log_message "INFO: Python ${PYTHON_VERSION} is now the local version for this directory."
+
+    PYENV_PYTHON="${PYENV_ROOT}/versions/${PYTHON_VERSION}/bin/python"
+
+    if [ ! -x "${PYENV_PYTHON}" ]; then
+        log_message "ERROR: Python executable not found at ${PYENV_PYTHON} or not executable."
+        return 1
+    fi
+
+    log_message "INFO: Using Python at ${PYENV_PYTHON}"
     return 0
 }
 
