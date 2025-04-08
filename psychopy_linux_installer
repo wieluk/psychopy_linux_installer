@@ -1005,7 +1005,7 @@ install_python_with_pyenv() {
     fi
 
     log_message "INFO: Building Python ${PYTHON_VERSION} with optimizations. This may take a while..."
-    PYTHON_CONFIGURE_OPTS="--enable-shared --enable-optimizations --with-ensurepip=install" \
+    PYTHON_CONFIGURE_OPTS="--enable-optimizations --with-ensurepip=install" \
         log "${pyenv_cmd}" install "${PYTHON_VERSION}"
 
     if ! "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
@@ -1206,7 +1206,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd
+    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd python_bin_dir
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1361,6 +1361,9 @@ main() {
         fi
 
         check_python_env "${python_cmd}"
+
+        python_bin_dir="$(dirname "${python_cmd}")"
+        export PATH="${python_bin_dir}:$PATH"
         ${python_cmd} -m venv "${PSYCHOPY_DIR}"
     else
         log_message "INFO: Python${PYTHON_VERSION} can be installed via package manager. Installing..."
