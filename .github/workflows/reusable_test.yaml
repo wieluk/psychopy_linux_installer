@@ -11,7 +11,6 @@ on:
 
 jobs:
   run-installer:
-    name: ${{ (inputs.test-mode == 'quick' && matrix.os == 'ubuntu-24.04' && matrix.python_version == '3.9.12' && matrix.psychopy_version == 'latest') && format('run-installer with --build-wxpython on {0} / Python {1} / PsychoPy {2}', matrix.os, matrix.python_version, matrix.psychopy_version) || format('run-installer on {0} / Python {1} / PsychoPy {2}', matrix.os, matrix.python_version, matrix.psychopy_version) }}
     runs-on: ${{ inputs.test-mode == 'quick' && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
     strategy:
       matrix:
@@ -31,7 +30,7 @@ jobs:
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
-          BUILD_FLAG="${{ (inputs.test-mode == 'build' || (inputs.test-mode == 'quick' && matrix.os == 'ubuntu-24.04' && matrix.python_version == '3.9.12' && matrix.psychopy_version == 'latest')) && '--build-wxpython' || '' }}"
+          BUILD_FLAG="${{ inputs.test-mode == 'build' && '--build-wxpython' || '' }}"
           ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
