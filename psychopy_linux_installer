@@ -89,7 +89,11 @@ log_message() {
     esac
 
     plain_message="${timestamp} - ${1}"
-    echo "${plain_message}" >>"${LOG_FILE}"
+
+    if [[ "${FUNCNAME[1]}" != "log" ]]; then
+        echo "${plain_message}" >>"${LOG_FILE}"
+    fi
+
     printf "%s\n" "${formatted_message}"
 
     if [[ "${1}" == ERROR:* ]]; then
