@@ -1063,7 +1063,7 @@ install_wxpython_from_github() {
 
 # Builds wxPython from source with the necessary build dependencies.
 build_wxpython() {
-    local tmp_size_gb pip_flags
+    local tmp_size_gb pip_flags full_ver python_major_minor ld_path
 
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
@@ -1081,6 +1081,12 @@ build_wxpython() {
 
     if log "${PYTHON_VENV_COMMAND}" -m pip install "${pip_flags}" "wxpython==${WXPYTHON_VERSION}"; then
         log_message "INFO: Successfully built wxPython from source."
+        full_ver=$("${PYTHON_VENV_COMMAND}" --version | awk '{print $2}')
+        python_major_minor=$(echo "${full_ver}" | cut -d '.' -f1-2)
+        ld_path="${PYENV_PATH}/versions/${full_ver}/lib/python${python_major_minor}/site-packages/wx"
+        echo "${ld_path}" | tee /etc/ld.so.conf.d/wxpy.conf
+        sudo_wrapper ldconfig
+        log_message "INFO: System dynamic linker configuration updated with ${ld_path}."
     else
         log_message "ERROR: Building wxPython from source failed."
     fi
@@ -1206,7 +1212,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd python_bin_dir
+    local use_gui tmp_log_file final_log_file rerun_cmd python_cmd
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1362,8 +1368,6 @@ main() {
 
         check_python_env "${python_cmd}"
 
-        python_bin_dir="$(dirname "${python_cmd}")"
-        export PATH="${python_bin_dir}:$PATH"
         ${python_cmd} -m venv "${PSYCHOPY_DIR}"
     else
         log_message "INFO: Python${PYTHON_VERSION} can be installed via package manager. Installing..."
