@@ -14,8 +14,7 @@ declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
     [PYTHON_VERSION]="3.10"
     [WXPYTHON_VERSION]="4.2.2"
-    [BUILD_PYTHON]=false
-    [BUILD_WX]=false
+    [BUILD_WXPYTHON]=false
     [INSTALL_DIR]="${HOME}"
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
@@ -36,17 +35,17 @@ show_help() {
             "Usage: ./psychopy_linux_installer [options]" \
             "Options:" \
             "  --psychopy-version=VERSION                    Specify PsychoPy version (default: ${DEFAULT_OPTS[PSYCHOPY_VERSION]})." \
-            "  --python-version=3.8|3.9|3.10                 Specify Python version (default: ${DEFAULT_OPTS[PYTHON_VERSION]})." \
-            "  --wxpython-version=VERSION                    Specify wxPython version (default: ${DEFAULT_OPTS[WXPYTHON_VERSION]})." \
+            "  --python-version=3.8.x|3.9.x|3.10.x           Specify Python version (Patch version is optional) (default: ${DEFAULT_OPTS[PYTHON_VERSION]})." \
             "  --requirements-file=FILE                      Specify a requirements.txt file to define dependencies." \
-            "  --build=[python|wxpython|both]                Build Python and/or wxPython from source instead of downloading. Not recommended, only use if installation doesn't work as expected." \
             "  --install-dir=DIR                             Specify installation directory (default: \"${DEFAULT_OPTS[INSTALL_DIR]}\")." \
             "  --venv-name=NAME                              Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default." \
-            "  --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2." \
             "  --sudo-mode=[ask|auto|error|continue|force]   Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly (default: ${DEFAULT_OPTS[SUDO_MODE]})." \
+            "  --additional-packages=PACKAGES                Specify additional pip packages to install. Format: package1==version,package2." \
+            "  --wxpython-version=VERSION                    Specify wxPython version (default: ${DEFAULT_OPTS[WXPYTHON_VERSION]})." \
+            "  --build-wxpython                              Build wxPython from source instead of downloading. This might take a long time." \
             "  --disable-shortcut                            Disable desktop shortcut creation." \
-            "  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set." \
             "  --disable-path                                Disable adding PsychoPy to system path." \
+            "  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set." \
             "  --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode." \
             "  -f, --force-overwrite                         Force overwrite of existing installation directory." \
             "  -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose)." \
@@ -115,7 +114,7 @@ log() {
 
 # Parses the command-line arguments and sets appropriate variables.
 process_arguments() {
-    local sudo_mode_set build_arg
+    local sudo_mode_set
     sudo_mode_set=false
 
     for arg in "${@}"; do
@@ -129,33 +128,8 @@ process_arguments() {
                 log_message "ERROR: Unsupported Python version '${PYTHON_VERSION}'. Supported major versions: '3.8', '3.9', or '3.10'. You can specify patch versions like '3.10.4'." nolog
             fi
             ;;
-        --wxpython-version=*)
-            WXPYTHON_VERSION="${arg#*=}"
-            ;;
-        --additional-packages=*)
-            ADDITIONAL_PACKAGES="${arg#*=}"
-            ;;
         --requirements-file=*)
             REQUIREMENTS_FILE="${arg#*=}"
-            ;;
-        --build=*)
-            build_arg="${arg#*=}"
-            case ${build_arg} in
-            python)
-                BUILD_PYTHON=true
-                ;;
-            wxpython)
-                BUILD_WX=true
-                ;;
-            both)
-                BUILD_PYTHON=true
-                BUILD_WX=true
-                ;;
-            *)
-                log_message "ERROR: Invalid --build option: '${build_arg}'." nolog
-                show_help
-                ;;
-            esac
             ;;
         --install-dir=*)
             INSTALL_DIR="${arg#*=}"
@@ -169,6 +143,15 @@ process_arguments() {
                 log_message "ERROR: Invalid value for --sudo-mode. Valid options are 'ask', 'continue', 'auto', 'error' or 'force'." nolog
             fi
             sudo_mode_set=true
+            ;;
+        --additional-packages=*)
+            ADDITIONAL_PACKAGES="${arg#*=}"
+            ;;
+        --wxpython-version=*)
+            WXPYTHON_VERSION="${arg#*=}"
+            ;;
+        --build-wxpython)
+            BUILD_WXPYTHON=true
             ;;
         --disable-shortcut)
             DISABLE_SHORTCUT=true
@@ -303,7 +286,6 @@ show_gui() {
         TRUE "Create desktop shortcuts" \
         FALSE "Run in non-interactive mode" \
         FALSE "Force overwrite of existing directory" \
-        FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
         FALSE "Enable verbose output"); then
         :
@@ -327,12 +309,8 @@ show_gui() {
         FORCE_OVERWRITE=true
     fi
 
-    if [[ ${options} == *"Build Python from source"* ]]; then
-        BUILD_PYTHON=true
-    fi
-
     if [[ ${options} == *"Build wxPython from source"* ]]; then
-        BUILD_WX=true
+        BUILD_WXPYTHON=true
     fi
 
     if [[ ${options} == *"Enable verbose output"* ]]; then
@@ -368,7 +346,6 @@ create_rerun_command() {
     local cmd lowercase_key curr def
     cmd=$(readlink -f "${0}")
     for key in "${!DEFAULT_OPTS[@]}"; do
-        [[ "${key}" == "BUILD_PYTHON" || "${key}" == "BUILD_WX" ]] && continue
         curr="${!key}"
         def="${DEFAULT_OPTS[${key}]}"
         lowercase_key=$(echo "${key}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
@@ -380,13 +357,7 @@ create_rerun_command() {
             fi
         fi
     done
-    if [[ "${BUILD_PYTHON}" == true && "${BUILD_WX}" == true ]]; then
-        cmd+=" --build=both"
-    elif [[ "${BUILD_PYTHON}" == true ]]; then
-        cmd+=" --build=python"
-    elif [[ "${BUILD_WX}" == true ]]; then
-        cmd+=" --build=wxpython"
-    fi
+
     [ -n "${REQUIREMENTS_FILE}" ] && cmd+=" --requirements-file=${REQUIREMENTS_FILE}"
     echo "${cmd}"
 }
@@ -907,7 +878,7 @@ check_python_in_package_manager() {
     if [ "${available_version}" == "${PYTHON_VERSION}" ]; then
         return 0
     else
-        log_message "WARNING: 'Python${PYTHON_VERSION}' not available in '${PKG_MANAGER}'."
+        log_message "INFO: 'Python${PYTHON_VERSION}' not available in '${PKG_MANAGER}'."
         return 1
     fi
 }
@@ -1007,26 +978,38 @@ install_pyenv() {
     fi
 }
 
-# Install Python using pyenv
 install_python_with_pyenv() {
+    install_dependencies python_with_venv
     log_message "INFO: Installing Python ${PYTHON_VERSION} with pyenv..."
     local pyenv_cmd="${DEFAULT_OPTS[PYENV_PATH]}/bin/pyenv"
 
     if [ ! -x "${pyenv_cmd}" ]; then
         log_message "ERROR: pyenv executable not found at ${pyenv_cmd}."
+        return 1
     fi
 
-    # Check if the version is already installed
-    if "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
-        log_message "INFO: Python${PYTHON_VERSION} is already installed with pyenv."
+    if [[ "${PYTHON_VERSION}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+        if "${pyenv_cmd}" versions | grep -Eq "${PYTHON_VERSION}\.[0-9]+"; then
+            log_message "INFO: Python ${PYTHON_VERSION} is already installed with pyenv."
+            return 0
+        fi
     else
-        log_message "INFO: Building Python${PYTHON_VERSION} with optimizations. This may take a while..."
-        PYTHON_CONFIGURE_OPTS="--enable-optimizations" log "${pyenv_cmd}" install "${PYTHON_VERSION}"
-
-        if ! "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
-            log_message "ERROR: Failed to install Python${PYTHON_VERSION} with pyenv."
+        if "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
+            log_message "INFO: Python ${PYTHON_VERSION} is already installed with pyenv."
+            return 0
         fi
     fi
+
+    log_message "INFO: Building Python ${PYTHON_VERSION} with optimizations. This may take a while..."
+    PYTHON_CONFIGURE_OPTS="--enable-shared --enable-optimizations --with-ensurepip=install" \
+        log "${pyenv_cmd}" install "${PYTHON_VERSION}"
+
+    if ! "${pyenv_cmd}" versions | grep -q "${PYTHON_VERSION}"; then
+        log_message "ERROR: Failed to install Python ${PYTHON_VERSION} with pyenv."
+        return 1
+    fi
+
+    log_message "INFO: Successfully installed Python ${PYTHON_VERSION}."
 }
 
 # Attempts to install wxPython from a GitHub released wheel.
@@ -1061,9 +1044,7 @@ install_wxpython_from_github() {
         renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
         mv "${wheel_name}" "${renamed_wheel}"
         if log "${PYTHON_VENV_COMMAND}" -m pip install "${renamed_wheel}"; then
-            log_message "INFO: Installed wxPython from '${renamed_wheel}'"
-            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
-            sudo_wrapper mv "${renamed_wheel}" /usr/local/psychopy_python/wx_wheels/
+            mv "${renamed_wheel}" "$("${PYTHON_VENV_COMMAND}" -m pip cache dir)/wheels/"
             return 0
         else
             log_message "WARNING: Installing wxPython from '${renamed_wheel}' failed."
@@ -1078,7 +1059,7 @@ install_wxpython_from_github() {
 
 # Builds wxPython from source with the necessary build dependencies.
 build_wxpython() {
-    local tmp_size_gb
+    local tmp_size_gb pip_flags
 
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
@@ -1088,7 +1069,13 @@ build_wxpython() {
     [ "${tmp_size_gb}" -le 2 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
 
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
-    if log "${PYTHON_VENV_COMMAND}" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
+    pip_flags="--no-binary=wxpython"
+
+    if [ "${BUILD_WXPYTHON}" = true ]; then
+        pip_flags+=" --no-cache-dir --force-reinstall"
+    fi
+
+    if log "${PYTHON_VENV_COMMAND}" -m pip install "${pip_flags}" "wxpython==${WXPYTHON_VERSION}"; then
         log_message "INFO: Successfully built wxPython from source."
     else
         log_message "ERROR: Building wxPython from source failed."
@@ -1357,7 +1344,6 @@ main() {
                                         tail -n 1)
 
                 if [ -n "${actual_python_version}" ]; then
-                    log_message "INFO: Using Python version ${actual_python_version} (matched from ${PYTHON_VERSION})"
                     python_cmd="${pyenv_versions_dir}/${actual_python_version}/bin/python"
                 else
                     log_message "WARNING: No specific patch version found for Python ${PYTHON_VERSION}, using default path"
@@ -1405,15 +1391,15 @@ main() {
         install_dependencies wxpython_deps
         log_message "INFO: Building wxPython from git. This might take a while ..."
         log "${PYTHON_VENV_COMMAND}" -m pip install git+https://github.com/wxWidgets/Phoenix
-    elif [ "${BUILD_WX}" = true ]; then
+    elif [ "${BUILD_WXPYTHON}" = true ]; then
         build_wxpython
     else
-        if log "${PYTHON_VENV_COMMAND}" -m pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==${WXPYTHON_VERSION}"; then
+        if log "${PYTHON_VENV_COMMAND}" -m pip install --only-binary=:all: --find-links "$("${PYTHON_VENV_COMMAND}" -m pip cache dir)/wheels/" "wxpython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from local wheel."
         elif log "${PYTHON_VENV_COMMAND}" -m pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
         elif install_wxpython_from_github; then
-            :
+            log_message "INFO: Successfully installed wxPython from GitHub release wheel."
         else
             build_wxpython
         fi
