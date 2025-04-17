@@ -89,7 +89,7 @@ Install curl with your package manager. On most distros curl is already installe
 | `--python-version=[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
 | `--wxpython-version=VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--build=[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Not recommended, only use if installation doesn't work as expected. |
-| `--install-dir=DIR` | Specify the installation directory (default: `$HOME`). |
+| `--install-dir=DIR` | Specify the installation directory (default: `${HOME}`). |
 | `--venv-name=NAME` | Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default. |
 | `--additional-packages=PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
@@ -97,6 +97,7 @@ Install curl with your package manager. On most distros curl is already installe
 | `--disable-path` | Disable adding PsychoPy to system path. |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
 | `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
+| `--remove-psychopy-settings` | Remove existing PsychoPy user settings (`${HOME}/.psychopy3`). Retaining this folder can sometimes result in conflicts with plugins or non-default pip-installed packages. |
 | `-f`, `--force-overwrite` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output for the terminal (logfile output is always verbose). |
 | `-h`, `--help` | Show help message. |

@@ -31,7 +31,7 @@ jobs:
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           BUILD_FLAG="${{ inputs.test-mode == 'build' && '--build=both' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest --remove-psychopy-settings $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Show installation logs
@@ -138,7 +138,7 @@ jobs:
           sudo rm -rf /tmp_dir
           sudo mkdir /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
-          ARGS="--install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --requirements-file=$REQ_FILE"
+          ARGS="--install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --requirements-file=$REQ_FILE --remove-psychopy-settings --additional-packages=pytest"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Show installation logs
