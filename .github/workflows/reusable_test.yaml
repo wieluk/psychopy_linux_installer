@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ inputs.test-mode == 'quick' && fromJson(format('["{0}"]', matrix.os)) || fromJson(format('["self-hosted", "{0}"]', matrix.os)) }}
     strategy:
       matrix:
-        os: ${{ inputs.test-mode == 'quick' && fromJson('["ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04"]') || fromJson('["ubuntu-24", "ubuntu-22", "ubuntu-20", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "pop-22", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15", "linuxmint-22"]') }}
+        os: ${{ inputs.test-mode == 'quick' && fromJson('["ubuntu-24.04", "ubuntu-22.04"]') || fromJson('["ubuntu-24", "ubuntu-22", "ubuntu-20", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "pop-22", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15", "linuxmint-22"]') }}
         python_version: ${{ inputs.test-mode == 'build' && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
         psychopy_version: ${{ inputs.test-mode == 'build' && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
       fail-fast: false
@@ -55,17 +55,14 @@ jobs:
             echo "PsychoPy version check failed in venv. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
-          if [ -f ~/.bashrc ]; then
-            source ~/.bashrc
-          fi
-          if ! command -v psychopy >/dev/null 2>&1; then
-            echo "psychopy not found in PATH after sourcing .bashrc"
+          # Test PATH as runner in a login shell
+          if ! bash --login -c "psychopy -v | grep -qE 'PsychoPy3, version $PSYCHOPY_VERSION'"; then
+            echo "psychopy not found in PATH or wrong version after login shell. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
-          if ! psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
-            echo "PsychoPy version check failed in PATH. Expected version: $PSYCHOPY_VERSION"
-            exit 1
-          fi
+          # Show versions
+          /tmp_dir/psychopy/bin/psychopy -v
+          bash --login -c "psychopy -v"
 
       - name: Install xvfb
         if: ${{ inputs.test-mode == 'quick' }}
@@ -120,6 +117,7 @@ jobs:
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
           if [ -f ~/.bashrc ]; then
             grep -v 'psychopy' ~/.bashrc > ~/.bashrc.tmp && mv ~/.bashrc.tmp ~/.bashrc
+          fi
 
   run-installer-with-requirements-txt:
     name: Run installer with requirements file
