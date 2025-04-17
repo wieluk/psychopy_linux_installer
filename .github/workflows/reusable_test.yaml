@@ -97,7 +97,6 @@ jobs:
           NEWHOME=/home/$NEWUSER
           # Create a new desktop user
           sudo useradd -m -s /bin/bash $NEWUSER
-          sudo usermod -aG sudo $NEWUSER
           # Transfer ownership of psychopy venv
           sudo chown -R $NEWUSER:$NEWUSER /tmp_dir/psychopy
           # Run version check as new user
