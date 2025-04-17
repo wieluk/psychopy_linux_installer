@@ -41,7 +41,7 @@ These distributions have been tested for compatibility, but the script may also 
 
 - This script will install multiple dependencies based on your Linux distribution. A detailed list of packages that may be installed is available [here](#optional-remove-dependencies) (click "Uninstall dependencies by package manager" to expand).
 - PsychoPy supports Python versions 3.8, 3.9, and 3.10.
-- A directory is created at `{install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (`--install-dir`, default: `$HOME`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`{install_dir}/${NAME}`).
+- A directory is created at `${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (`--install-dir`, default: `${HOME}`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`${INSTALL_DIR}/${NAME}`).
 - The script attempts to install Python via the package manager; if not found, it downloads a pre-packaged .tar.gz from GitHub releases or, if unavailable, from python.org to build from source.
 - Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python` if not available via package manager.
 - wxPython is downloaded from the [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/); if this fails, the script tries GitHub releases or builds from source.
@@ -96,8 +96,8 @@ Install curl with your package manager. On most distros curl is already installe
 | `--disable-shortcut` | Disable desktop shortcut creation. |
 | `--disable-path` | Disable adding PsychoPy to system path. |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
-| `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
 | `--remove-psychopy-settings` | Remove existing PsychoPy user settings (`${HOME}/.psychopy3`). Retaining this folder can sometimes result in conflicts with plugins or non-default pip-installed packages. |
+| `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
 | `-f`, `--force-overwrite` | Force overwrite of the existing installation directory. |
 | `-v`, `--verbose` | Enable verbose output for the terminal (logfile output is always verbose). |
 | `-h`, `--help` | Show help message. |
@@ -121,7 +121,7 @@ The script performs the following steps:
 - Installs necessary dependencies.
 - Creates a directory in the specified location for PsychoPy.
 - Checks if the specified Python version exists if necessary downloads and install it as `altinstall`.
-- Creates and activates a virtual environment for PsychoPy.
+- Creates a virtual environment for PsychoPy.
 - Installs/builds wxPython.
 - Upgrades pip and some pip packages.
 - Installs specified PsychoPy version.
@@ -186,16 +186,16 @@ rm ~/.local/share/applications/PsychoPy*.desktop
 During installation, a line is added to the end of your shell’s configuration file. The line typically looks like:
 
 ```bash
-export PATH="{install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}/.bin:$PATH"
+export PATH="{install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}/.bin:${PATH}"
 ```
 
 Locate and edit the configuration file for your shell to remove this line:
 
-- **Bash**: `$HOME/.bashrc`
-- **Zsh**: `$HOME/.zshrc`
-- **Fish**: `$HOME/.config/fish/config.fish`
-- **Csh**: `$HOME/.Cshrc`
-- **Tcsh**: `$HOME/.Tcshrc`
+- **Bash**: `${HOME}/.bashrc`
+- **Zsh**: `${HOME}/.zshrc`
+- **Fish**: `${HOME}/.config/fish/config.fish`
+- **Csh**: `${HOME}/.Cshrc`
+- **Tcsh**: `${HOME}/.Tcshrc`
 
 ### (Optional): Remove Dependencies
 
