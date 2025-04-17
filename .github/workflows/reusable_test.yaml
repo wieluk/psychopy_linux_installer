@@ -55,14 +55,11 @@ jobs:
             echo "PsychoPy version check failed in venv. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
-          # Test PATH as runner in a login shell
+
           if ! bash --login -c "psychopy -v | grep -qE 'PsychoPy3, version $PSYCHOPY_VERSION'"; then
             echo "psychopy not found in PATH or wrong version after login shell. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
-          # Show versions
-          /tmp_dir/psychopy/bin/psychopy -v
-          bash --login -c "psychopy -v"
 
       - name: Install xvfb
         if: ${{ inputs.test-mode == 'quick' }}
