@@ -392,7 +392,7 @@ create_rerun_command() {
 
 # Reads and parses a requirements file, adjusting dependency versions as needed.
 parse_requirements_file() {
-    local file current_version operator package_name package_version pkg_lower version original_spec new_spec
+    local file current_version operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version
     local -A package_versions
     local -A package_operators
     file="${1}"
@@ -434,9 +434,29 @@ parse_requirements_file() {
         fi
     done | tr '\n' ',' | sed 's/,$//')
 
-    PYTHON_VERSION=$(grep -i -E '^# Python version:' "${file}" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
-    WXPYTHON_VERSION="${package_versions["wxpython"]:-}"
-    PSYCHOPY_VERSION="${package_versions["psychopy"]:-}"
+    # Extract versions from requirements file
+    req_python_version=$(grep -i -E '^# Python version:' "${file}" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
+    req_wxpython_version="${package_versions["wxpython"]:-}"
+    req_psychopy_version="${package_versions["psychopy"]:-}"
+
+    # Set or warn for Python version, wxPython version, and PsychoPy version
+    if [ -n "${PYTHON_VERSION}" ] && [ -n "${req_python_version}" ] && [ "${PYTHON_VERSION}" != "${req_python_version}" ]; then
+        log_message "WARNING: Python version already set to '${PYTHON_VERSION}', but requirements file specifies '${req_python_version}'. Using '${PYTHON_VERSION}'."
+    elif [ -z "${PYTHON_VERSION}" ] && [ -n "${req_python_version}" ]; then
+        PYTHON_VERSION="${req_python_version}"
+    fi
+
+    if [ -n "${WXPYTHON_VERSION}" ] && [ -n "${req_wxpython_version}" ] && [ "${WXPYTHON_VERSION}" != "${req_wxpython_version}" ]; then
+        log_message "WARNING: wxPython version already set to '${WXPYTHON_VERSION}', but requirements file specifies '${req_wxpython_version}'. Using '${WXPYTHON_VERSION}'."
+    elif [ -z "${WXPYTHON_VERSION}" ] && [ -n "${req_wxpython_version}" ]; then
+        WXPYTHON_VERSION="${req_wxpython_version}"
+    fi
+
+    if [ -n "${PSYCHOPY_VERSION}" ] && [ -n "${req_psychopy_version}" ] && [ "${PSYCHOPY_VERSION}" != "${req_psychopy_version}" ]; then
+        log_message "WARNING: PsychoPy version already set to '${PSYCHOPY_VERSION}', but requirements file specifies '${req_psychopy_version}'. Using '${PSYCHOPY_VERSION}'."
+    elif [ -z "${PSYCHOPY_VERSION}" ] && [ -n "${req_psychopy_version}" ]; then
+        PSYCHOPY_VERSION="${req_psychopy_version}"
+    fi
 
     [[ -z "${PYTHON_VERSION}" ]] && log_message "WARNING: Python version not specified in the requirements file; using default: '${DEFAULT_OPTS[PYTHON_VERSION]}'."
     [[ -z "${WXPYTHON_VERSION}" ]] && log_message "WARNING: wxPython version not specified in the requirements file; using default: '${DEFAULT_OPTS[WXPYTHON_VERSION]}'."
@@ -1489,21 +1509,21 @@ main() {
         if ! "${PYTHON_VENV_COMMAND}" -m pip show psychopy &>/dev/null; then
             log_message "ERROR: PsychoPy installation failed."
         fi
+    fi
 
-        # Install additional packages if specified
-        if [ -n "${ADDITIONAL_PACKAGES}" ]; then
-            log_message "INFO: Installing additional packages ..."
-            IFS=',' read -ra PACKAGES <<<"${ADDITIONAL_PACKAGES}"
-            for package in "${PACKAGES[@]}"; do
-                log_message "INFO: Installing '${package}' ..."
-                if log "${PYTHON_VENV_COMMAND}" -m pip install "${package}"; then
-                    installed_version=$("${PYTHON_VENV_COMMAND}" -m pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
-                    log_message "INFO: '${package%%=*}' version '${installed_version}' installed successfully."
-                else
-                    log_message "WARNING: Failed to install '${package}'. Skipping."
-                fi
-            done
-        fi
+    # Install additional packages if specified
+    if [ -n "${ADDITIONAL_PACKAGES}" ]; then
+        log_message "INFO: Installing additional packages ..."
+        IFS=',' read -ra PACKAGES <<<"${ADDITIONAL_PACKAGES}"
+        for package in "${PACKAGES[@]}"; do
+            log_message "INFO: Installing '${package}' ..."
+            if log "${PYTHON_VENV_COMMAND}" -m pip install "${package}"; then
+                installed_version=$("${PYTHON_VENV_COMMAND}" -m pip show "${package%%=*}" | grep Version | cut -d' ' -f2)
+                log_message "INFO: '${package%%=*}' version '${installed_version}' installed successfully."
+            else
+                log_message "WARNING: Failed to install '${package}'. Skipping."
+            fi
+        done
     fi
 
     # Install numpy<2 if PsychoPy version is less than 2024.2.0
