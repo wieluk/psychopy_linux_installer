@@ -46,17 +46,25 @@ jobs:
             echo "No installation logs found in either /tmp or /tmp_dir"
           fi
 
-      - name: Verify PsychoPy installation and version
+      - name: Verify PsychoPy installation, PATH, and version
         run: |
           if [ "$PSYCHOPY_VERSION" = "latest" ]; then
             PSYCHOPY_VERSION=$(curl -s "https://pypi.org/pypi/psychopy/json" | jq -r .info.version)
           fi
-
           if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
-              echo "PsychoPy version check failed. Expected version: $PSYCHOPY_VERSION"
-              exit 1
-          else
-              /tmp_dir/psychopy/bin/psychopy -v
+            echo "PsychoPy version check failed in venv. Expected version: $PSYCHOPY_VERSION"
+            exit 1
+          fi
+          if [ -f ~/.bashrc ]; then
+            source ~/.bashrc
+          fi
+          if ! command -v psychopy >/dev/null 2>&1; then
+            echo "psychopy not found in PATH after sourcing .bashrc"
+            exit 1
+          fi
+          if ! psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
+            echo "PsychoPy version check failed in PATH. Expected version: $PSYCHOPY_VERSION"
+            exit 1
           fi
 
       - name: Install xvfb
@@ -88,10 +96,30 @@ jobs:
           fi
           echo "PsychoPy program completed"
 
+      - name: Test PsychoPy venv as new desktop user
+        run: |
+          set -e
+          NEWUSER=testpsychopyuser
+          NEWHOME=/home/$NEWUSER
+          # Create a new desktop user
+          sudo useradd -m -s /bin/bash $NEWUSER
+          sudo usermod -aG sudo $NEWUSER
+          # Transfer ownership of psychopy venv
+          sudo chown -R $NEWUSER:$NEWUSER /tmp_dir/psychopy
+          # Run version check as new user
+          sudo -i -u $NEWUSER bash -c '/tmp_dir/psychopy/bin/psychopy -v'
+
       - name: Cleanup
         if: always()
         run: |
+          # Remove PsychoPy test user and all related files
+          if id "testpsychopyuser" &>/dev/null; then
+            sudo userdel -r testpsychopyuser || true
+            sudo rm -rf /home/testpsychopyuser
+          fi
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
+          if [ -f ~/.bashrc ]; then
+            grep -v 'psychopy' ~/.bashrc > ~/.bashrc.tmp && mv ~/.bashrc.tmp ~/.bashrc
 
   run-installer-with-requirements-txt:
     name: Run installer with requirements file
