@@ -108,6 +108,7 @@ jobs:
         run: |
           # Remove PsychoPy test user and all related files
           if id "testpsychopyuser" &>/dev/null; then
+            sudo pkill -u testpsychopyuser || true
             sudo userdel -r testpsychopyuser || true
             sudo rm -rf /home/testpsychopyuser
           fi
