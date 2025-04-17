@@ -424,7 +424,7 @@ parse_requirements_file() {
         fi
     done <"${file}"
 
-    BACKUP_ADDITIONAL_PACKAGES=$(for pkg in "${!package_versions[@]}"; do
+    REQUIREMENTSFILE_PACKAGES=$(for pkg in "${!package_versions[@]}"; do
         if [[ "${pkg}" != "wxpython" && "${pkg}" != "psychopy" && "${pkg}" != "winrt" && "${pkg}" != "pywin32" && "${pkg}" != "pypiwin32" && "${pkg}" != "pywinhook" ]]; then
             echo "${pkg}${package_operators[${pkg}]}${package_versions[${pkg}]}"
         else
@@ -464,7 +464,7 @@ parse_requirements_file() {
     if [ -z "${PSYCHOPY_VERSION}" ]; then
         log_message "ERROR: psychopy version not specified in requirements.txt." nolog
     else
-        BACKUP_ADDITIONAL_PACKAGES="${BACKUP_ADDITIONAL_PACKAGES:+${BACKUP_ADDITIONAL_PACKAGES},}psychopy==${PSYCHOPY_VERSION}"
+        REQUIREMENTSFILE_PACKAGES="${REQUIREMENTSFILE_PACKAGES:+${REQUIREMENTSFILE_PACKAGES},}psychopy==${PSYCHOPY_VERSION}"
     fi
 
     # Adjust Linux dependencies
@@ -474,8 +474,8 @@ parse_requirements_file() {
             version="${package_versions[${pkg_lower}]}"
             original_spec="${pkg_lower}${package_operators[${pkg_lower}]}${version}"
             new_spec="${pkg_lower}>=${version}"
-            if [[ "${BACKUP_ADDITIONAL_PACKAGES}" == *"${original_spec}"* ]]; then
-                BACKUP_ADDITIONAL_PACKAGES=${BACKUP_ADDITIONAL_PACKAGES//"${original_spec}"/"${new_spec}"}
+            if [[ "${REQUIREMENTSFILE_PACKAGES}" == *"${original_spec}"* ]]; then
+                REQUIREMENTSFILE_PACKAGES=${REQUIREMENTSFILE_PACKAGES//"${original_spec}"/"${new_spec}"}
                 log_message "WARNING: '${pkg}' from the requirements file was installed with a flexible version specification. '${original_spec}' may be platform-specific and was adjusted to '${new_spec}' for Linux compatibility. You may manually install the exact version in the PsychoPy venv." >&2
             fi
         fi
@@ -1474,7 +1474,7 @@ main() {
 
     if [ -n "${REQUIREMENTS_FILE}" ]; then
         log_message "INFO: Installing packages from requirements file ..."
-        transformed_packages=$(echo "${BACKUP_ADDITIONAL_PACKAGES}" | tr ',' '\n' | while read -r pkg; do
+        transformed_packages=$(echo "${REQUIREMENTSFILE_PACKAGES}" | tr ',' '\n' | while read -r pkg; do
             convert_psychopy_req_to_git_url "${pkg}"
         done)
 
@@ -1482,7 +1482,7 @@ main() {
             log_message "INFO: Packages from '${REQUIREMENTS_FILE}' installed successfully."
         else
             log_message "WARNING: Failed to install packages from '${REQUIREMENTS_FILE}'. Installing packages one by one ..."
-            IFS=',' read -ra PACKAGES <<<"${BACKUP_ADDITIONAL_PACKAGES}"
+            IFS=',' read -ra PACKAGES <<<"${REQUIREMENTSFILE_PACKAGES}"
             for package in "${PACKAGES[@]}"; do
                 log_message "INFO: Installing '${package}' ..."
                 transformed_pkg=$(convert_psychopy_req_to_git_url "${package}")
