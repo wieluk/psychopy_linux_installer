@@ -56,16 +56,9 @@ jobs:
             exit 1
           fi
 
-          echo "=== DEBUG: .bashrc ==="
-          cat ~/.bashrc || echo "No .bashrc"
-          echo "=== DEBUG: PATH in login shell ==="
-          bash --login -c 'echo $PATH'
-          echo "=== DEBUG: psychopy location in login shell ==="
-          bash --login -c 'command -v psychopy || echo not found'
-
-          # Source .bashrc explicitly in a login shell and check psychopy
-          if ! bash --login -c "source ~/.bashrc; psychopy -v | grep -qE 'PsychoPy3, version $PSYCHOPY_VERSION'"; then
+          if ! bash --login -i -c "source ~/.bashrc; psychopy -v | grep -qE 'PsychoPy3, version $PSYCHOPY_VERSION'"; then
             echo "psychopy not found in PATH or wrong version after login shell. Expected version: $PSYCHOPY_VERSION"
+            exit 1
           fi
 
       - name: Install xvfb
