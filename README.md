@@ -94,7 +94,7 @@ Install curl with your package manager. On most distros curl is already installe
 | `--additional-packages=PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
 | `--disable-shortcut` | Disable desktop shortcut creation. |
-| `--disable-path` | Disable adding PsychoPy to system path. |
+| `--disable-path` | Disable adding PsychoPy to system path (`/usr/local/bin`). |
 | `--non-interactive` | Run the installer without user interaction. Sets `sudo-mode` to `auto` if not set. |
 | `--remove-psychopy-settings` | Remove existing PsychoPy user settings (`${HOME}/.psychopy3`). Retaining this folder can sometimes result in conflicts with plugins or non-default pip-installed packages. |
 | `--gui` | Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode. |
@@ -133,13 +133,13 @@ The script performs the following steps:
 
 After installation, desktop icons for PsychoPy will be created automatically, and the application will be added to your system's PATH as:
 
-`PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}`
+`PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` or `${VENV_NAME}`
 
 You can also launch PsychoPy directly using the absolute path:
 
 `${PSYCHOPY_DIR}/bin/psychopy`
 
-Please reboot to apply security limits and to refresh system path.
+Please reboot to apply security limits.
 
 **Note:**
 All commands, along with the installed versions and set paths will be displayed at the end of the script.
@@ -182,20 +182,12 @@ rm ~/.local/share/applications/PsychoPy*.desktop
 
 ### Remove PsychoPy from the System Path
 
-During installation, a line is added to the end of your shell’s configuration file. The line typically looks like:
+During installation, a symbolic link to the PsychoPy executable is created in `/usr/local/bin`.  
+To remove it, run:
 
 ```bash
-export PATH="{install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}/.bin:${PATH}"
+#rm /usr/local/bin/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}
 ```
-
-Locate and edit the configuration file for your shell to remove this line:
-
-- **Bash**: `${HOME}/.bashrc`
-- **Zsh**: `${HOME}/.zshrc`
-- **Fish**: `${HOME}/.config/fish/config.fish`
-- **Csh**: `${HOME}/.Cshrc`
-- **Tcsh**: `${HOME}/.Tcshrc`
-
 ### (Optional): Remove Dependencies
 
 Dependencies for PsychoPy and for building Python/WxPython are installed via package manager.

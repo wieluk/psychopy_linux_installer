@@ -1259,49 +1259,23 @@ create_desktop_shortcut() {
     log_message "INFO: Desktop shortcuts created successfully."
 }
 
-# Adds the PsychoPy installation's bin directory to the user's PATH.
+# Installs a versioned PsychoPy launcher into /usr/local/bin
 add_psychopy_to_path() {
-    local shell_name target_bin
-    local bin_dir="${PSYCHOPY_DIR}/.bin"
+    local name src target
 
-    target_bin="${bin_dir}/$(basename "${PSYCHOPY_DIR}")"
-    shell_name=$(basename "${SHELL}")
+    # derive a versioned name from the install dir, e.g. "PsychoPy-2024.2.4"
+    name="$(basename "${PSYCHOPY_DIR}")"
+    src="${PSYCHOPY_DIR}/bin/psychopy"
+    target="/usr/local/bin/${name}"
 
-    mkdir -p "${bin_dir}"
-    ln -sf "${PSYCHOPY_DIR}/bin/psychopy" "${target_bin}"
-
-    local config_file=""
-    local path_line=""
-
-    case ${shell_name} in
-    bash)
-        config_file="${HOME}/.bashrc"
-        path_line="export PATH=\"${bin_dir}:\${PATH}\""
-        ;;
-    zsh)
-        config_file="${HOME}/.zshrc"
-        path_line="export PATH=\"${bin_dir}:\${PATH}\""
-        ;;
-    fish)
-        config_file="${HOME}/.config/fish/config.fish"
-        path_line="set -gx PATH \"${bin_dir}\" \${PATH}"
-        ;;
-    csh | tcsh)
-        config_file="${HOME}/.${shell_name}rc"
-        path_line="setenv PATH ${bin_dir}:\${PATH}"
-        ;;
-    *)
-        log_message "WARNING: Unsupported shell: '${shell_name}'; PsychoPy not added to path"
-        ;;
-    esac
-
-    if ! grep -Fxq "${path_line}" "${config_file}"; then
-        sh -c "echo '${path_line}' >> \"${config_file}\""
-        log_message "INFO: Added PsychoPy to the PATH in '${config_file}'."
-    else
-        log_message "INFO: PsychoPy is already in the PATH in '${config_file}'."
+    if [ ! -x "${src}" ]; then
+        log_message "ERROR: PsychoPy executable not found or not executable: ${src}"
     fi
-    log_message "NOTE: To update your PATH, run 'source ${config_file}' or restart your terminal."
+
+    log_message "INFO: Installing system‑wide launcher: ${target} → ${src}"
+    sudo ln -sf "${src}" "${target}"
+    sudo chmod +x "${target}"
+
     log_message "NOTE: To start PsychoPy from the system path, use: '$(basename "${PSYCHOPY_DIR}")'"
 }
 
