@@ -1408,7 +1408,7 @@ main() {
         log_message "INFO: Creating PsychoPy directory at '${PSYCHOPY_DIR}' ..."
         sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
     fi
-
+    sudo_wrapper chmod -R a+rX "${PSYCHOPY_DIR}"
     [ -w "${PSYCHOPY_DIR}" ] || sudo_wrapper chown "${USER}" "${PSYCHOPY_DIR}"
 
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
