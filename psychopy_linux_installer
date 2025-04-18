@@ -16,7 +16,7 @@ declare -A DEFAULT_OPTS=(
     [WXPYTHON_VERSION]="4.2.2"
     [BUILD_PYTHON]=false
     [BUILD_WX]=false
-    [INSTALL_DIR]="/opt/psychopy"
+    [INSTALL_DIR]="/usr/local/psychopy"
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
@@ -1044,7 +1044,7 @@ build_python() {
     cd "${temp_dir}/Python-${latest_patch_version}" || {
         log_message "ERROR: Failed to change directory."
     }
-    log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy_python
+    log ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy/python
     log make -j "$(nproc)"
     sudo_wrapper make altinstall
     cd "${PSYCHOPY_DIR}" || {
@@ -1171,8 +1171,9 @@ install_wxpython_from_github() {
         mv "${wheel_name}" "${renamed_wheel}"
         if log "${PYTHON_VENV_COMMAND}" -m pip install "${renamed_wheel}"; then
             log_message "INFO: Installed wxPython from '${renamed_wheel}'"
-            sudo_wrapper mkdir -p /usr/local/psychopy_python/wx_wheels
-            sudo_wrapper mv "${renamed_wheel}" /usr/local/psychopy_python/wx_wheels/
+            sudo_wrapper mkdir -p /usr/local/psychopy/python/wx_wheels
+            sudo_wrapper chmod -R a+rX /usr/local/psychopy/python/wx_wheels
+            sudo_wrapper mv "${renamed_wheel}" /usr/local/psychop/python/wx_wheels/
             return 0
         else
             log_message "WARNING: Installing wxPython from '${renamed_wheel}' failed."
@@ -1435,8 +1436,8 @@ main() {
             install_dependencies python_build_deps
             build_python
         else
-            if [ -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
-                log_message "INFO: 'Python${PYTHON_VERSION}' is already installed in '/usr/local/psychopy_python'. Skipping installation."
+            if [ -x "/usr/local/psychopy/python/bin/python${PYTHON_VERSION}" ]; then
+                log_message "INFO: 'Python${PYTHON_VERSION}' is already installed in '/usr/local/psychopy/python'. Skipping installation."
             else
                 log_message "INFO: Installing Python build dependencies ..."
                 install_dependencies python_build_deps
@@ -1448,12 +1449,12 @@ main() {
             fi
         fi
 
-        check_python_env "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}"
-        if [ ! -x "/usr/local/psychopy_python/bin/python${PYTHON_VERSION}" ]; then
-            log_message "ERROR: 'python${PYTHON_VERSION}' not found in '/usr/local/psychopy_python'. Something went wrong while installing/building. You can try '--build=python'."
+        check_python_env "/usr/local/psychopy/python/bin/python${PYTHON_VERSION}"
+        if [ ! -x "/usr/local/psychopy/python/bin/python${PYTHON_VERSION}" ]; then
+            log_message "ERROR: 'python${PYTHON_VERSION}' not found in '/usr/local/psychopy/python'. Something went wrong while installing/building. You can try '--build=python'."
         fi
-        export PATH=/usr/local/psychopy_python/bin:$PATH
-        /usr/local/psychopy_python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
+        export PATH=/usr/local/psychopy/python/bin:$PATH
+        /usr/local/psychopy/python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     else
         log_message "INFO: 'Python${PYTHON_VERSION}' can be installed via package manager. Installing ..."
         install_dependencies python_with_venv
@@ -1490,7 +1491,7 @@ main() {
     elif [ "${BUILD_WX}" = true ]; then
         build_wxpython
     else
-        if log "${PYTHON_VENV_COMMAND}" -m pip install --only-binary=:all: --find-links /usr/local/psychopy_python/wx_wheels/ "wxpython==${WXPYTHON_VERSION}"; then
+        if log "${PYTHON_VENV_COMMAND}" -m pip install --only-binary=:all: --find-links /usr/local/psychopy/python/wx_wheels/ "wxpython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from local wheel."
         elif log "${PYTHON_VENV_COMMAND}" -m pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
