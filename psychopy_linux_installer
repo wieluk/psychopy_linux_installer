@@ -1259,23 +1259,21 @@ create_desktop_shortcut() {
     log_message "INFO: Desktop shortcuts created successfully."
 }
 
-# Installs a versioned PsychoPy launcher into /usr/local/bin
+# Adds the PsychoPy installation's bin directory to the PATH.
 add_psychopy_to_path() {
     local name src target
 
-    # derive a versioned name from the install dir, e.g. "PsychoPy-2024.2.4"
     name="$(basename "${PSYCHOPY_DIR}")"
     src="${PSYCHOPY_DIR}/bin/psychopy"
     target="/usr/local/bin/${name}"
 
-    if [ ! -x "${src}" ]; then
-        log_message "ERROR: PsychoPy executable not found or not executable: ${src}"
+    if [ -L "${target}" ] || [ ! -e "${target}" ]; then
+        sudo_wrapper ln -sf "${src}" "${target}"
+    else
+        log_message "WARNING: Symlink Target exists and is not a symlink: '${target}'. Skipping symlink creation."
+        return
     fi
-
-    log_message "INFO: Installing system‑wide launcher: ${target} → ${src}"
-    sudo_wrapper ln -sf "${src}" "${target}"
     sudo_wrapper chmod +x "${target}"
-
     log_message "NOTE: To start PsychoPy from the system path, use: '$(basename "${PSYCHOPY_DIR}")'"
 }
 
