@@ -41,7 +41,7 @@ These distributions have been tested for compatibility, but the script may also 
 
 - This script will install multiple dependencies based on your Linux distribution. A detailed list of packages that may be installed is available [here](#optional-remove-dependencies) (click "Uninstall dependencies by package manager" to expand).
 - PsychoPy supports Python versions 3.8, 3.9, and 3.10.
-- A directory is created at `${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (`--install-dir`, default: `${HOME}`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`${INSTALL_DIR}/${NAME}`).
+- A directory is created at `${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (`--install-dir`, default: `/opt/psychopy`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`${INSTALL_DIR}/${NAME}`).
 - The script attempts to install Python via the package manager; if not found, it downloads a pre-packaged .tar.gz from GitHub releases or, if unavailable, from python.org to build from source.
 - Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy_python` if not available via package manager.
 - wxPython is downloaded from the [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/); if this fails, the script tries GitHub releases or builds from source.
@@ -89,7 +89,7 @@ Install curl with your package manager. On most distros curl is already installe
 | `--python-version=[3.8\|3.9\|3.10]` | Specify the [Python Version](https://www.python.org/ftp/python) to install (default: `3.10`). |
 | `--wxpython-version=VERSION` | Specify the [wxPython Version](https://pypi.org/project/wxPython/#history) to install (default: `4.2.2`). |
 | `--build=[python\|wxpython\|both]` | Build Python and/or wxPython from source instead of downloading wheel/binaries. Not recommended, only use if installation doesn't work as expected. |
-| `--install-dir=DIR` | Specify the installation directory (default: `${HOME}`). |
+| `--install-dir=DIR` | Specify the installation directory (default: `/opt/psychopy`). |
 | `--venv-name=NAME` | Specify a custom name for the virtual environment folder. If omitted, a versioned subdirectory will be used by default. |
 | `--additional-packages=PACKAGES` | Specify additional pip packages to install. Format: package1==version,package2. No extra packages are installed if not set. |
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. (default: `ask`) |
@@ -110,7 +110,7 @@ Install curl with your package manager. On most distros curl is already installe
 ## Example
 
 ```bash
-./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/user1 --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force-overwrite
+./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/opt --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --build=python --verbose --force-overwrite
 ```
 
 ## Script Details
@@ -158,7 +158,7 @@ By default, PsychoPy installs its files in the following locations:
 To uninstall PsychoPy, delete both directories:
 
 ```bash
-# rm -rf {install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}  # Use your version/venv-name and install_dir (default is the home directory)
+# rm -rf {install_dir}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}  # Use your version/venv-name and install_dir (default is the /opt/psychopy directory)
 sudo rm -rf /usr/local/psychopy_python
 ```
 
