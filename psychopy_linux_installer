@@ -1273,8 +1273,8 @@ add_psychopy_to_path() {
     fi
 
     log_message "INFO: Installing system‑wide launcher: ${target} → ${src}"
-    sudo ln -sf "${src}" "${target}"
-    sudo chmod +x "${target}"
+    sudo_wrapper ln -sf "${src}" "${target}"
+    sudo_wrapper chmod +x "${target}"
 
     log_message "NOTE: To start PsychoPy from the system path, use: '$(basename "${PSYCHOPY_DIR}")'"
 }
