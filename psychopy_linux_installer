@@ -91,7 +91,11 @@ log_message() {
     esac
 
     plain_message="${timestamp} - ${1}"
-    echo "${plain_message}" >>"${LOG_FILE}"
+
+    if [[ "${FUNCNAME[1]}" != "log" ]]; then
+        echo "${plain_message}" >>"${LOG_FILE}"
+    fi
+
     printf "%s\n" "${formatted_message}"
 
     if [[ "${1}" == ERROR:* ]]; then
@@ -706,41 +710,70 @@ detect_package_manager() {
 update_package_manager() {
     case ${PKG_MANAGER} in
     apt-get) sudo_wrapper apt-get update -qq ;;
-    yum) sudo_wrapper yum makecache -q ;;
-    dnf) sudo_wrapper dnf makecache -q ;;
-    pacman) log_message "WARNING: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
-    zypper) sudo_wrapper zypper refresh ;;
+    yum)     sudo_wrapper yum makecache -q ;;
+    dnf)     sudo_wrapper dnf makecache -q ;;
+    pacman)  log_message "WARNING: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
+    zypper)  sudo_wrapper zypper refresh ;;
     *)
         log_message "ERROR: No compatible package manager found."
         ;;
     esac
 }
 
+is_package_installed() {
+    case "${PKG_MANAGER}" in
+        apt-get) dpkg -s "$1" &>/dev/null ;;
+        yum|dnf) rpm -q "$1" &>/dev/null ;;
+        pacman)  pacman -Q "$1" &>/dev/null ;;
+        zypper)  rpm -q "$1" &>/dev/null ;;
+        *)       return 1 ;;
+    esac
+}
+
 # Installs the provided packages via the identified package manager.
 install_packages() {
     local packages=("${@}")
-
-    # Try batch install first
     local available_packages
+    local to_install already_installed
+
     read -r -a available_packages <<<"$(filter_installable_packages "${packages[@]}")"
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
     [ -n "${diff}" ] && log_message "WARNING: The following packages are not available and will be skipped: '${diff}'"
 
-    # Check if the available_packages array is empty
-    if [ ${#available_packages[@]} -eq 0 ]; then
-        log_message "WARNING: No valid packages found for installation."
-        return
+    for package in "${available_packages[@]}"; do
+        if is_package_installed "${package}"; then
+            already_installed+=("${package}")
+        else
+            to_install+=("${package}")
+        fi
+    done
+
+    if [ ${#already_installed[@]} -gt 0 ]; then
+        log log_message "INFO: The following packages are already installed: '${already_installed[*]}'"
+    fi
+
+    if [ ${#to_install[@]} -eq 0 ]; then
+        if [ ${#already_installed[@]} -gt 0 ] && [ -n "${diff}" ]; then
+            log log_message "INFO: Nothing to install - some packages already installed, others unavailable or skipped."
+            return 0
+        elif [ ${#already_installed[@]} -gt 0 ] && [ -z "${diff}" ]; then
+            log log_message "INFO: Nothing to install - all requested packages are already installed."
+            return 0
+        else
+            log_message "WARNING: Nothing to install - all requested packages unavailable or skipped."
+            return 0
+        fi
     fi
 
     if {
         case "${PKG_MANAGER}" in
-        apt-get) sudo_wrapper apt-get install -y -qq "${available_packages[@]}" ;;
-        yum) sudo_wrapper yum install -y -q "${available_packages[@]}" ;;
-        dnf) sudo_wrapper dnf install -y -q "${available_packages[@]}" ;;
-        pacman) sudo_wrapper pacman -S --needed --noconfirm "${available_packages[@]}" ;;
-        zypper) sudo_wrapper zypper install -y "${available_packages[@]}" ;;
+        apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
+        yum)     sudo_wrapper yum install -y -q "${to_install[@]}" ;;
+        dnf)     sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
+        pacman)  sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
+        zypper)  sudo_wrapper zypper install -y "${to_install[@]}" ;;
         *)
             log_message "ERROR: No compatible package manager found."
             ;;
@@ -755,10 +788,10 @@ install_packages() {
     for package in "${packages[@]}"; do
         case ${PKG_MANAGER} in
         apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        yum) sudo_wrapper yum install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        dnf) sudo_wrapper dnf install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        pacman) sudo_wrapper pacman -S --needed --noconfirm "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        zypper) sudo_wrapper zypper install -y "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+        yum)     sudo_wrapper yum install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+        dnf)     sudo_wrapper dnf install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+        pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+        zypper)  sudo_wrapper zypper install -y "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
         *)
             log_message "ERROR: No compatible package manager found."
             ;;
@@ -766,7 +799,7 @@ install_packages() {
     done
 }
 
-# Installs dependency groups (e.g. script_deps, python_build_deps, etc.).
+# Installs dependency groups
 install_dependencies() {
     local dep_type dependencies script_deps psychopy_deps fonts python_build_deps wxpython_deps python_with_venv
 
@@ -897,7 +930,7 @@ check_python_in_package_manager() {
     if [ "${available_version}" == "${PYTHON_VERSION}" ]; then
         return 0
     else
-        log_message "WARNING: 'Python${PYTHON_VERSION}' not available in '${PKG_MANAGER}'."
+        log_message "INFO: 'Python${PYTHON_VERSION}' not available in '${PKG_MANAGER}'."
         return 1
     fi
 }
