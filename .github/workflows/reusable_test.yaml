@@ -109,15 +109,16 @@ jobs:
             fi
           fi
 
-          set -e
           NEWUSER=testpsychopyuser
           NEWHOME=/home/$NEWUSER
-          # Create a new desktop user
           sudo useradd -m -s /bin/bash $NEWUSER
-          # Transfer ownership of psychopy venv
           sudo chown -R $NEWUSER:$NEWUSER /tmp_dir/psychopy
-          # Run version check as new user
-          sudo -i -u $NEWUSER bash -c 'DISPLAY=:0 /tmp_dir/psychopy/bin/psychopy -v'
+
+          output=$(sudo -i -u $NEWUSER bash -c 'DISPLAY=:0 /tmp_dir/psychopy/bin/psychopy -v' || true)
+          if ! echo "$output" | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
+            echo "PsychoPy version check failed as new user. Expected version: $PSYCHOPY_VERSION"
+            exit 1
+          fi
 
       - name: Cleanup
         if: always()
