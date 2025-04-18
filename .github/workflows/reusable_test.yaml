@@ -92,6 +92,23 @@ jobs:
 
       - name: Test PsychoPy venv as new desktop user
         run: |
+          if ! command -v useradd >/dev/null; then
+            if command -v apt-get >/dev/null; then
+              sudo apt-get update && sudo apt-get install -y passwd
+            elif command -v dnf >/dev/null; then
+              sudo dnf install -y shadow-utils
+            elif command -v yum >/dev/null; then
+              sudo yum install -y shadow-utils
+            elif command -v zypper >/dev/null; then
+              sudo zypper install -y shadow
+            elif command -v pacman >/dev/null; then
+              sudo pacman -Sy --noconfirm shadow
+            else
+              echo "No supported package manager found to install useradd"
+              exit 1
+            fi
+          fi
+
           set -e
           NEWUSER=testpsychopyuser
           NEWHOME=/home/$NEWUSER
@@ -100,7 +117,7 @@ jobs:
           # Transfer ownership of psychopy venv
           sudo chown -R $NEWUSER:$NEWUSER /tmp_dir/psychopy
           # Run version check as new user
-          sudo -i -u $NEWUSER bash -c '/tmp_dir/psychopy/bin/psychopy -v'
+          sudo -i -u $NEWUSER bash -c 'DISPLAY=:0 /tmp_dir/psychopy/bin/psychopy -v'
 
       - name: Cleanup
         if: always()
