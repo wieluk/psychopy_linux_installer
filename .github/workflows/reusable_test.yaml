@@ -92,28 +92,10 @@ jobs:
           echo "PsychoPy program completed"
 
       - name: Test PsychoPy venv as new desktop user
+        if: ${{ matrix.os != 'debian-11' && matrix.os != 'debian-12' }}
         run: |
-          if ! command -v useradd >/dev/null; then
-            if command -v apt-get >/dev/null; then
-              sudo apt-get update && sudo apt-get install -y shadow
-            elif command -v dnf >/dev/null; then
-              sudo dnf install -y shadow-utils
-            elif command -v yum >/dev/null; then
-              sudo yum install -y shadow-utils
-            elif command -v zypper >/dev/null; then
-              sudo zypper install -y shadow
-            elif command -v pacman >/dev/null; then
-              sudo pacman -Sy --noconfirm shadow
-            else
-              echo "No supported package manager found to install useradd"
-              exit 1
-            fi
-          fi
-
           NEWUSER=testpsychopyuser
-          NEWHOME=/home/$NEWUSER
           sudo useradd -m -s /bin/bash $NEWUSER
-          sudo chown -R $NEWUSER:$NEWUSER /tmp_dir/psychopy
 
           output=$(sudo -i -u $NEWUSER bash -c 'DISPLAY=:0 /tmp_dir/psychopy/bin/psychopy -v' || true)
           if ! echo "$output" | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
