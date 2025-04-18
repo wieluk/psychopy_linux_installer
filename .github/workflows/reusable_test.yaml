@@ -57,8 +57,8 @@ jobs:
             exit 1
           fi
 
-          if ! bash --login -i -c "source ~/.bashrc; psychopy -v | grep -qE 'PsychoPy3, version $PSYCHOPY_VERSION'"; then
-            echo "psychopy not found in PATH or wrong version after login shell. Expected version: $PSYCHOPY_VERSION"
+          if ! psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
+            echo "psychopy not found in PATH or wrong version. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
 

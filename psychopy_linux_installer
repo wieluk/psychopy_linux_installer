@@ -1173,7 +1173,7 @@ install_wxpython_from_github() {
             log_message "INFO: Installed wxPython from '${renamed_wheel}'"
             sudo_wrapper mkdir -p /usr/local/psychopy/python/wx_wheels
             sudo_wrapper chmod -R a+rX /usr/local/psychopy/python/wx_wheels
-            sudo_wrapper mv "${renamed_wheel}" /usr/local/psychop/python/wx_wheels/
+            sudo_wrapper mv "${renamed_wheel}" /usr/local/psychopy/python/wx_wheels/
             return 0
         else
             log_message "WARNING: Installing wxPython from '${renamed_wheel}' failed."
