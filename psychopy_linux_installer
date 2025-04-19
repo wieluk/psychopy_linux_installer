@@ -215,7 +215,7 @@ show_gui() {
     local wxpython_versions psychopy_versions use_requirements options
 
     # Installation directory
-    if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory") && [ -n "${INSTALL_DIR}" ]; then
+    if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory" --filename="${DEFAULT_OPTS[INSTALL_DIR]}/") && [ -n "${INSTALL_DIR}" ]; then
         INSTALL_DIR=$(echo "${INSTALL_DIR}" | xargs)
         :
     else
