@@ -1035,8 +1035,8 @@ build_python() {
     latest_patch_version=$(curl -s "${official_base_url}" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | sed 's:/$::')
 
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
-    temp_file="Python-${latest_patch_version}.tgz"
-    temp_dir="Python-${latest_patch_version}_temp"
+    temp_file="/tmp/Python-${latest_patch_version}.tgz"
+    temp_dir="/tmp/Python-${latest_patch_version}_temp"
 
     if ! log curl -L -o "${temp_file}" "${official_url}"; then
         log_message "ERROR: Failed to download Python source from '${official_url}'."
@@ -1097,15 +1097,16 @@ install_python_from_github() {
     fi
 
     log_message "INFO: Downloading '${asset_name}' from GitHub ..."
-    if log curl -L -o "${asset_name}" "${github_download_url}"; then
+    local download_path="/tmp/${asset_name}"
+    if log curl -L -o "${download_path}" "${github_download_url}"; then
         log_message "INFO: Successfully downloaded '${asset_name}' from GitHub release 'v${SCRIPT_VERSION}'. Making an altinstall ..."
-        temp_dir="${asset_name%.tar.gz}_temp"
+        temp_dir="/tmp/${asset_name%.tar.gz}_temp"
         mkdir -p "${temp_dir}" || {
             log_message "WARNING: Failed to create '${temp_dir}'."
             return 1
         }
 
-        if tar -xf "${asset_name}" -C "${temp_dir}"; then
+        if tar -xf "${download_path}" -C "${temp_dir}"; then
             cd "${temp_dir}" || {
                 log_message "WARNING: Failed to change directory."
                 return 1
@@ -1115,7 +1116,7 @@ install_python_from_github() {
                 log_message "WARNING: Failed to return to '${PSYCHOPY_DIR}'."
                 return 1
             }
-            sudo_wrapper rm -rf "${temp_dir}" "${asset_name}"
+            sudo_wrapper rm -rf "${temp_dir}" "${download_path}"
             return 0
         else
             log_message "WARNING: Failed to extract '${asset_name}'."
@@ -1135,9 +1136,9 @@ build_wxpython() {
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
-    # Check /tmp size and warn if ≤2GB
+    # Check /tmp size and warn if ≤4GB
     tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
-    [ "${tmp_size_gb}" -le 2 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
+    [ "${tmp_size_gb}" -le 4 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
 
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
     if log "${PYTHON_VENV_COMMAND}" -m pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
@@ -1174,10 +1175,11 @@ install_wxpython_from_github() {
     fi
 
     log_message "INFO: Downloading '${wheel_name}' from GitHub ..."
-    if log curl -L -o "${wheel_name}" "${download_url}"; then
+    local download_path="/tmp/${wheel_name}"
+    if log curl -L -o "${download_path}" "${download_url}"; then
         log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
         renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
-        mv "${wheel_name}" "${renamed_wheel}"
+        mv "${download_path}" "${renamed_wheel}"
         if log "${PYTHON_VENV_COMMAND}" -m pip install "${renamed_wheel}"; then
             log_message "INFO: Installed wxPython from '${renamed_wheel}'"
             sudo_wrapper mkdir -p "${DEFAULT_OPTS[INSTALL_DIR]}/python/wx_wheels"
@@ -1385,6 +1387,9 @@ main() {
         if [ "${FORCE_OVERWRITE}" = true ]; then
             log_message "WARNING: Directory '${PSYCHOPY_DIR}' already exists. Overwriting ..."
             sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
+            if [ -d "${PSYCHOPY_DIR}" ]; then
+                log_message "ERROR: Failed to delete '${PSYCHOPY_DIR}'. Check permissions or remove manually."
+            fi
             sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
         else
             log_message "ERROR: Directory '${PSYCHOPY_DIR}' already exists. Use the --force-overwrite flag to overwrite."
@@ -1531,6 +1536,9 @@ main() {
         if [ -d "${HOME}/.psychopy3" ]; then
             log_message "INFO: Removing existing '.psychopy3' directory."
             sudo_wrapper rm -rf "${HOME}/.psychopy3"
+            if [ -d "${HOME}/.psychopy3" ]; then
+                log_message "WARNING: Failed to delete '${HOME}/.psychopy3'. Check permissions or remove manually."
+            fi
         fi
     elif [ "${NON_INTERACTIVE}" = false ]; then
         if [ -d "${HOME}/.psychopy3" ]; then
@@ -1540,6 +1548,9 @@ main() {
             if [[ "${response}" =~ ^[Yy]$ ]]; then
                 log_message "INFO: Removing existing '.psychopy3' directory."
                 sudo_wrapper rm -rf "${HOME}/.psychopy3"
+                if [ -d "${HOME}/.psychopy3" ]; then
+                    log_message "WARNING: Failed to delete '${HOME}/.psychopy3'. Check permissions or remove manually."
+                fi
             else
                 log_message "INFO: Skipped removing '.psychopy3' directory."
             fi
