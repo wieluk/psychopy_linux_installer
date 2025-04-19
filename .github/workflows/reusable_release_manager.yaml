@@ -23,12 +23,11 @@ jobs:
       - name: Extract Installer Version
         id: extract
         run: |
-          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          INSTALLER_VERSION=$(./psychopy_linux_installer --version)
           if [ -z "$INSTALLER_VERSION" ]; then
             echo "Error: Failed to extract version from script."
             exit 1
           fi
-          INSTALLER_VERSION="${INSTALLER_VERSION//[[:space:]]/}"
           echo "installer_version=$INSTALLER_VERSION" >> $GITHUB_OUTPUT
 
   check-release:

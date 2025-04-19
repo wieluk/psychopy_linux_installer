@@ -9,7 +9,7 @@
 
 This script facilitates the installation of [PsychoPy](https://www.psychopy.org/) on various Linux distributions, including:
 
-- Ubuntu 24.04, 22.04, 20.04, (18.04)
+- Ubuntu 24.04, 22.04, 20.04, (18.04*)
 - Pop!_OS 22.04
 - Debian 12, 11
 - Fedora 41, 40, 39
@@ -23,8 +23,8 @@ These distributions have been tested for compatibility, but the script may also 
 
 **Notes:**
 
-- Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
-- Arch Linux worked in my testing. I had to increase /tmp size to be bigger than 2GB, and since there are no prebuilt wxPython wheels for Arch, it has to be built from source.
+- *Ubuntu-18.04 fails to install PyQt6. You can still use Ubuntu-18 with PsychoPy versions =< 2023.2.3. Earlier versions use PyQt5.
+- Arch Linux worked in my testing. I had to increase /tmp size to be bigger than 4GB, and since there are no prebuilt wxPython wheels for Arch, it has to be built from source.
 
 ## Table of Contents
 
@@ -40,10 +40,10 @@ These distributions have been tested for compatibility, but the script may also 
 ## Important Information
 
 - This script will install multiple dependencies based on your Linux distribution. A detailed list of packages that may be installed is available [here](#optional-remove-dependencies) (click "Uninstall dependencies by package manager" to expand).
-- PsychoPy supports Python versions 3.8, 3.9, and 3.10.
 - A directory is created at `${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (`--install-dir`, default: `/usr/local/psychopy`). Use `--venv-name=NAME` to replace the versioned subdirectory with a custom name (`${INSTALL_DIR}/${NAME}`).
 - The script attempts to install Python via the package manager; if not found, it downloads a pre-packaged .tar.gz from GitHub releases or, if unavailable, from python.org to build from source.
 - Default(3.10)/specified Python version is installed as `altinstall` into `/usr/local/psychopy/python` if not available via package manager.
+- PsychoPy supports Python versions 3.8, 3.9, and 3.10.
 - wxPython is downloaded from the [official site](https://extras.wxpython.org/wxPython4/extras/linux/gtk3/); if this fails, the script tries GitHub releases or builds from source.
 - After successful wxPython installation, the downloaded .whl file is cached in `/usr/local/psychopy/python/wx_wheels`.
 - If the downloads fail, building Python and wxPython may take some time.
@@ -101,6 +101,7 @@ Install curl with your package manager. On most distros curl is already installe
 | `--gui` | **Bool.** Open a graphical installer (command‑line options are ignored while GUI is running). | *false* |
 | `-f`, `--force-overwrite` | **Bool.** Overwrite the **target install folder**—that is, the version‑specific subdirectory inside `--install-dir` (or the folder named by `--venv-name`) if it already exists. | *false* |
 | `-v`, `--verbose` | **Bool.** Print verbose progress messages to the terminal. | *false* |
+| `--version` | Print the installer script version and exit. | *(n/a)* |
 | `-h`, `--help` | Show usage information and exit. | *(n/a)* |
 
 **Note:**
