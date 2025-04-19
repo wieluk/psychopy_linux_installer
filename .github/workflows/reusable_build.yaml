@@ -268,18 +268,18 @@ jobs:
           echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
 
-      # - name: Transfer Python from previous release
-      #   if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
-      #   run: |
-      #     curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-      #       -H "Accept: application/octet-stream" \
-      #       -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
-      #       "${{ env.PYTHON_URL }}"
+      - name: Transfer Python from previous release
+        if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
+        run: |
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
+            "${{ env.PYTHON_URL }}"
 
-      #     curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-      #       -H "Content-Type: application/gzip" \
-      #       --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
-      #       "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/gzip" \
+            --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
+            "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
 
       - name: Transfer wxPython from previous release
         if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
@@ -343,7 +343,7 @@ jobs:
 
       - name: Build Python
         id: build-python
-        # if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
+        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
           cd /tmp_dir
           curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
@@ -359,7 +359,7 @@ jobs:
           sudo make altinstall
 
       - name: Upload Python
-        # if: env.SKIP_PYTHON_PROCESS == 'false' && steps.build-python.outcome == 'success'
+        if: env.SKIP_PYTHON_PROCESS == 'false' && steps.build-python.outcome == 'success'
         run: |
           curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
           -H "Content-Type: application/gzip" \
