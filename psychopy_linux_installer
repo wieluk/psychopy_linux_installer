@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2025-04-17
-#  Version:       1.6.0
+#  Date:          2025-04-19
+#  Version:       1.6.1 
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -55,6 +55,21 @@ show_help() {
     )
     echo "${help_text}"
 }
+
+# cleanup infrastructure
+declare -a TEMP_PATHS=()
+register_cleanup() { TEMP_PATHS+=("$@"); }
+
+cleanup() {
+    for p in "${TEMP_PATHS[@]}"; do
+        if [[ -e ${p} ]]; then
+            log log_message "INFO: removing temporary path '${p}' …"
+            sudo_wrapper rm -rf "${p}"
+        fi
+    done
+}
+
+trap cleanup EXIT
 
 # Log message function that writes colored output to terminal and plain text to the log file. It also handles exits on error.
 log_message() {
@@ -509,7 +524,7 @@ sudo_wrapper() {
             return
         fi
         TEMP_SUDOERS="/etc/sudoers.d/temporary_timeout"
-        trap 'log log_message "INFO: Removing temporary sudoers file ('${TEMP_SUDOERS}') to restore the original sudoers configuration."; sudo_wrapper rm -f "${TEMP_SUDOERS}"' EXIT
+        register_cleanup "${TEMP_SUDOERS}"
         TEMPORARY_SUDO_SETUP_DONE=true
         log_message "INFO: Temporary sudo timeout set to 300 minutes (configured in '${TEMP_SUDOERS}')."
         sudo_wrapper sh -c "echo 'Defaults        timestamp_timeout=300' > ${TEMP_SUDOERS}"
@@ -732,7 +747,8 @@ is_package_installed() {
 install_packages() {
     local packages=("${@}")
     local available_packages
-    local to_install already_installed
+    local to_install=()
+    local already_installed=()
 
     read -r -a available_packages <<<"$(filter_installable_packages "${packages[@]}")"
 
@@ -1037,6 +1053,7 @@ build_python() {
     official_url="${official_base_url}${latest_patch_version}/Python-${latest_patch_version}.tgz"
     temp_file="/tmp/Python-${latest_patch_version}.tgz"
     temp_dir="/tmp/Python-${latest_patch_version}_temp"
+    register_cleanup "${temp_file}" "${temp_dir}"
 
     if ! log curl -L -o "${temp_file}" "${official_url}"; then
         log_message "ERROR: Failed to download Python source from '${official_url}'."
@@ -1064,7 +1081,6 @@ build_python() {
     return 0
 }
 
-# Attempts to install Python from a GitHub release asset.
 install_python_from_github() {
     local asset_name api_url github_api_header assets_json temp_file temp_dir github_download_url python_version_pattern latest_release_tag
 
@@ -1098,9 +1114,10 @@ install_python_from_github() {
 
     log_message "INFO: Downloading '${asset_name}' from GitHub ..."
     local download_path="/tmp/${asset_name}"
+    local temp_dir="/tmp/${asset_name%.tar.gz}_temp"
+    register_cleanup "${download_path}" "${temp_dir}"
     if log curl -L -o "${download_path}" "${github_download_url}"; then
         log_message "INFO: Successfully downloaded '${asset_name}' from GitHub release 'v${SCRIPT_VERSION}'. Making an altinstall ..."
-        temp_dir="/tmp/${asset_name%.tar.gz}_temp"
         mkdir -p "${temp_dir}" || {
             log_message "WARNING: Failed to create '${temp_dir}'."
             return 1
@@ -1176,6 +1193,7 @@ install_wxpython_from_github() {
 
     log_message "INFO: Downloading '${wheel_name}' from GitHub ..."
     local download_path="/tmp/${wheel_name}"
+    register_cleanup "${download_path}"
     if log curl -L -o "${download_path}" "${download_url}"; then
         log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
         renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
@@ -1289,7 +1307,7 @@ add_psychopy_to_path() {
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages
+    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages limits_file
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1419,9 +1437,12 @@ main() {
     final_log_file="${PSYCHOPY_DIR}/$(basename "${tmp_log_file}")"
 
     if [ -f "${tmp_log_file}" ]; then
-        mv "${tmp_log_file}" "${final_log_file}"
+        if mv "${tmp_log_file}" "${final_log_file}"; then
+            LOG_FILE="${final_log_file}"
+        else
+            log_message "WARNING: Failed to move log file to installation directory. Log will remain at '${tmp_log_file}'."
+        fi
     fi
-    LOG_FILE="${final_log_file}"
     log_message "NOTE: Installation directory set. Log file moved to: '${LOG_FILE}'."
 
     # Install PsychoPy dependencies
@@ -1534,12 +1555,31 @@ main() {
     log_message "INFO: Installing basic fonts for PsychoPy."
     install_dependencies fonts
 
-    # Add user to the 'psychopy' group and set security limits
-    log_message "INFO: Adding '${USER}' to the psychopy group and setting security limits in '/etc/security/limits.d/99-psychopylimits.conf'."
-    sudo_wrapper groupadd --force psychopy
-    sudo_wrapper usermod -a -G psychopy "${USER}"
-    sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
-    log_message "NOTE: A system reboot is necessary to apply the security limits."
+    # Check if psychopy group exists, create if not
+    if getent group psychopy >/dev/null; then
+        log_message "INFO: Group 'psychopy' already exists."
+    else
+        sudo_wrapper groupadd psychopy
+        log_message "INFO: Group 'psychopy' created."
+    fi
+
+    # Check if user is in group, add if not
+    if id -nG "${USER}" | grep -qw psychopy; then
+        log_message "INFO: User '${USER}' is already in the 'psychopy' group."
+    else
+        sudo_wrapper usermod -a -G psychopy "${USER}"
+        log_message "INFO: User '${USER}' added to 'psychopy' group."
+    fi
+
+    # Check if limits file exists before writing
+    limits_file="/etc/security/limits.d/99-psychopylimits.conf"
+    if [ -f "${limits_file}" ]; then
+        log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
+    else
+        sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
+        log_message "INFO: Limits file '${limits_file}' created."
+        log_message "NOTE: A system reboot is necessary to apply the security limits."
+    fi
 
     # Remove .psychopy3
     if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
