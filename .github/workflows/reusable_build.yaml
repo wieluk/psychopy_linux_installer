@@ -77,13 +77,15 @@ jobs:
       - name: Extract versions from script
         id: extract_versions
         run: |
-          INSTALLER_VERSION=$(grep -m1 '^# *Version:' psychopy_linux_installer | sed 's/^# *Version: *//')
+          INSTALLER_VERSION=$(./psychopy_linux_installer --version)
           if [ -z "$INSTALLER_VERSION" ]; then
+            echo "Error: Failed to extract INSTALLER_VERSION from script."
             exit 1
           fi
           if [ "${{ matrix.wxpython_version }}" = "grab" ]; then
             WXPYTHON_VERSION=$(grep -m1 '^\s*\[WXPYTHON_VERSION\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
             if [ -z "$WXPYTHON_VERSION" ]; then
+              echo "Error: Failed to extract WXPYTHON_VERSION from script."
               exit 1
             fi
           else
@@ -91,7 +93,8 @@ jobs:
           fi
           INSTALL_DIR=$(grep -m1 '^\s*\[INSTALL_DIR\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
           if [ -z "$INSTALL_DIR" ]; then
-            INSTALL_DIR="/usr/local/psychopy"
+            echo "Error: Failed to extract INSTALL_DIR from script."
+            exit 1
           fi
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
