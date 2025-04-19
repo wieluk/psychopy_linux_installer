@@ -1295,6 +1295,16 @@ main() {
     TEMPORARY_SUDO_SETUP_DONE=false
     use_gui=false
 
+    # Ensure /tmp exists and is writable
+    if [ ! -d /tmp ]; then
+        sudo_wrapper mkdir -p /tmp
+        sudo_wrapper chmod 1777 /tmp
+    fi
+    if [ ! -w /tmp ]; then
+        echo "ERROR: /tmp directory is not writable. Please check your system permissions."
+        exit 1
+    fi
+
     tmp_log_file="/tmp/psychopy_linux_installer_$(date +%Y%m%d_%H%M%S).log"
     LOG_FILE="${tmp_log_file}"
     log_message "NOTE: Logging to temporary file: '${LOG_FILE}'"
