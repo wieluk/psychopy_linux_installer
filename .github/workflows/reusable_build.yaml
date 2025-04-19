@@ -89,10 +89,16 @@ jobs:
           else
             WXPYTHON_VERSION="${{ matrix.wxpython_version }}"
           fi
+          INSTALL_DIR=$(grep -m1 '^\s*\[INSTALL_DIR\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
+          if [ -z "$INSTALL_DIR" ]; then
+            INSTALL_DIR="/usr/local/psychopy"
+          fi
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
+          echo "INSTALL_DIR=$INSTALL_DIR" >> $GITHUB_ENV
           echo "Installer Version extracted: $INSTALLER_VERSION"
           echo "wxPython version extracted: $WXPYTHON_VERSION"
+          echo "Install dir extracted: $INSTALL_DIR"
 
       - name: Get release info
         id: get_release
@@ -349,7 +355,7 @@ jobs:
           curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
           tar -xf "Python-${PYTHON_FULL_VERSION}.tgz"
           cd "Python-${PYTHON_FULL_VERSION}"
-          ./configure --enable-optimizations --with-ensurepip=install --prefix=/usr/local/psychopy/python
+          ./configure --enable-optimizations --with-ensurepip=install --prefix=$INSTALL_DIR/python
           make -j "$(nproc)"
 
           PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
@@ -371,8 +377,8 @@ jobs:
         continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
         id: build-wxpython
         run: |
-          export PATH=/usr/local/psychopy/python/bin:$PATH
-          /usr/local/psychopy/python/bin/python$PYTHON_VERSION -m venv /tmp_dir/psychopy_venv
+          export PATH=$INSTALL_DIR/python/bin:$PATH
+          $INSTALL_DIR/python/bin/python$PYTHON_VERSION -m venv /tmp_dir/psychopy_venv
           source /tmp_dir/psychopy_venv/bin/activate
 
           pip install -U pip distro sip six psychtoolbox setuptools wheel
