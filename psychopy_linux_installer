@@ -1297,11 +1297,11 @@ main() {
 
     # Ensure /tmp exists and is writable
     if [ ! -d /tmp ]; then
-        sudo_wrapper mkdir -p /tmp
-        sudo_wrapper chmod 1777 /tmp
+        mkdir -p /tmp
+        chmod 1777 /tmp
     fi
     if [ ! -w /tmp ]; then
-        echo "ERROR: /tmp directory is not writable. Please check your system permissions."
+        echo "ERROR: /tmp directory is not writable or does not exist. Please check your system permissions."
         exit 1
     fi
 
