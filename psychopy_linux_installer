@@ -906,11 +906,11 @@ install_pip_packages_with_fallback() {
 
     log_message "INFO: Installing extra pip packages from --additional-packages and/or --requirements-file."
 
-    if log "${PYTHON_VENV_COMMAND}" -m pip install -r <(echo "${packages_csv}"); then
+    IFS=',' read -ra PACKAGES <<<"${packages_csv}"
+    if log "${PYTHON_VENV_COMMAND}" -m pip install "${PACKAGES[@]}"; then
         log_message "INFO: All packages installed successfully."
     else
         log_message "WARNING: Failed to install some packages. Installing one by one ..."
-        IFS=',' read -ra PACKAGES <<<"${packages_csv}"
         for package in "${PACKAGES[@]}"; do
             log_message "INFO: Installing '${package}' ..."
             if log "${PYTHON_VENV_COMMAND}" -m pip install "${package}"; then
