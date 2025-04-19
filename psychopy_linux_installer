@@ -51,6 +51,7 @@ show_help() {
             "  --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode." \
             "  -f, --force-overwrite                         Force overwrite of existing installation directory." \
             "  -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose)." \
+            "  --version                                     Show the version of the installer." \
             "  -h, --help                                    Show this help message."
     )
     echo "${help_text}"
@@ -212,6 +213,10 @@ process_arguments() {
             ;;
         -v | --verbose)
             VERBOSE=true
+            ;;
+        --version)
+            grep -m 1 '^#  Version:' "$0" | awk -F: '{gsub(/ /,"",$2); print $2}'
+            exit 0
             ;;
         -h | --help)
             show_help
@@ -1325,7 +1330,6 @@ main() {
 
     tmp_log_file="/tmp/psychopy_linux_installer_$(date +%Y%m%d_%H%M%S).log"
     LOG_FILE="${tmp_log_file}"
-    log_message "NOTE: Logging to temporary file: '${LOG_FILE}'"
 
     check_connection
 
@@ -1349,6 +1353,8 @@ main() {
     else
         process_arguments "${@}"
     fi
+
+    log_message "NOTE: Logging to temporary file: '${LOG_FILE}'"
 
     if [ -n "${REQUIREMENTS_FILE}" ]; then
         log_message "INFO: Parsing requirements file: '${REQUIREMENTS_FILE}' ..."
