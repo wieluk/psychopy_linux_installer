@@ -641,9 +641,15 @@ check_script_update() {
 
         local script_path
         script_path=$(readlink -f "${0}")
-
-        read -r -p "Would you like to update? (y/n) " response
         echo
+        read -r -p "Would you like to update?
+
+        [y] Yes
+        [n] No
+
+        Enter your choice [y/n]: " response
+        echo
+
         if [[ "${response}" =~ ^[Yy]$ ]]; then
             log_message "INFO: Updating to version '${latest_version}' ..."
 
@@ -1272,6 +1278,7 @@ create_desktop_shortcut() {
             "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${exec_args}" \
             "Exec=${psychopy_exec} ${exec_args}" \
             "${icon_line}" \
+            "Path=${PSYCHOPY_DIR}" \
             "Terminal=false" \
             "Categories=Education;Science;Development;" \
             "MimeType=application/x-psyexp;" \
@@ -1599,8 +1606,14 @@ main() {
     elif [ "${NON_INTERACTIVE}" = false ]; then
         if [ -d "${HOME}/.psychopy3" ]; then
             echo
-            read -r -p "Do you want to remove existing PsychoPy user settings in '${HOME}/.psychopy3'? (Retaining this folder can sometimes result in conflicts with plugins or non-default pip-installed packages.) [y/N] " response
+            read -r -p "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages.
+
+            [y] Yes
+            [n] No
+
+            Enter your choice [y/n]: " response
             echo
+
             if [[ "${response}" =~ ^[Yy]$ ]]; then
                 log_message "INFO: Removing existing '.psychopy3' directory."
                 sudo_wrapper rm -rf "${HOME}/.psychopy3"
