@@ -1228,10 +1228,11 @@ install_wxpython_from_github() {
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local desktop_shortcut desktop_dir psychopy_exec resources_dir desktop_content
+    local desktop_shortcut desktop_dir psychopy_exec resources_dir working_dir desktop_content
     desktop_dir="${HOME}/.local/share/applications"
     psychopy_exec="${PSYCHOPY_DIR}/bin/psychopy"
     resources_dir="${PSYCHOPY_DIR}/Resources"
+    working_dir="${PSYCHOPY_DIR}/workspace"
     local shortcuts=()
 
     if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
@@ -1250,7 +1251,8 @@ create_desktop_shortcut() {
         return
     fi
 
-    mkdir -p "${resources_dir}"
+    sudo_wrapper mkdir -p "${resources_dir}"
+    sudo_wrapper mkdir -p "${working_dir}"
 
     for ((i = 0; i < ${#shortcuts[@]}; i += 3)); do
         local exec_args="${shortcuts[i]}"
@@ -1276,9 +1278,8 @@ create_desktop_shortcut() {
             "Name=${pretty_name}" \
             "GenericName=PsychoPy Experiment Builder" \
             "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${exec_args}" \
-            "Exec=${psychopy_exec} ${exec_args}" \
+            "Exec=sh -c \"cd ${working_dir} && exec ${psychopy_exec} ${exec_args}\"" \
             "${icon_line}" \
-            "Path=${PSYCHOPY_DIR}" \
             "Terminal=false" \
             "Categories=Education;Science;Development;" \
             "MimeType=application/x-psyexp;" \
@@ -1290,10 +1291,7 @@ create_desktop_shortcut() {
         sh -c "echo '${desktop_content}' > '${desktop_file}'"
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
-
-        if command -v gio >/dev/null 2>&1; then
-            gio set "${desktop_file}" metadata::trusted true
-        fi
+        command -v gio >/dev/null 2>&1 && gio set "${desktop_file}" metadata::trusted true
 
         sudo_wrapper ln -sf "${desktop_file}" "${desktop_dir}/${pretty_name}.desktop"
     done
