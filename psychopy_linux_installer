@@ -1601,9 +1601,13 @@ exec \"${PSYCHOPY_DIR}/bin/psychopy\" \"\$@\"' > \"${PSYCHOPY_DIR}/start_psychop
     log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
     if "${PSYCHOPY_DIR}/bin/psychopy" -v &>/dev/null; then
-        log_message "INFO: PsychoPy installation completed successfully!"
+        if "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
+            log_message "INFO: PsychoPy installation completed successfully!"
+        else
+            log_message "ERROR: PsychoPy wrapper script verification failed!"
+        fi
     else
-        log_message "ERROR: PsychoPy installation verification failed!"
+        log_message "ERROR: PsychoPy binary verification failed!"
     fi
 }
 
