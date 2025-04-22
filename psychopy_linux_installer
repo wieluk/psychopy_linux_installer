@@ -1304,6 +1304,55 @@ add_psychopy_to_path() {
     log_message "NOTE: To start PsychoPy from the system path, use: '$(basename "${PSYCHOPY_DIR}")'"
 }
 
+create_start_psychopy_wrapper() {
+    local wrapper_path="${PSYCHOPY_DIR}/start_psychopy"
+    local config_folder_block=""
+    sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
+
+    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.0"; then
+        config_folder_block=$(printf "%s\n" \
+            "CONFIG_DIR=\"\${SCRIPT_DIR}\"" \
+            "if [ -d \"\${CONFIG_DIR}\" ]; then" \
+            "    export PSYCHOPY_CONFIG_FOLDER=\"\${CONFIG_DIR}\"" \
+            "    echo \"[start_psychopy] PsychoPy config folder: \${PSYCHOPY_CONFIG_FOLDER}/.psychopy3\"" \
+            "else" \
+            "    echo \"[start_psychopy] WARNING: Config directory '\${CONFIG_DIR}' does not exist. Using default PsychoPy config location.\"" \
+            "fi" \
+            "")
+    fi
+
+    local wrapper_script
+    wrapper_script=$(printf "%s\n" \
+        "#!/bin/bash" \
+        "# ================================================================================" \
+        "#  PsychoPy Start Wrapper" \
+        "#  This script launches PsychoPy from a virtual environment, setting up the" \
+        "#  working directory and configuration folder." \
+        "#  You can change the following variables below:" \
+        "#    - WORKSPACE_DIR: The working directory" \
+        "#    - CONFIG_DIR:    The PsychoPy config folder  [only for PsychoPy > 2025.1.0]" \
+        "#  This script is placed in the top-level PsychoPy installation directory by default." \
+        "#  Do not move it!" \
+        "# ================================================================================" \
+        "" \
+        "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
+        "" \
+        "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
+        "if [ -d \"\${WORKSPACE_DIR}\" ]; then" \
+        "    echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
+        "    cd \"\${WORKSPACE_DIR}\"" \
+        "else" \
+        "    echo \"[start_psychopy] WARNING: Workspace directory '\${WORKSPACE_DIR}' does not exist. Not changing directory.\"" \
+        "fi" \
+        "" \
+        "${config_folder_block}" \
+        "exec \"\${SCRIPT_DIR}/bin/psychopy\" \"\$@\""
+    )
+
+    sudo_wrapper sh -c "echo '${wrapper_script}' > '${wrapper_path}'"
+    sudo_wrapper chmod +x "${wrapper_path}"
+}
+
 main() {
     local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages limits_file
     PKG_MANAGER_PERMISSION=false
@@ -1581,12 +1630,7 @@ main() {
     fi
 
     # Create start wrapper script
-    sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
-    sudo_wrapper sh -c "echo '#!/bin/bash
-cd \"${PSYCHOPY_DIR}/workspace\"
-export PSYCHOPY_CONFIG_FOLDER=\"${PSYCHOPY_DIR}\"
-exec \"${PSYCHOPY_DIR}/bin/psychopy\" \"\$@\"' > \"${PSYCHOPY_DIR}/start_psychopy\""
-    sudo_wrapper chmod +x "${PSYCHOPY_DIR}/start_psychopy"
+    create_start_psychopy_wrapper
 
     # Create desktop shortcut
     if [ "${DISABLE_SHORTCUT}" = false ]; then
