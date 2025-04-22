@@ -52,7 +52,7 @@ jobs:
           if [ "$PSYCHOPY_VERSION" = "latest" ]; then
             PSYCHOPY_VERSION=$(curl -s "https://pypi.org/pypi/psychopy/json" | jq -r .info.version)
           fi
-          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
+          if ! /tmp_dir/psychopy/start_psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
             echo "PsychoPy version check failed in venv. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
