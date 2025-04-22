@@ -1276,7 +1276,7 @@ create_desktop_shortcut() {
             "StartupNotify=true" \
             "StartupWMClass=psychopy")
 
-        sh -c "echo '${desktop_content}' > '${desktop_file}'"
+        sudo_wrapper sh -c "echo '${desktop_content}' > '${desktop_file}'"
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
         command -v gio >/dev/null 2>&1 && gio set "${desktop_file}" metadata::trusted true
@@ -1582,12 +1582,10 @@ main() {
 
     # Create start wrapper script
     sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
-    sudo_wrapper cat > "${PSYCHOPY_DIR}/start_psychopy" <<EOF
-#!/bin/bash
-cd "${PSYCHOPY_DIR}/workspace"
-export PSYCHOPY_CONFIG_FOLDER="${PSYCHOPY_DIR}"
-exec "${PSYCHOPY_DIR}/bin/psychopy" "\$@"
-EOF
+    sudo_wrapper sh -c "echo '#!/bin/bash
+cd \"${PSYCHOPY_DIR}/workspace\"
+export PSYCHOPY_CONFIG_FOLDER=\"${PSYCHOPY_DIR}\"
+exec \"${PSYCHOPY_DIR}/bin/psychopy\" \"\$@\"' > \"${PSYCHOPY_DIR}/start_psychopy\""
     sudo_wrapper chmod +x "${PSYCHOPY_DIR}/start_psychopy"
 
     # Create desktop shortcut
