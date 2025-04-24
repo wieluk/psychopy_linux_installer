@@ -1309,14 +1309,15 @@ create_start_psychopy_wrapper() {
     local config_folder_block=""
     sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
 
-    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.0"; then
+    if is_version_greater "${PSYCHOPY_VERSION}" "2024.1.0"; then
         config_folder_block=$(printf "%s\n" \
             "CONFIG_DIR=\"\${SCRIPT_DIR}\"" \
             "if [ -d \"\${CONFIG_DIR}\" ]; then" \
-            "    export PSYCHOPY_CONFIG_FOLDER=\"\${CONFIG_DIR}\"" \
-            "    echo \"[start_psychopy] PsychoPy config folder: \${PSYCHOPY_CONFIG_FOLDER}/.psychopy3\"" \
+            "    echo \"[start_psychopy] PsychoPy config folder: \${CONFIG_DIR}/.psychopy3\"" \
+            "    CONFIG_ARG=\"--config-folder=\${CONFIG_DIR}\"" \
             "else" \
             "    echo \"[start_psychopy] WARNING: Config directory '\${CONFIG_DIR}' does not exist. Using default PsychoPy config location.\"" \
+            "    CONFIG_ARG=\"\"" \
             "fi" \
             "")
     fi
@@ -1346,7 +1347,7 @@ create_start_psychopy_wrapper() {
         "fi" \
         "" \
         "${config_folder_block}" \
-        "exec \"\${SCRIPT_DIR}/bin/psychopy\" \"\$@\""
+        "exec \"\${SCRIPT_DIR}/bin/psychopy\" \${CONFIG_ARG} \"\$@\""
     )
 
     sudo_wrapper sh -c "echo '${wrapper_script}' > '${wrapper_path}'"
