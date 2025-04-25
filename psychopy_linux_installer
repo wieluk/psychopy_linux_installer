@@ -13,7 +13,7 @@
 declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
     [PYTHON_VERSION]="3.10"
-    [WXPYTHON_VERSION]="4.2.2"
+    [WXPYTHON_VERSION]="4.2.3"
     [BUILD_PYTHON]=false
     [BUILD_WX]=false
     [INSTALL_DIR]="/usr/local/psychopy"
