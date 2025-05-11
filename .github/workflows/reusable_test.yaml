@@ -32,7 +32,7 @@ jobs:
           sudo chmod -R a+rX /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
           BUILD_FLAG="${{ inputs.test-mode == 'build' && '--build=both' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest --remove-psychopy-settings $BUILD_FLAG"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Show installation logs
@@ -52,7 +52,7 @@ jobs:
           if [ "$PSYCHOPY_VERSION" = "latest" ]; then
             PSYCHOPY_VERSION=$(curl -s "https://pypi.org/pypi/psychopy/json" | jq -r .info.version)
           fi
-          if ! /tmp_dir/psychopy/bin/psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
+          if ! /tmp_dir/psychopy/start_psychopy -v | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
             echo "PsychoPy version check failed in venv. Expected version: $PSYCHOPY_VERSION"
             exit 1
           fi
@@ -139,7 +139,7 @@ jobs:
           sudo mkdir /tmp_dir
           sudo chmod -R a+rX /tmp_dir
           sudo chown -R $USER:$(id -gn $USER) /tmp_dir
-          ARGS="--install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --requirements-file=$REQ_FILE --remove-psychopy-settings --additional-packages=pytest"
+          ARGS="--install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --requirements-file=$REQ_FILE --additional-packages=pytest"
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Show installation logs
