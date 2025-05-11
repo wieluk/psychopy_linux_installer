@@ -36,6 +36,7 @@ These distributions have been tested for compatibility, but the script may also 
 6. [Post-Installation](#post-installation)
 7. [Uninstalling PsychoPy](#uninstalling-psychopy)
 8. [Troubleshooting](#troubleshooting)
+9. [Contributing & Support](#contributing--support)
 
 ## Important Information
 
@@ -119,17 +120,17 @@ Install curl with your package manager. On most distros curl is already installe
 
 The script performs the following steps:
 
-- Detects the package manager (supports apt, yum, dnf, pacman and zypper).
-- Installs necessary dependencies.
-- Creates a directory in the specified location for PsychoPy.
-- Checks if the specified Python version exists if necessary downloads and install it as `altinstall`.
-- Creates a virtual environment for PsychoPy.
-- Installs/builds wxPython.
-- Upgrades pip and some pip packages.
-- Installs specified PsychoPy version.
-- Adds the current user to a `psychopy` group and sets security limits.
-- Creates a symbolic link to the PsychoPy executable in `.bin`.
-- Creates a desktop shortcut.
+- Detects the package manager (supports apt, yum, dnf, pacman, and zypper).
+- Installs all necessary dependencies.
+- Sets up the PsychoPy installation directory.
+- Installs the specified Python version as altinstall if needed.
+- Creates a virtual environment and installs/builds wxPython.
+- Upgrades pip and required pip packages.
+- Installs the specified PsychoPy version.
+- Adds the current user to a psychopy group and sets security limits.
+- Generates a startup wrapper script (`start_psychopy`) in the installation directory.
+- Adds a symbolic link to the PsychoPy startup wrapper in `/usr/local/bin/`.
+- Adds a desktop shortcut.
 
 ## Post-Installation
 
@@ -139,12 +140,12 @@ After installation, desktop icons for PsychoPy will be created automatically, an
 
 You can also launch PsychoPy directly using the absolute path:
 
-`${PSYCHOPY_DIR}/bin/psychopy`
+`${PSYCHOPY_DIR}/start_psychopy`
 
 Please reboot to apply security limits.
 
 **Note:**
-All commands, along with the installed versions and set paths will be displayed at the end of the script.
+All commands, along with the installed versions and set paths, will be displayed at the end of the script.
 
 ## Uninstalling PsychoPy
 
@@ -242,8 +243,16 @@ zypper
 
 ## Troubleshooting
 
-- Ensure the package manager is functioning correctly and not locked by another process.
-- If prebuilt wheels appear to install but still cause issues, use `--build=python`, `--build=wxpython`, or `--build=both` to force building from source.
-- Confirm `/tmp` has sufficient space when building wxpython.
-- Check the log file (path is shown in the terminal), and attach it when creating a [GitHub issue](https://github.com/wieluk/psychopy_linux_installer/issues).
-- Before creating a new issue, search the [existing issues](https://github.com/wieluk/psychopy_linux_installer/issues?q=is%3Aissue) to check if your problem has already been reported or resolved.
+- Ensure your package manager is working and not locked by another process.
+- If prebuilt wheels fail, use `--build=python`, `--build=wxpython`, or `--build=both` to build from source.
+- Make sure `/tmp` has enough space when building wxPython.
+- Review the log file (path shown in the terminal) for details on errors.
+- Before opening a new issue, search [existing GitHub issues](https://github.com/wieluk/psychopy_linux_installer/issues?q=is%3Aissue) to see if your problem is already reported or resolved.
+
+## Contributing & Support
+
+- Contributions, bug reports, and feature requests are welcome. Please fork the repository and submit a pull request.
+- For help or to report issues, use the [GitHub issue tracker](https://github.com/wieluk/psychopy_linux_installer/issues) and include the relevant log file.
+- For general PsychoPy questions, visit the [PsychoPy forums](https://discourse.psychopy.org/) or the [PsychoPy GitHub repository](https://github.com/psychopy/psychopy).
+
+---

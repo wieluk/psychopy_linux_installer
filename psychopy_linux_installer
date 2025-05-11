@@ -1228,11 +1228,10 @@ install_wxpython_from_github() {
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local desktop_shortcut desktop_dir psychopy_exec resources_dir working_dir desktop_content
+    local desktop_shortcut desktop_dir psychopy_exec resources_dir desktop_content
     desktop_dir="${HOME}/.local/share/applications"
-    psychopy_exec="${PSYCHOPY_DIR}/bin/psychopy"
+    psychopy_exec="${PSYCHOPY_DIR}/start_psychopy"
     resources_dir="${PSYCHOPY_DIR}/Resources"
-    working_dir="${PSYCHOPY_DIR}/workspace"
     local shortcuts=()
 
     if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
@@ -1252,7 +1251,6 @@ create_desktop_shortcut() {
     fi
 
     sudo_wrapper mkdir -p "${resources_dir}"
-    sudo_wrapper mkdir -p "${working_dir}"
 
     for ((i = 0; i < ${#shortcuts[@]}; i += 3)); do
         local exec_args="${shortcuts[i]}"
@@ -1278,7 +1276,7 @@ create_desktop_shortcut() {
             "Name=${pretty_name}" \
             "GenericName=PsychoPy Experiment Builder" \
             "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${exec_args}" \
-            "Exec=sh -c \"cd ${working_dir} && exec ${psychopy_exec} ${exec_args}\"" \
+            "Exec=${psychopy_exec} ${exec_args}" \
             "${icon_line}" \
             "Terminal=false" \
             "Categories=Education;Science;Development;" \
@@ -1286,9 +1284,9 @@ create_desktop_shortcut() {
             "Keywords=psychopy;experiment;builder;psyexp;design;" \
             "TryExec=${psychopy_exec}" \
             "StartupNotify=true" \
-            "StartupWMClass=PsychoPy")
+            "StartupWMClass=psychopy")
 
-        sh -c "echo '${desktop_content}' > '${desktop_file}'"
+        sudo_wrapper sh -c "echo '${desktop_content}' > '${desktop_file}'"
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
         command -v gio >/dev/null 2>&1 && gio set "${desktop_file}" metadata::trusted true
@@ -1303,7 +1301,7 @@ add_psychopy_to_path() {
     local name src target
 
     name="$(basename "${PSYCHOPY_DIR}")"
-    src="${PSYCHOPY_DIR}/bin/psychopy"
+    src="${PSYCHOPY_DIR}/start_psychopy"
     target="/usr/local/bin/${name}"
 
     if [ -L "${target}" ] || [ ! -e "${target}" ]; then
@@ -1314,6 +1312,59 @@ add_psychopy_to_path() {
     fi
     sudo_wrapper chmod +x "${target}"
     log_message "NOTE: To start PsychoPy from the system path, use: '$(basename "${PSYCHOPY_DIR}")'"
+}
+
+create_start_psychopy_wrapper() {
+    local wrapper_path="${PSYCHOPY_DIR}/start_psychopy"
+    local config_folder_block=""
+    sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
+    sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/.psychopy3"
+
+    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.0" || [ "${PSYCHOPY_VERSION}" = "git" ]; then
+        config_folder_block=$(printf "%s\n" \
+            "" \
+            "# === Change this if you want to set a custom PsychoPy config folder ===" \
+            "CONFIG_DIR=\"\${SCRIPT_DIR}\"" \
+            "" \
+            "if [ -d \"\${CONFIG_DIR}\" ]; then" \
+            "    echo \"[start_psychopy] PsychoPy config folder: \${CONFIG_DIR}/.psychopy3\"" \
+            "    CONFIG_ARG=\"--user-dir=\${CONFIG_DIR}\"" \
+            "else" \
+            "    echo \"[start_psychopy] WARNING: Config directory '\${CONFIG_DIR}' does not exist. Using default PsychoPy config location.\"" \
+            "    CONFIG_ARG=\"\"" \
+            "fi" \
+            "")
+    fi
+
+    local wrapper_script
+    wrapper_script=$(printf "%s\n" \
+        "#!/bin/bash" \
+        "# ================================================================================" \
+        "#  PsychoPy Start Wrapper" \
+        "#  This script launches PsychoPy from a virtual environment, setting up the" \
+        "#  working directory and configuration folder." \
+        "#  This script is placed in the top-level PsychoPy installation directory by default." \
+        "#  Do not move it!" \
+        "# ================================================================================" \
+        "" \
+        "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
+        "" \
+        "# === Change this if you want to set a custom working directory ===" \
+        "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
+        "" \
+        "if [ -d \"\${WORKSPACE_DIR}\" ]; then" \
+        "    echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
+        "    cd \"\${WORKSPACE_DIR}\"" \
+        "else" \
+        "    echo \"[start_psychopy] WARNING: Workspace directory '\${WORKSPACE_DIR}' does not exist. Not changing directory.\"" \
+        "fi" \
+        "" \
+        "${config_folder_block}" \
+        "exec \"\${SCRIPT_DIR}/bin/psychopy\" \${CONFIG_ARG} \"\$@\""
+    )
+
+    sudo_wrapper sh -c "echo '${wrapper_script}' > '${wrapper_path}'"
+    sudo_wrapper chmod +x "${wrapper_path}"
 }
 
 main() {
@@ -1624,6 +1675,9 @@ main() {
         fi
     fi
 
+    # Create start wrapper script
+    create_start_psychopy_wrapper
+
     # Create desktop shortcut
     if [ "${DISABLE_SHORTCUT}" = false ]; then
         create_desktop_shortcut
@@ -1634,12 +1688,16 @@ main() {
         add_psychopy_to_path
     fi
 
-    log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/bin/psychopy'"
+    log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
     if "${PSYCHOPY_DIR}/bin/psychopy" -v &>/dev/null; then
-        log_message "INFO: PsychoPy installation completed successfully!"
+        if "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
+            log_message "INFO: PsychoPy installation completed successfully!"
+        else
+            log_message "ERROR: PsychoPy wrapper script verification failed!"
+        fi
     else
-        log_message "ERROR: PsychoPy installation verification failed!"
+        log_message "ERROR: PsychoPy binary verification failed!"
     fi
 }
 
