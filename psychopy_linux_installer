@@ -23,6 +23,7 @@ declare -A DEFAULT_OPTS=(
     [DISABLE_SHORTCUT]=false
     [DISABLE_PATH]=false
     [NON_INTERACTIVE]=false
+    [REMOVE_PSYCHOPY_SETTINGS]=false
     [FORCE_OVERWRITE]=false
     [VERBOSE]=false
 )
@@ -46,6 +47,7 @@ show_help() {
             "  --non-interactive                             Run the installer without user interaction. Sets sudo-mode to auto if not set." \
             "  --disable-shortcut                            Disable desktop shortcut creation." \
             "  --disable-path                                Disable adding PsychoPy to system path." \
+            "  --remove-psychopy-settings                    Remove existing PsychoPy user settings (${HOME}/.psychopy3). Retaining this folder can sometimes result in conflicts with plugins or non-default pip-installed packages." \
             "  --gui                                         Launches the installer in GUI mode, allowing you to set arguments interactively. Any arguments provided via the command line will be ignored while in GUI mode." \
             "  -f, --force-overwrite                         Force overwrite of existing installation directory." \
             "  -v, --verbose                                 Enable verbose output for the terminal (logfile output is always verbose)." \
@@ -201,6 +203,9 @@ process_arguments() {
         --disable-path)
             DISABLE_PATH=true
             ;;
+        --remove-psychopy-settings)
+            REMOVE_PSYCHOPY_SETTINGS=true
+            ;;
         --gui)
             ;;
         -f | --force-overwrite)
@@ -318,6 +323,7 @@ show_gui() {
         TRUE "Create desktop shortcuts" \
         FALSE "Run in non-interactive mode" \
         FALSE "Force overwrite of existing directory" \
+        FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)" \
         FALSE "Build Python from source" \
         FALSE "Build wxPython from source" \
         FALSE "Enable verbose output"); then
@@ -347,6 +353,10 @@ show_gui() {
 
     if [[ ${options} == *"Force overwrite of existing directory"* ]]; then
         FORCE_OVERWRITE=true
+    fi
+
+    if [[ ${options} == *"Remove PsychoPy user settings (${HOME}/.psychopy3)"* ]]; then
+        REMOVE_PSYCHOPY_SETTINGS=true
     fi
 
     if [[ ${options} == *"Build Python from source"* ]]; then
@@ -1308,13 +1318,17 @@ create_start_psychopy_wrapper() {
     local wrapper_path="${PSYCHOPY_DIR}/start_psychopy"
     local config_folder_block=""
     sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
+    sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/.psychopy3"
 
-    if is_version_greater "${PSYCHOPY_VERSION}" "2024.1.0"; then
+    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.0" || [ "${PSYCHOPY_VERSION}" = "git" ]; then
         config_folder_block=$(printf "%s\n" \
+            "" \
+            "# === Change this if you want to set a custom PsychoPy config folder ===" \
             "CONFIG_DIR=\"\${SCRIPT_DIR}\"" \
+            "" \
             "if [ -d \"\${CONFIG_DIR}\" ]; then" \
             "    echo \"[start_psychopy] PsychoPy config folder: \${CONFIG_DIR}/.psychopy3\"" \
-            "    CONFIG_ARG=\"--config-folder=\${CONFIG_DIR}\"" \
+            "    CONFIG_ARG=\"--user-dir=\${CONFIG_DIR}\"" \
             "else" \
             "    echo \"[start_psychopy] WARNING: Config directory '\${CONFIG_DIR}' does not exist. Using default PsychoPy config location.\"" \
             "    CONFIG_ARG=\"\"" \
@@ -1329,16 +1343,15 @@ create_start_psychopy_wrapper() {
         "#  PsychoPy Start Wrapper" \
         "#  This script launches PsychoPy from a virtual environment, setting up the" \
         "#  working directory and configuration folder." \
-        "#  You can change the following variables below:" \
-        "#    - WORKSPACE_DIR: The working directory" \
-        "#    - CONFIG_DIR:    The PsychoPy config folder  [only for PsychoPy > 2025.1.0]" \
         "#  This script is placed in the top-level PsychoPy installation directory by default." \
         "#  Do not move it!" \
         "# ================================================================================" \
         "" \
         "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
         "" \
+        "# === Change this if you want to set a custom working directory ===" \
         "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
+        "" \
         "if [ -d \"\${WORKSPACE_DIR}\" ]; then" \
         "    echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
         "    cd \"\${WORKSPACE_DIR}\"" \
@@ -1628,6 +1641,38 @@ main() {
         sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
         log_message "INFO: Limits file '${limits_file}' created."
         log_message "NOTE: A system reboot is necessary to apply the security limits."
+    fi
+
+    # Remove .psychopy3
+    if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
+        if [ -d "${HOME}/.psychopy3" ]; then
+            log_message "INFO: Removing existing '.psychopy3' directory."
+            sudo_wrapper rm -rf "${HOME}/.psychopy3"
+            if [ -d "${HOME}/.psychopy3" ]; then
+                log_message "WARNING: Failed to delete '${HOME}/.psychopy3'. Check permissions or remove manually."
+            fi
+        fi
+    elif [ "${NON_INTERACTIVE}" = false ]; then
+        if [ -d "${HOME}/.psychopy3" ]; then
+            echo
+            read -r -p "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages.
+
+            [y] Yes
+            [n] No
+
+            Enter your choice [y/n]: " response
+            echo
+
+            if [[ "${response}" =~ ^[Yy]$ ]]; then
+                log_message "INFO: Removing existing '.psychopy3' directory."
+                sudo_wrapper rm -rf "${HOME}/.psychopy3"
+                if [ -d "${HOME}/.psychopy3" ]; then
+                    log_message "WARNING: Failed to delete '${HOME}/.psychopy3'. Check permissions or remove manually."
+                fi
+            else
+                log_message "INFO: Skipped removing '.psychopy3' directory."
+            fi
+        fi
     fi
 
     # Create start wrapper script
