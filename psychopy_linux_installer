@@ -419,7 +419,7 @@ create_rerun_command() {
 
 # Reads and parses a requirements file, adjusting dependency versions as needed.
 parse_requirements_file() {
-    local file current_version operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version
+    local file current_version operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version skipped_packages adjusted_packages req_packages_list raw_packages_list
     local -A package_versions
     local -A package_operators
     file="${1}"
@@ -437,6 +437,7 @@ parse_requirements_file() {
             package_name="${BASH_REMATCH[1],,}"
             operator="${BASH_REMATCH[2]}"
             package_version="${BASH_REMATCH[3]}"
+            raw_packages_list+=("${package_name}${operator}${package_version}")
 
             if [[ -n "${package_versions[${package_name}]}" ]]; then
                 current_version="${package_versions[${package_name}]}"
@@ -451,15 +452,22 @@ parse_requirements_file() {
         fi
     done <"${file}"
 
-    REQUIREMENTSFILE_PACKAGES=$(for pkg in "${!package_versions[@]}"; do
+    # Add this line to set the global variable for unfiltered packages
+    RAW_REQUESTED_PACKAGES=$(IFS=','; echo "${raw_packages_list[*]}")
+
+    for pkg in "${!package_versions[@]}"; do
         if [[ "${pkg}" != "wxpython" && "${pkg}" != "psychopy" && "${pkg}" != "winrt" && "${pkg}" != "pywin32" && "${pkg}" != "pypiwin32" && "${pkg}" != "pywinhook" ]]; then
-            echo "${pkg}${package_operators[${pkg}]}${package_versions[${pkg}]}"
+            req_packages_list+=("${pkg}${package_operators[${pkg}]}${package_versions[${pkg}]}")
         else
             if [[ "${pkg}" != "wxpython" && "${pkg}" != "psychopy" ]]; then
-                log_message "WARNING: The Python package '${pkg}' (from requirements.txt) is not available on Linux; skipping." >&2
+                skipped_packages+=("${pkg}")
             fi
         fi
-    done | tr '\n' ',' | sed 's/,$//')
+    done
+    REQUIREMENTSFILE_PACKAGES=$(IFS=','; echo "${req_packages_list[*]}")
+    if [ ${#skipped_packages[@]} -gt 0 ]; then
+        log_message "WARNING: The following pip packages from requirements.txt are not available on Linux and were skipped: ${skipped_packages[*]}" >&2
+    fi
 
     # Extract versions from requirements file
     req_python_version=$(grep -i -E '^# Python version:' "${file}" | cut -d':' -f2 | xargs | cut -d'.' -f1,2 | tr -d '[:space:]' || true)
@@ -498,10 +506,13 @@ parse_requirements_file() {
             new_spec="${pkg_lower}>=${version}"
             if [[ "${REQUIREMENTSFILE_PACKAGES}" == *"${original_spec}"* ]]; then
                 REQUIREMENTSFILE_PACKAGES=${REQUIREMENTSFILE_PACKAGES//"${original_spec}"/"${new_spec}"}
-                log_message "WARNING: '${pkg}' from the requirements file was installed with a flexible version specification. '${original_spec}' may be platform-specific and was adjusted to '${new_spec}' for Linux compatibility. You may manually install the exact version in the PsychoPy venv." >&2
+                adjusted_packages+=("'${original_spec}' → '${new_spec}'")
             fi
         fi
     done
+    if [ ${#adjusted_packages[@]} -gt 0 ]; then
+        log_message "WARNING: The following pip requirements were adjusted for Linux compatibility: $(printf "%s, " "${adjusted_packages[@]}" | sed 's/, $//'). You may try to manually install the exact versions in the PsychoPy venv if needed." >&2
+    fi
 }
 
 # Manages sudo usage and command retries when permissions are insufficient.
@@ -765,7 +776,7 @@ install_packages() {
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
-    [ -n "${diff}" ] && log_message "WARNING: The following packages are not available and will be skipped: '${diff}'"
+    [ -n "${diff}" ] && log_message "WARNING: The following ${PKG_MANAGER} packages are not available and will be skipped: '${diff}'"
 
     for package in "${available_packages[@]}"; do
         if is_package_installed "${package}"; then
@@ -776,18 +787,18 @@ install_packages() {
     done
 
     if [ ${#already_installed[@]} -gt 0 ]; then
-        log log_message "INFO: The following packages are already installed: '${already_installed[*]}'"
+        log log_message "INFO: The following ${PKG_MANAGER} packages are already installed: '${already_installed[*]}'"
     fi
 
     if [ ${#to_install[@]} -eq 0 ]; then
         if [ ${#already_installed[@]} -gt 0 ] && [ -n "${diff}" ]; then
-            log log_message "INFO: Nothing to install - some packages already installed, others unavailable or skipped."
+            log log_message "INFO: Nothing to install - some ${PKG_MANAGER} packages already installed, others unavailable or skipped."
             return 0
         elif [ ${#already_installed[@]} -gt 0 ] && [ -z "${diff}" ]; then
-            log log_message "INFO: Nothing to install - all requested packages are already installed."
+            log log_message "INFO: Nothing to install - all requested ${PKG_MANAGER} packages are already installed."
             return 0
         else
-            log_message "WARNING: Nothing to install - all requested packages unavailable or skipped."
+            log_message "WARNING: Nothing to install - all requested ${PKG_MANAGER} packages unavailable or skipped."
             return 0
         fi
     fi
@@ -806,7 +817,7 @@ install_packages() {
     } then
         return 0
     else
-        log_message "WARNING: Batch installation failed. Falling back to per-package installation. This might take sometime ..."
+        log_message "WARNING: ${PKG_MANAGER} batch installation failed. Falling back to per-package installation. This might take sometime ..."
     fi
 
     # If batch install fails, fallback to installing packages one by one
@@ -935,17 +946,15 @@ install_pip_packages_with_fallback() {
 
     IFS=',' read -ra PACKAGES <<<"${packages_csv}"
     if log "${PYTHON_VENV_COMMAND}" -m pip install "${PACKAGES[@]}"; then
-        log_message "INFO: All packages installed successfully."
+        log_message "INFO: All extra pip packages installed successfully."
     else
-        log_message "WARNING: Failed to install some packages. Installing one by one ..."
+        log_message "WARNING: Failed to install extra pip packages as batch. Installing one by one ..."
         for package in "${PACKAGES[@]}"; do
-            log_message "INFO: Installing '${package}' ..."
+            log log_message "INFO: Installing '${package}' ..."
             if log "${PYTHON_VENV_COMMAND}" -m pip install "${package}"; then
-                pkg_name="${package%%=*}"
-                installed_version=$("${PYTHON_VENV_COMMAND}" -m pip show "${pkg_name}" | grep Version | cut -d' ' -f2)
-                log_message "INFO: '${pkg_name}' version '${installed_version}' installed successfully."
+                log log_message "INFO: '${pkg_name}' version '${installed_version}' installed successfully."
             else
-                log_message "WARNING: Failed to install '${package}'. Skipping."
+                log log_message "WARNING: Failed to install '${package}'. Skipping."
             fi
         done
     fi
@@ -1007,7 +1016,7 @@ get_latest_pypi_version() {
     local version
     version=$(curl -s "https://pypi.org/pypi/${pkg}/json" | jq -r '.info.version')
     if [ -z "${version}" ] || [ "${version}" = "null" ]; then
-        log_message "ERROR: Unable to fetch the latest version for package '${package_name}'."
+        log_message "ERROR: Unable to fetch the latest version for pip package '${package_name}'."
     fi
     declare -n result=${var_name}
     # shellcheck disable=SC2034
@@ -1367,8 +1376,52 @@ create_start_psychopy_wrapper() {
     sudo_wrapper chmod +x "${wrapper_path}"
 }
 
+verify_installed_pip_versions() {
+    local pip_extra_packages="$1"
+    local mismatches=()
+    local pkg req_version installed_version installed_psychopy_version installed_wxpython_version name version
+    declare -A installed_versions
+    while read -r line; do
+        if [[ "${line}" =~ ^([A-Za-z0-9._-]+)==(.+)$ ]]; then
+            name="${BASH_REMATCH[1]}"
+            version="${BASH_REMATCH[2]}"
+            installed_versions["${name}"]="${version}"
+        fi
+    done < <("${PYTHON_VENV_COMMAND}" -m pip list --format=freeze 2>/dev/null)
+
+    IFS=',' read -ra PKG_LIST <<<"${pip_extra_packages}"
+    for pkg_spec in "${PKG_LIST[@]}"; do
+        if [[ "${pkg_spec}" =~ ^([A-Za-z0-9._-]+)==([0-9][A-Za-z0-9._-]*) ]]; then
+            pkg="${BASH_REMATCH[1]}"
+            req_version="${BASH_REMATCH[2]}"
+            installed_version="${installed_versions[${pkg}]}"
+            if [ -z "${installed_version}" ]; then
+                mismatches+=("${pkg} required ${req_version} but is not installed")
+            elif [ "${installed_version}" != "${req_version}" ]; then
+                mismatches+=("${pkg} required ${req_version} but installed ${installed_version}")
+            fi
+        fi
+    done
+
+    # Check PsychoPy version
+    installed_psychopy_version="${installed_versions[psychopy]}"
+    if [ -n "${PSYCHOPY_VERSION}" ] && [ -n "${installed_psychopy_version}" ] && [ "${PSYCHOPY_VERSION}" != "${installed_psychopy_version}" ]; then
+        mismatches+=("PsychoPy required ${PSYCHOPY_VERSION} but installed ${installed_psychopy_version}")
+    fi
+    # Check wxPython version
+    installed_wxpython_version="${installed_versions[wxPython]}"
+    if [ -n "${WXPYTHON_VERSION}" ] && [ -n "${installed_wxpython_version}" ] && [ "${WXPYTHON_VERSION}" != "${installed_wxpython_version}" ]; then
+        mismatches+=("wxPython required ${WXPYTHON_VERSION} but installed ${installed_wxpython_version}")
+    fi
+    if [ ${#mismatches[@]} -eq 0 ]; then
+        log_message "INFO: All requested pip package versions are installed as specified."
+    else
+        log_message "WARNING: ${mismatches[*]//,/, }."
+    fi
+}
+
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages limits_file
+    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages raw_pip_extra_packages limits_file
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1538,7 +1591,7 @@ main() {
         export PATH=${DEFAULT_OPTS[INSTALL_DIR]}/python/bin:$PATH
         "${DEFAULT_OPTS[INSTALL_DIR]}"/python/bin/python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
     else
-        log_message "INFO: 'Python${PYTHON_VERSION}' can be installed via package manager. Installing ..."
+        log_message "INFO: 'Python${PYTHON_VERSION}' can be installed via ${PKG_MANAGER}. Installing ..."
         install_dependencies python_with_venv
         check_python_env "python${PYTHON_VERSION}"
         python"${PYTHON_VERSION}" -m venv "${PSYCHOPY_DIR}"
@@ -1588,6 +1641,12 @@ main() {
         log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try '--build=wxpython'."
     fi
 
+    # Install numpy<2 if PsychoPy version is less than 2024.2.0
+    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
+        log_message "INFO: Installing numpy<2"
+        log "${PYTHON_VENV_COMMAND}" -m pip install "numpy<2"
+    fi
+
     # Install additional packages from requirements file and flag
     pip_extra_packages="${ADDITIONAL_PACKAGES}${ADDITIONAL_PACKAGES:+,}${REQUIREMENTSFILE_PACKAGES}"
 
@@ -1605,12 +1664,6 @@ main() {
 
     if ! "${PYTHON_VENV_COMMAND}" -m pip show psychopy &>/dev/null; then
         log_message "ERROR: PsychoPy installation failed."
-    fi
-
-    # Install numpy<2 if PsychoPy version is less than 2024.2.0
-    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}"; then
-        log_message "WARNING: PsychoPy version < 2024.2.0, installing numpy<2"
-        log "${PYTHON_VENV_COMMAND}" -m pip install "numpy<2"
     fi
 
     # Install some basic fonts for PsychoPy
@@ -1641,6 +1694,13 @@ main() {
         sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'
         log_message "INFO: Limits file '${limits_file}' created."
         log_message "NOTE: A system reboot is necessary to apply the security limits."
+    fi
+
+    # Compare installed package versions with requested versions
+    if [ -n "${pip_extra_packages}" ]; then
+        log_message "INFO: Final environment diff: comparing installed pip packages to requirements.txt and --additional-packages."
+        raw_pip_extra_packages="${ADDITIONAL_PACKAGES}${ADDITIONAL_PACKAGES:+,}${RAW_REQUESTED_PACKAGES}"
+        verify_installed_pip_versions "${raw_pip_extra_packages}"
     fi
 
     # Remove .psychopy3
