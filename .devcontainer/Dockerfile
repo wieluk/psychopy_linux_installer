@@ -15,4 +15,4 @@ COPY psychopy_linux_installer /tmp/
 
 # Make the installer executable and run it
 RUN chmod +x /tmp/psychopy_linux_installer && \
-    /tmp/psychopy_linux_installer --install-dir=/psychopy --venv-name=psychopy-test-installation -f --non-interactive --additional-packages=pytest
+    /tmp/psychopy_linux_installer --venv-name=psychopy-test-installation -f --non-interactive --additional-packages=pytest
