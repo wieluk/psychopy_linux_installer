@@ -468,9 +468,6 @@ parse_requirements_file() {
         fi
     done <"${file}"
 
-    # Add this line to set the global variable for unfiltered packages
-    RAW_REQUESTED_PACKAGES=$(IFS=','; echo "${raw_packages_list[*]}")
-
     for pkg in "${!package_versions[@]}"; do
         if [[ "${pkg}" != "wxpython" && "${pkg}" != "psychopy" && "${pkg}" != "winrt" && "${pkg}" != "pywin32" && "${pkg}" != "pypiwin32" && "${pkg}" != "pywinhook" ]]; then
             req_packages_list+=("${pkg}${package_operators[${pkg}]}${package_versions[${pkg}]}")
@@ -522,12 +519,12 @@ parse_requirements_file() {
             new_spec="${pkg_lower}>=${version}"
             if [[ "${REQUIREMENTSFILE_PACKAGES}" == *"${original_spec}"* ]]; then
                 REQUIREMENTSFILE_PACKAGES=${REQUIREMENTSFILE_PACKAGES//"${original_spec}"/"${new_spec}"}
-                adjusted_packages+=("'${original_spec}' → '${new_spec}'")
+                adjusted_packages+=(" '${original_spec}' → '${new_spec}' ")
             fi
         fi
     done
     if [ ${#adjusted_packages[@]} -gt 0 ]; then
-        log_message "WARNING: The following pip requirements were adjusted for Linux compatibility: $(printf "%s, " "${adjusted_packages[@]}" | sed 's/, $//'). You may try to manually install the exact versions in the PsychoPy venv if needed." >&2
+        log_message "WARNING: The following pip requirements were adjusted for Linux compatibility: ${adjusted_packages[*]}. You may try to manually install the exact versions in the PsychoPy venv if needed."
     fi
 }
 
@@ -1395,11 +1392,11 @@ create_start_psychopy_wrapper() {
 verify_installed_pip_versions() {
     local pip_extra_packages="$1"
     local mismatches=()
-    local pkg req_version installed_version installed_psychopy_version installed_wxpython_version name version
+    local pkg req_version installed_version name version inst req
     declare -A installed_versions
     while read -r line; do
         if [[ "${line}" =~ ^([A-Za-z0-9._-]+)==(.+)$ ]]; then
-            name="${BASH_REMATCH[1]}"
+            name="${BASH_REMATCH[1],,}"
             version="${BASH_REMATCH[2]}"
             installed_versions["${name}"]="${version}"
         fi
@@ -1408,36 +1405,32 @@ verify_installed_pip_versions() {
     IFS=',' read -ra PKG_LIST <<<"${pip_extra_packages}"
     for pkg_spec in "${PKG_LIST[@]}"; do
         if [[ "${pkg_spec}" =~ ^([A-Za-z0-9._-]+)==([0-9][A-Za-z0-9._-]*) ]]; then
-            pkg="${BASH_REMATCH[1]}"
+            pkg="${BASH_REMATCH[1],,}"
             req_version="${BASH_REMATCH[2]}"
             installed_version="${installed_versions[${pkg}]}"
             if [ -z "${installed_version}" ]; then
-                mismatches+=("${pkg} required ${req_version} but is not installed")
+                mismatches+=("${pkg}|${req_version}|not installed")
             elif [ "${installed_version}" != "${req_version}" ]; then
-                mismatches+=("${pkg} required ${req_version} but installed ${installed_version}")
+                mismatches+=("${pkg}|${req_version}|${installed_version}")
             fi
         fi
     done
 
-    # Check PsychoPy version
-    installed_psychopy_version="${installed_versions[psychopy]}"
-    if [ -n "${PSYCHOPY_VERSION}" ] && [ -n "${installed_psychopy_version}" ] && [ "${PSYCHOPY_VERSION}" != "${installed_psychopy_version}" ]; then
-        mismatches+=("PsychoPy required ${PSYCHOPY_VERSION} but installed ${installed_psychopy_version}")
-    fi
-    # Check wxPython version
-    installed_wxpython_version="${installed_versions[wxPython]}"
-    if [ -n "${WXPYTHON_VERSION}" ] && [ -n "${installed_wxpython_version}" ] && [ "${WXPYTHON_VERSION}" != "${installed_wxpython_version}" ]; then
-        mismatches+=("wxPython required ${WXPYTHON_VERSION} but installed ${installed_wxpython_version}")
-    fi
-    if [ ${#mismatches[@]} -eq 0 ]; then
-        log_message "INFO: All requested pip package versions are installed as specified."
-    else
-        log_message "WARNING: ${mismatches[*]//,/, }."
+    if [ ${#mismatches[@]} -ne 0 ]; then
+        log_message "WARNING: Some pip package versions do not match requirements.txt."
+        indent="                      "
+        printf "${indent}%-20s | %-15s | %-15s\n" "Package" "Required" "Installed"
+        printf "${indent}%s\n" "---------------------+-----------------+-----------------"
+        for mismatch in "${mismatches[@]}"; do
+            IFS='|' read -r pkg req inst <<<"${mismatch}"
+            printf "${indent}%-20s | %-15s | %-15s\n" "${pkg}" "${req}" "${inst}"
+        done
+        printf "${indent}%s\n" "---------------------------------------------------------"
     fi
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages raw_pip_extra_packages limits_file
+    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages limits_file
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
@@ -1714,9 +1707,7 @@ main() {
 
     # Compare installed package versions with requested versions
     if [ -n "${pip_extra_packages}" ]; then
-        log_message "INFO: Final environment diff: comparing installed pip packages to requirements.txt and --additional-packages."
-        raw_pip_extra_packages="${ADDITIONAL_PACKAGES}${ADDITIONAL_PACKAGES:+,}${RAW_REQUESTED_PACKAGES}"
-        verify_installed_pip_versions "${raw_pip_extra_packages}"
+        verify_installed_pip_versions "${pip_extra_packages}"
     fi
 
     # Remove .psychopy3
