@@ -13,7 +13,7 @@
 declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
     [PYTHON_VERSION]="3.10"
-    [WXPYTHON_VERSION]="4.2.2"
+    [WXPYTHON_VERSION]="4.2.3"
     [BUILD_PYTHON]=false
     [BUILD_WX]=false
     [INSTALL_DIR]="/usr/local/psychopy"
@@ -228,6 +228,15 @@ process_arguments() {
             ;;
         esac
     done
+
+    if [[ "${PYTHON_VERSION}" == "3.8" ]]; then
+        if [[ -z "${WXPYTHON_VERSION}" ]]; then
+            WXPYTHON_VERSION="4.2.2"
+            log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible."
+        elif is_version_greater "${WXPYTHON_VERSION}" "4.2.2"; then
+            log_message "ERROR: wxPython > 4.2.2 is not supported with Python 3.8." nolog
+        fi
+    fi
 }
 
 # Launches a Zenity-based GUI to collect user input interactively.
@@ -293,11 +302,18 @@ show_gui() {
 
         # Select wxPython version
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        IFS=' ' read -r -a wxpython_false_opts <<<"$(echo "${wxpython_versions}" | grep -v "${DEFAULT_OPTS[WXPYTHON_VERSION]}" | xargs -I{} printf "FALSE %s " {})"
+        if [[ "${PYTHON_VERSION}" == "3.8" ]]; then
+            log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible."
+            wxpython_versions=$(echo "${wxpython_versions}" | awk '$1 <= "4.2.2"')
+            wxpython_default="4.2.2"
+        else
+            wxpython_default="${DEFAULT_OPTS[WXPYTHON_VERSION]}"
+        fi
+        IFS=' ' read -r -a wxpython_false_opts <<<"$(echo "${wxpython_versions}" | grep -v "${wxpython_default}" | xargs -I{} printf "FALSE %s " {})"
         if WXPYTHON_VERSION=$(zenity --list --title="Select wxPython Version" --width=800 --height=500 \
-            --text="Choose the wxPython version for this installation.\n\nVersion ${DEFAULT_OPTS[WXPYTHON_VERSION]} is recommended for most setups." \
+            --text="Choose the wxPython version for this installation.\n\nVersion ${wxpython_default} is recommended for most setups." \
             --radiolist --column="Select" --column="Version" \
-            TRUE "${DEFAULT_OPTS[WXPYTHON_VERSION]}" "${wxpython_false_opts[@]}" | tr -d '"') && [ -n "${WXPYTHON_VERSION}" ]; then
+            TRUE "${wxpython_default}" "${wxpython_false_opts[@]}" | tr -d '"') && [ -n "${WXPYTHON_VERSION}" ]; then
             WXPYTHON_VERSION=$(echo "${WXPYTHON_VERSION}" | xargs)
             :
         else
