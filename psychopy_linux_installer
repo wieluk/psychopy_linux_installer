@@ -4,8 +4,8 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2025-04-19
-#  Version:       1.6.1
+#  Date:          2025-05-16
+#  Version:       1.7.0
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -1342,7 +1342,7 @@ create_start_psychopy_wrapper() {
     sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
     sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/.psychopy3"
 
-    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.0" || [ "${PSYCHOPY_VERSION}" = "git" ]; then
+    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.1" || [ "${PSYCHOPY_VERSION}" = "git" ]; then
         config_folder_block=$(printf "%s\n" \
             "" \
             "# === Change this if you want to set a custom PsychoPy config folder ===" \
