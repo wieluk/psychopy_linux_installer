@@ -310,11 +310,16 @@ jobs:
         if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
           func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
-          case_block=$(echo "$func_block" | awk '/^ *case *\$pkg_manager *in/,/^esac/')
-          pkg_block=$(echo "$case_block" | awk -v pkg="$PKG_MANAGER" '$0 ~ "^[[:space:]]*"pkg"\\)" {found=1} found {print} $0 ~ ";;" && found {exit}')
+
+          pkg_block=$(echo "$func_block" | awk -v pkg="$PKG_MANAGER" '
+            $0 ~ "^[[:space:]]*"pkg"\\)" {found=1; next}
+            found && $0 ~ "^[[:space:]]*;;" {exit}
+            found {print}
+          ')
 
           extract_deps() {
-              echo "$pkg_block" | grep -E "^[[:space:]]*$1=\(" | sed -E "s/^[[:space:]]*$1=\(//; s/\)[[:space:]]*$//"
+              local var="$1"
+              echo "$pkg_block" | grep -E "^[[:space:]]*$var=\(" | sed -E "s/^[[:space:]]*$var=\(//; s/\)[[:space:]]*$//"
           }
 
           all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
