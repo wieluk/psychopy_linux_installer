@@ -295,13 +295,15 @@ show_gui() {
     fi
 
     # Python version
-    if PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
-        --text="Choose the Python version for this installation.\n\n" \
-        --radiolist --column="Select" --column="Version" \
-        TRUE "3.10" FALSE "3.9" FALSE "3.8") && [ -n "${PYTHON_VERSION}" ]; then
-        PYTHON_VERSION=$(echo "${PYTHON_VERSION}" | xargs)
-    else
-        exit 0
+    if [[ "${checklist_result}" == *"Python version"* ]]; then
+        if PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
+            --text="Choose the Python version for this installation.\n\n" \
+            --radiolist --column="Select" --column="Version" \
+            TRUE "3.10" FALSE "3.9" FALSE "3.8") && [ -n "${PYTHON_VERSION}" ]; then
+            PYTHON_VERSION=$(echo "${PYTHON_VERSION}" | xargs)
+        else
+            exit 0
+        fi
     fi
 
     # wxPython version
