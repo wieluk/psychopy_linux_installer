@@ -241,42 +241,47 @@ process_arguments() {
 
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
-    local wxpython_versions psychopy_versions use_requirements options
+    local wxpython_versions psychopy_versions options checklist_result
 
-    # Installation directory
-    if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory" --filename="${DEFAULT_OPTS[INSTALL_DIR]}/") && [ -n "${INSTALL_DIR}" ]; then
-        INSTALL_DIR=$(echo "${INSTALL_DIR}" | xargs)
+    # Checkbox page
+    if  checklist_result=$(zenity --list --checklist --title="Customize Installation" --width=800 --height=500 \
+        --text="Select which options you want to customize. Unchecked options will use defaults." \
+        --column="Select" --column="Option" --column="Default" \
+        FALSE "Install directory" "${DEFAULT_OPTS[INSTALL_DIR]}" \
+        FALSE "Virtual environment name" "PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}" \
+        FALSE "PsychoPy version" "${DEFAULT_OPTS[PSYCHOPY_VERSION]}" \
+        FALSE "Python version" "${DEFAULT_OPTS[PYTHON_VERSION]}" \
+        FALSE "wxPython version" "${DEFAULT_OPTS[WXPYTHON_VERSION]}" \
+        FALSE "Additional pip packages" "None" \
+        FALSE "Use requirements.txt" "False" \
+    ); then
         :
     else
         exit 0
     fi
 
-    # Prompt for custom virtual environment name
-    if VENV_NAME=$(zenity --entry --title="Custom Virtual Environment Name (optional)" --width=800 --height=500 \
-        --text="Enter a custom name for the virtual environment folder.\n\nIf left blank, the default versioned name will be used: PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}.\n\nThis folder will be created inside:\n${INSTALL_DIR}\n\nNote: Spaces in the name will be replaced with underscores.\nIf installing into the default directory, the name cannot be 'python' (case-insensitive).\n\n" \
-        --entry-text=""); then
-        VENV_NAME=$(echo "${VENV_NAME}" | xargs)
-        :
-    else
-        exit 0
-    fi
-
-    # Optional: Select requirements.txt
-    if zenity --question --title="Use requirements.txt (optional)" \
-        --text="Do you want to use a requirements.txt file?\n\nIf you don't know what this is, choose 'No' to proceed with manual setup." \
-        --ok-label="Yes" --cancel-label="No"; then
-
-        if REQUIREMENTS_FILE=$(zenity --file-selection --title="Select requirements.txt" --file-filter="requirements.txt | *.txt") && [ -n "${REQUIREMENTS_FILE}" ]; then
-            use_requirements=true
+    # Install dir
+    if [[ "${checklist_result}" == *"Install directory"* ]]; then
+        if INSTALL_DIR=$(zenity --file-selection --directory --title="Select Installation Directory" --filename="${DEFAULT_OPTS[INSTALL_DIR]}/") && [ -n "${INSTALL_DIR}" ]; then
+            INSTALL_DIR=$(echo "${INSTALL_DIR}" | xargs)
         else
             exit 0
         fi
-    else
-        use_requirements=false
     fi
 
-    if [ "${use_requirements}" = false ]; then
-        # Select PsychoPy version
+    # Venv name
+    if [[ "${checklist_result}" == *"Virtual environment name"* ]]; then
+        if VENV_NAME=$(zenity --entry --title="Virtual Environment Name" --width=800 --height=500 \
+            --text="Enter a name for the virtual environment folder.\n\n\nNotes:\nSpaces in the name will be replaced with underscores.\nThe name cannot be 'python' or any existing system command, as it will be used in your PATH.\n\n" \
+            --entry-text=""); then
+            VENV_NAME=$(echo "${VENV_NAME}" | xargs)
+        else
+            exit 0
+        fi
+    fi
+
+    # PsychoPy version
+    if [[ "${checklist_result}" == *"PsychoPy version"* ]]; then
         psychopy_versions="$(fetch_versions_from_pypi psychopy) + git"
         IFS=' ' read -r -a psychopy_false_opts <<<"$(echo "${psychopy_versions}" | xargs -I{} printf "FALSE %s " {})"
         if PSYCHOPY_VERSION=$(zenity --list --title="PsychoPy Version" --width=800 --height=500 \
@@ -284,23 +289,25 @@ show_gui() {
             --radiolist --column="Select" --column="Version" \
             TRUE "${DEFAULT_OPTS[PSYCHOPY_VERSION]}" "${psychopy_false_opts[@]}" | tr -d '"') && [ -n "${PSYCHOPY_VERSION}" ]; then
             PSYCHOPY_VERSION=$(echo "${PSYCHOPY_VERSION}" | xargs)
-            :
         else
             exit 0
         fi
+    fi
 
-        # Select Python version
+    # Python version
+    if [[ "${checklist_result}" == *"Python version"* ]]; then
         if PYTHON_VERSION=$(zenity --list --title="Select Python Version" --width=800 --height=500 \
-            --text="Choose the Python version for this installation.\n\nPython${DEFAULT_OPTS[PYTHON_VERSION]} is recommended for best compatibility." \
+            --text="Choose the Python version for this installation.\n\n" \
             --radiolist --column="Select" --column="Version" \
             TRUE "3.10" FALSE "3.9" FALSE "3.8") && [ -n "${PYTHON_VERSION}" ]; then
             PYTHON_VERSION=$(echo "${PYTHON_VERSION}" | xargs)
-            :
         else
             exit 0
         fi
+    fi
 
-        # Select wxPython version
+    # wxPython version
+    if [[ "${checklist_result}" == *"wxPython version"* ]]; then
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
         if [[ "${PYTHON_VERSION}" == "3.8" ]]; then
             log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible."
@@ -311,27 +318,36 @@ show_gui() {
         fi
         IFS=' ' read -r -a wxpython_false_opts <<<"$(echo "${wxpython_versions}" | grep -v "${wxpython_default}" | xargs -I{} printf "FALSE %s " {})"
         if WXPYTHON_VERSION=$(zenity --list --title="Select wxPython Version" --width=800 --height=500 \
-            --text="Choose the wxPython version for this installation.\n\nVersion ${wxpython_default} is recommended for most setups." \
+            --text="Choose the wxPython version for this installation." \
             --radiolist --column="Select" --column="Version" \
             TRUE "${wxpython_default}" "${wxpython_false_opts[@]}" | tr -d '"') && [ -n "${WXPYTHON_VERSION}" ]; then
             WXPYTHON_VERSION=$(echo "${WXPYTHON_VERSION}" | xargs)
-            :
         else
             exit 0
         fi
+    fi
 
-        # Additional packages
-        if ADDITIONAL_PACKAGES=$(zenity --entry --title="Additional Packages (optional)" --width=800 --height=500 \
-            --text="Specify additional pip packages to install (comma-separated).\n\nExample: psychopy-bids,another-package==1.2.3,package3\n\nLeave empty for no additional packages\n\n" \
+    # Additional pip packages
+    if [[ "${checklist_result}" == *"Additional pip packages"* ]]; then
+        if ADDITIONAL_PACKAGES=$(zenity --entry --title="Additional Packages" --width=800 --height=500 \
+            --text="Specify additional pip packages to install (comma-separated).\n\nExample:\npsychopy-bids,another-package==1.2.3,package3\n\n" \
             --entry-text=""); then
             ADDITIONAL_PACKAGES=$(echo "${ADDITIONAL_PACKAGES}" | xargs)
+        else
+            exit 0
+        fi
+    fi
+
+    # requirements.txt
+    if [[ "${checklist_result}" == *"Use requirements.txt"* ]]; then
+        if REQUIREMENTS_FILE=$(zenity --file-selection --title="Select requirements.txt" --file-filter="requirements.txt | *.txt") && [ -n "${REQUIREMENTS_FILE}" ]; then
             :
         else
             exit 0
         fi
     fi
 
-    # Additional options with tooltips
+    # Additional options
     if options=$(zenity --list --checklist --title="Additional Options" --width=800 --height=500 \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
