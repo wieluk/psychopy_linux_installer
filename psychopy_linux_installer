@@ -1299,7 +1299,11 @@ create_desktop_shortcut() {
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            log curl -s -o "${icon_path}" "${icon_url}"
+            if log sudo_wrapper curl -s -o "${icon_path}" "${icon_url}"; then
+                :
+            else
+                log_message "WARNING: Failed to download icon file '${icon_url}', skipping ..."
+            fi
         else
             log_message "WARNING: Icon file '${icon_url}' not found, skipping ..."
         fi
