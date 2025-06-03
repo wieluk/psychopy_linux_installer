@@ -665,45 +665,67 @@ check_connection() {
 
 # Checks for a new version of the installer script and prompts the user to update.
 check_script_update() {
-    local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer"
-    local current_version latest_version rerun_cmd
+    if [ "${SCRIPT_UPDATED}" = "true" ]; then
+        return
+    fi
 
-    # Extract version information from the current and latest scripts.
+    if ! command -v curl >/dev/null 2>&1; then
+        SCRIPT_UPDATED="false"
+        log log_message "WARNING: 'curl' command not found. Unable to check for script updates."
+        return
+    fi
+
+    local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer"
+    local current_version latest_version rerun_cmd script_path response
+
     current_version=$(grep -m 1 'Version:' "${0}" | sed 's/[^0-9.]//g')
     latest_version=$(curl -sL "${latest_url}" | grep -m 1 'Version:' | sed 's/[^0-9.]//g')
 
     if is_version_greater "${latest_version}" "${current_version}"; then
-        echo -e "\nA new version (${latest_version}) of the installer script is available."
-        echo "    🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
-        echo "    🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
-        echo "    🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues"
-        echo
-
-        local script_path
         script_path=$(readlink -f "${0}")
-        echo
-        read -r -p "Would you like to update?
+
+        if [ "${USE_GUI}" = true ]; then
+            response=$(zenity --question \
+                --title="PsychoPy Installer Update" \
+                --width=600 \
+                --text="A new version (${latest_version}) of the installer script is available.
+
+🔹 Repository: https://github.com/wieluk/psychopy_linux_installer
+🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases
+🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues
+
+Would you like to update?" \
+            && echo "y" || echo "n")
+        else
+            echo -e "\nA new version (${latest_version}) of the installer script is available."
+            echo "    🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
+            echo "    🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
+            echo "    🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues"
+            echo
+            read -r -p "Would you like to update?
 
         [y] Yes
         [n] No
 
         Enter your choice [y/n]: " response
-        echo
+            echo
+        fi
 
         if [[ "${response}" =~ ^[Yy]$ ]]; then
             log_message "INFO: Updating to version '${latest_version}' ..."
 
-            # Download and replace the current script with the latest release.
             if curl -sLo "${script_path}" "${latest_url}"; then
                 log_message "INFO: Update completed successfully."
                 rerun_cmd=$(create_rerun_command)
                 log_message "NOTE: To re-run the installer with the current settings, use: '${rerun_cmd}'"
+                SCRIPT_UPDATED="true"
                 exit 0
             else
                 log_message "WARNING: Failed to download the update. Continuing with the current version."
             fi
         fi
     fi
+    SCRIPT_UPDATED="true"
 }
 
 # Determines the operating system and its version.
@@ -772,6 +794,7 @@ detect_package_manager() {
 
 # Updates the package manager's database.
 update_package_manager() {
+    log_message "INFO: Updating '${PKG_MANAGER}' package manager."
     case ${PKG_MANAGER} in
     apt-get) sudo_wrapper apt-get update -qq ;;
     yum)     sudo_wrapper yum makecache -q ;;
@@ -870,6 +893,11 @@ install_dependencies() {
 
     dep_type="${1}"
     dependencies=()
+
+    if [ "${PKG_MANAGER_UPDATED}" = false ]; then
+        update_package_manager
+        PKG_MANAGER_UPDATED=true
+    fi
 
     case ${PKG_MANAGER} in
     apt-get)
@@ -1450,11 +1478,12 @@ verify_installed_pip_versions() {
 }
 
 main() {
-    local use_gui tmp_log_file final_log_file rerun_cmd pip_extra_packages limits_file
+    local tmp_log_file final_log_file rerun_cmd pip_extra_packages limits_file
     PKG_MANAGER_PERMISSION=false
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
-    use_gui=false
+    USE_GUI=false
+    PKG_MANAGER_UPDATED=false
 
     # Ensure /tmp exists and is writable
     if [ ! -d /tmp ]; then
@@ -1474,7 +1503,7 @@ main() {
     for arg in "${@}"; do
         if [[ "${arg}" == "--gui" ]]; then
             if [[ "${#}" -eq 1 ]]; then
-                use_gui=true
+                USE_GUI=true
             else
                 log_message "ERROR: The --gui option must be used alone without any other arguments." nolog
             fi
@@ -1482,10 +1511,11 @@ main() {
         fi
     done
 
-    if ${use_gui}; then
+    if ${USE_GUI}; then
         if ! command -v zenity &>/dev/null; then
             log_message "ERROR: zenity is not installed or not available in PATH. Cannot use GUI mode." nolog
         else
+            check_script_update
             show_gui
         fi
     else
@@ -1511,7 +1541,7 @@ main() {
         log_message "ERROR: The virtual environment name cannot be 'python' (case-insensitive) when installing into the default directory ('${DEFAULT_OPTS[INSTALL_DIR]}')." nolog
     fi
 
-    if ${use_gui}; then
+    if ${USE_GUI}; then
         rerun_cmd=$(create_rerun_command)
         log_message "NOTE: To re-run the installer with the current --gui settings, use: '${rerun_cmd}'"
         echo
@@ -1526,13 +1556,11 @@ main() {
     # Detect package manager
     PKG_MANAGER=$(detect_package_manager)
 
-    # Update package manager
-    log_message "INFO: Updating '${PKG_MANAGER}' package manager."
-    update_package_manager "${PKG_MANAGER}"
-
     # Install basic dependencies
-    log_message "INFO: Installing 'git', 'curl', and 'jq'."
-    install_dependencies script_deps
+    if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+        log_message "INFO: Installing 'git', 'curl', and 'jq'."
+        install_dependencies script_deps
+    fi
 
     # Check for script update
     if [ "${NON_INTERACTIVE}" = false ]; then
