@@ -688,14 +688,8 @@ check_script_update() {
             response=$(zenity --question \
                 --title="PsychoPy Installer Update" \
                 --width=600 \
-                --text="A new version (${latest_version}) of the installer script is available.
-
-🔹 Repository: https://github.com/wieluk/psychopy_linux_installer
-🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases
-🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues
-
-Would you like to update?" \
-            && echo "y" || echo "n")
+                --text="A new version (${latest_version}) of the installer script is available.\n\n🔹 Repository: https://github.com/wieluk/psychopy_linux_installer\n🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases\n🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues\n\nWould you like to update?" \
+                && echo "y" || echo "n")
         else
             echo -e "\nA new version (${latest_version}) of the installer script is available."
             echo "    🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
