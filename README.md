@@ -192,6 +192,15 @@ To remove it, run:
 rm /usr/local/bin/PsychoPy*
 ```
 
+### Remove PsychoPy group and security limits
+
+To remove the custom PsychoPy group and its associated security limits from your system, run:
+
+```bash
+sudo rm /etc/security/limits.d/99-psychopylimits.conf
+sudo groupdel psychopy
+```
+
 ### (Optional): Remove Dependencies
 
 Dependencies for PsychoPy and for building Python/WxPython are installed via package manager.
