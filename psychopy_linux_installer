@@ -5,10 +5,10 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2025-06-01
-#  Version:       1.7.1
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
+VERSION="1.7.1"
 # Define default values
 declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
@@ -603,64 +603,6 @@ check_connection() {
     fi
 }
 
-# Checks for a new version of the installer script and prompts the user to update.
-check_script_update() {
-    if [ "${SCRIPT_UPDATED}" = "true" ]; then
-        return
-    fi
-
-    if ! command -v curl >/dev/null 2>&1; then
-        SCRIPT_UPDATED="false"
-        log log_message "WARNING: 'curl' command not found. Unable to check for script updates."
-        return
-    fi
-
-    local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest"
-    local current_version latest_version rerun_cmd script_path response
-
-    current_version=$(grep -m 1 'Version:' "${0}" | sed 's/[^0-9.]//g')
-    latest_version=$(curl -Ls -o /dev/null -w '%{url_effective}' "${latest_url}" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?$')
-
-    if is_version_greater "${latest_version}" "${current_version}"; then
-        script_path=$(readlink -f "${0}")
-
-        if [ "${USE_GUI}" = true ]; then
-            response=$(zenity --question \
-                --title="PsychoPy Installer Update" \
-                --width=600 \
-                --text="A new version (${latest_version}) of the installer script is available.\n\n🔹 Repository: https://github.com/wieluk/psychopy_linux_installer\n🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases\n🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues\n\nWould you like to update?" \
-                && echo "y" || echo "n")
-        else
-            echo -e "\nA new version (${latest_version}) of the installer script is available."
-            echo "    🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
-            echo "    🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
-            echo "    🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues"
-            echo
-            read -r -p "Would you like to update?
-
-        [y] Yes
-        [n] No
-
-        Enter your choice [y/n]: " response
-            echo
-        fi
-
-        if [[ "${response}" =~ ^[Yy]$ ]]; then
-            log_message "INFO: Updating to version '${latest_version}' ..."
-
-            if curl -sLo "${script_path}" "${latest_url}"; then
-                log_message "INFO: Update completed successfully."
-                rerun_cmd=$(create_rerun_command)
-                log_message "NOTE: To re-run the installer with the current settings, use: '${rerun_cmd}'"
-                SCRIPT_UPDATED="true"
-                exit 0
-            else
-                log_message "WARNING: Failed to download the update. Continuing with the current version."
-            fi
-        fi
-    fi
-    SCRIPT_UPDATED="true"
-}
 
 # Determines the operating system and its version.
 detect_os_version() {
@@ -994,7 +936,7 @@ remove_system_packages() {
 
 # Reads and parses a requirements file, adjusting dependency versions as needed.
 parse_requirements_file() {
-    local file current_version operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version skipped_packages adjusted_packages req_packages_list raw_packages_list
+    local file operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version skipped_packages adjusted_packages req_packages_list raw_packages_list
     local -A package_versions
     local -A package_operators
     file="${1}"
@@ -1015,7 +957,6 @@ parse_requirements_file() {
             raw_packages_list+=("${package_name}${operator}${package_version}")
 
             if [[ -n "${package_versions[${package_name}]}" ]]; then
-                current_version="${package_versions[${package_name}]}"
                 if [[ "${operator}" == "==" || "${package_operators[${package_name}]}" != "==" ]]; then
                     package_versions["${package_name}"]="${package_version}"
                     package_operators["${package_name}"]="${operator}"
@@ -1808,7 +1749,6 @@ main() {
     TEMPORARY_SUDO_SETUP_DONE=false
     USE_GUI=false
     PKG_MANAGER_UPDATED=false
-    UNIVERSIAL_PKG_FILE="${DEFAULT_OPTS[INSTALL_DIR]}/packages_installed_by_script.txt"
 
     # Ensure /tmp exists and is writable
     if [ ! -d /tmp ]; then
@@ -1840,7 +1780,6 @@ main() {
         if ! command -v zenity &>/dev/null; then
             log_message "ERROR: zenity is not installed or not available in PATH. Cannot use GUI mode." nolog
         else
-            check_script_update
             show_gui
         fi
     else
@@ -1873,10 +1812,10 @@ main() {
     fi
 
     UNIVERSIAL_PKG_FILE="${INSTALL_DIR}/packages_installed_by_script.txt"
+
     # Detect OS version, architecture and script version
     detect_os_version
     PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    SCRIPT_VERSION=$(grep -m 1 'Version:' "$0" | sed 's/[^0-9.]//g')
     log_message "INFO: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
 
     # Detect package manager
@@ -1888,10 +1827,6 @@ main() {
         install_dependencies script_deps
     fi
 
-    # Check for script update
-    if [ "${NON_INTERACTIVE}" = false ]; then
-        check_script_update
-    fi
 
     # Check if python version is valid
     if [[ "${PYTHON_VERSION}" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
