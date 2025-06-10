@@ -71,8 +71,10 @@ report_result $? "psychopy_linux_installer spell check"
 
 # Check variable formatting in psychopy_linux_installer (ignoring PATH and name)
 print_header "Checking variable formatting (non-curly braces)" "$PARENT_DIR/psychopy_linux_installer"
-! grep -n -P '\$(?!\{)(?!(PATH|name)\b)[a-zA-Z_][a-zA-Z0-9_]*' "$PARENT_DIR/psychopy_linux_installer"
-report_result $? "Non-curly brace variable check"
+grep -n -P '\$(?!\{)(?!(PATH|name)\b)[a-zA-Z_][a-zA-Z0-9_]*' "$PARENT_DIR/psychopy_linux_installer" | \
+  awk -v file="$PARENT_DIR/psychopy_linux_installer" -F: '{print file ":" $1 ":1: Non-curly brace: "$0; print ""}'
+grep_exit_code=${PIPESTATUS[0]}
+report_result $([ "$grep_exit_code" -eq 1 ] && echo 0 || echo 1) "Non-curly brace variable check"
 
 # Print summary
 echo -e "\n${BOLD}Summary:${NC}"

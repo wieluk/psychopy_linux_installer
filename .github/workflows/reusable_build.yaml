@@ -130,17 +130,11 @@ jobs:
           else
             WXPYTHON_VERSION="${{ matrix.wxpython_version }}"
           fi
-          INSTALL_DIR=$(grep -m1 '^\s*\[INSTALL_DIR\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
-          if [ -z "$INSTALL_DIR" ]; then
-            echo "Error: Failed to extract INSTALL_DIR from script."
-            exit 1
-          fi
+
           echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
           echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
-          echo "INSTALL_DIR=$INSTALL_DIR" >> $GITHUB_ENV
           echo "Installer Version extracted: $INSTALLER_VERSION"
           echo "wxPython version extracted: $WXPYTHON_VERSION"
-          echo "Install dir extracted: $INSTALL_DIR"
 
       - name: Get release info
         id: get_release
@@ -202,7 +196,7 @@ jobs:
                   return
               fi
 
-              log_message "Warning: Unable to detect OS version."
+              echo "Warning: Unable to detect OS version."
               exit 1
           }
 
@@ -211,7 +205,6 @@ jobs:
           PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
 
-          PYTHON_TARBALL_NAME="python-${PYTHON_FULL_VERSION}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.tar.gz"
           WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
 
           check_assets() {
@@ -244,22 +237,13 @@ jobs:
             PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
           fi
 
-          PYTHON_EXISTS=false
           WXPYTHON_EXISTS=false
-          PYTHON_URL=""
           WXPYTHON_URL=""
-          FOUND_PYTHON_IN_CURRENT=false
           FOUND_WXPYTHON_IN_CURRENT=false
-          FOUND_PYTHON_IN_PREVIOUS=false
           FOUND_WXPYTHON_IN_PREVIOUS=false
 
           while IFS= read -r line; do
-            if [ "$line" = "$PYTHON_TARBALL_NAME" ]; then
-              read -r url
-              PYTHON_EXISTS=true
-              PYTHON_URL="$url"
-              FOUND_PYTHON_IN_CURRENT=true
-            elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
+            if [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
               read -r url
               WXPYTHON_EXISTS=true
               WXPYTHON_URL="$url"
@@ -267,33 +251,15 @@ jobs:
             fi
           done <<< "$CURRENT_ASSETS"
 
-          if [ "$PYTHON_EXISTS" = false ] || [ "$WXPYTHON_EXISTS" = false ]; then
+          if [ "$WXPYTHON_EXISTS" = false ]; then
             while IFS= read -r line; do
-              if [ "$line" = "$PYTHON_TARBALL_NAME" ] && [ "$PYTHON_EXISTS" = false ]; then
-                read -r url
-                PYTHON_EXISTS=true
-                PYTHON_URL="$url"
-                FOUND_PYTHON_IN_PREVIOUS=true
-              elif [ "$line" = "$WXPYTHON_WHEEL_NAME" ] && [ "$WXPYTHON_EXISTS" = false ]; then
+              if [ "$line" = "$WXPYTHON_WHEEL_NAME" ] && [ "$WXPYTHON_EXISTS" = false ]; then
                 read -r url
                 WXPYTHON_EXISTS=true
                 WXPYTHON_URL="$url"
                 FOUND_WXPYTHON_IN_PREVIOUS=true
               fi
             done <<< "$PREVIOUS_ASSETS"
-          fi
-
-          if [ "$PYTHON_EXISTS" = true ]; then
-            echo "SKIP_PYTHON_PROCESS=true" >> $GITHUB_ENV
-            if [ "$FOUND_PYTHON_IN_PREVIOUS" = true ]; then
-              echo "TRANSFER_PYTHON_FROM_PREVIOUS=true" >> $GITHUB_ENV
-            else
-              echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
-            fi
-            echo "PYTHON_URL=$PYTHON_URL" >> $GITHUB_ENV
-          else
-            echo "SKIP_PYTHON_PROCESS=false" >> $GITHUB_ENV
-            echo "TRANSFER_PYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
           fi
 
           if [ "$WXPYTHON_EXISTS" = true ]; then
@@ -312,23 +278,8 @@ jobs:
           echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
-          echo "PYTHON_FULL_VERSION=${PYTHON_FULL_VERSION}" >> $GITHUB_ENV
-          echo "PYTHON_TARBALL_NAME=${PYTHON_TARBALL_NAME}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
-
-      - name: Transfer Python from previous release
-        if: env.TRANSFER_PYTHON_FROM_PREVIOUS == 'true'
-        run: |
-          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            -o "/tmp_dir/${PYTHON_TARBALL_NAME}" \
-            "${{ env.PYTHON_URL }}"
-
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Content-Type: application/gzip" \
-            --data-binary @"/tmp_dir/${PYTHON_TARBALL_NAME}" \
-            "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
-
+      
       - name: Transfer wxPython from previous release
         if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
         run: |
@@ -343,7 +294,7 @@ jobs:
             "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Install build dependencies
-        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
+        if: env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
           func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
 
@@ -358,7 +309,7 @@ jobs:
               echo "$pkg_block" | grep -E "^[[:space:]]*$var=\(" | sed -E "s/^[[:space:]]*$var=\(//; s/\)[[:space:]]*$//"
           }
 
-          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "python_build_deps") $(extract_deps "wxpython_deps") $(extract_deps "python_with_venv")"
+          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "wxpython_deps")"
 
           echo "Extracted packages to install: $all_deps"
 
@@ -394,50 +345,27 @@ jobs:
                   ;;
           esac
 
-      - name: Build Python
-        id: build-python
-        if: env.SKIP_PYTHON_PROCESS == 'false' || env.SKIP_WXPYTHON_PROCESS == 'false'
-        run: |
-          cd /tmp_dir
-          curl -O "https://www.python.org/ftp/python/${PYTHON_FULL_VERSION}/Python-${PYTHON_FULL_VERSION}.tgz"
-          tar -xf "Python-${PYTHON_FULL_VERSION}.tgz"
-          cd "Python-${PYTHON_FULL_VERSION}"
-          ./configure --enable-optimizations --with-ensurepip=install --prefix=$INSTALL_DIR/python
-          make -j "$(nproc)"
-
-          PYTHON_TARBALL_PATH="/tmp_dir/${PYTHON_TARBALL_NAME}"
-          tar -czvf "$PYTHON_TARBALL_PATH" -C "/tmp_dir/Python-${PYTHON_FULL_VERSION}/" .
-          echo "PYTHON_TARBALL_PATH=$PYTHON_TARBALL_PATH" >> $GITHUB_ENV
-
-          sudo make altinstall
-
-      - name: Upload Python
-        if: env.SKIP_PYTHON_PROCESS == 'false' && steps.build-python.outcome == 'success'
-        run: |
-          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Content-Type: application/gzip" \
-          --data-binary @"${PYTHON_TARBALL_PATH}" \
-          "${{ env.upload_url }}?name=${PYTHON_TARBALL_NAME}"
 
       - name: Build wxPython
         if: env.SKIP_WXPYTHON_PROCESS == 'false'
         continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
         id: build-wxpython
         run: |
-          export PATH=$INSTALL_DIR/python/bin:$PATH
-          $INSTALL_DIR/python/bin/python$PYTHON_VERSION -m venv /tmp_dir/psychopy_venv
+          curl -LsSf https://astral.sh/uv/install.sh
+          hash -r
+          uv venv --python "python${PYTHON_VERSION}" "/tmp_dir/psychopy_venv"
           source /tmp_dir/psychopy_venv/bin/activate
 
-          pip install -U pip distro sip six psychtoolbox setuptools wheel
+          uv pip install -U pip distro sip six psychtoolbox setuptools wheel
 
           if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
-              pip install attrdict
+              uv pip install attrdict
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-              pip install attrdict3
+              uv pip install attrdict3
           fi
 
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
-          pip download wxPython==$WXPYTHON_VERSION
+          uv pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
