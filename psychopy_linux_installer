@@ -8,7 +8,7 @@
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
-VERSION="1.7.1"
+SCRIPT_VERSION="1.7.1"
 
 # Define default values
 declare -A DEFAULT_OPTS=(
@@ -345,7 +345,7 @@ process_arguments() {
             VERBOSE=true
             ;;
         --version)
-            echo "${VERSION}"
+            echo "${SCRIPT_VERSION}"
             exit 0
             ;;
         -h | --help)
