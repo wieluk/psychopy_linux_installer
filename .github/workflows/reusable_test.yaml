@@ -93,6 +93,7 @@ jobs:
 
 
       - name: Uninstall PsychoPy
+        if: always()
         run: |
           /tmp_dir/psychopy/start_psychopy --uninstall --non-interactive=y
           
@@ -218,6 +219,7 @@ jobs:
           echo "PsychoPy program completed"
 
       - name: Uninstall PsychoPy
+        if: always()
         run: |
           /tmp_dir/psychopy/start_psychopy --uninstall --non-interactive=y
 
