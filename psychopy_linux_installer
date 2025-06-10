@@ -16,7 +16,7 @@ declare -A DEFAULT_OPTS=(
     [WXPYTHON_VERSION]="4.2.3"
     [WXPYTHON_WHEEL_INDEX]=""
     [BUILD_WX]=false
-    [INSTALL_DIR]="/usr/local/psychopy"
+    [INSTALL_DIR]="/opt/psychopy"
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
@@ -1252,12 +1252,12 @@ install_wxpython() {
             log_message "ERROR: Failed to install wxPython from custom wheel index: ${WXPYTHON_WHEEL_INDEX}."
         fi
     else
-        if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels/" "wxpython==${WXPYTHON_VERSION}"; then
-            log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from local wheel."
+        if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}"; then
+            log_meessage "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from PyPI."
         elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
         elif install_wxpython_from_github; then
-            :
+            log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from GitHub release."
         else
             build_wxpython
         fi
@@ -1286,10 +1286,6 @@ install_wxpython_from_github() {
             renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
             mv "${download_path}" "${renamed_wheel}"
             if log "${UV_INSTALL_DIR}/uv" pip install "${renamed_wheel}"; then
-                log_message "INFO: Installed wxPython from '${renamed_wheel}'"
-                sudo_wrapper mkdir -p "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels"
-                sudo_wrapper chmod -R a+rX "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels"
-                sudo_wrapper mv "${renamed_wheel}" "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels/"
                 return 0
             else
                 log_message "WARNING: Installing wxPython from '${renamed_wheel}' failed."
@@ -1657,7 +1653,6 @@ create_start_psychopy_wrapper() {
         "        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
         "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
         "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        \${SUDO} rm -rf ${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels" \
         "        if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
         "        \${SUDO} rm -f \"${UV_INSTALL_DIR}/uv\" \"${UV_INSTALL_DIR}/uvx\"" \
         "        \${SUDO} rm -f /usr/local/bin/uv /usr/local/bin/uvx" \
@@ -1668,8 +1663,6 @@ create_start_psychopy_wrapper() {
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
         "        read -r -p \"Remove PsychoPy user settings (~/.psychopy3)? [y/N]: \" resp" \
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        read -r -p \"Remove wxPython wheels directory (${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels)? [y/N]: \" resp" \
-        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf ${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels" \
         "        read -r -p \"Remove 'uv' binary and all uv data from ${UV_INSTALL_DIR}/uv, ${UV_INSTALL_DIR}/uvx, and /usr/local/bin/uv? [y/N]: \" resp" \
         "        if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
         "            if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
@@ -1879,6 +1872,7 @@ main() {
         echo
     fi
 
+    UNIVERSIAL_PKG_FILE="${INSTALL_DIR}/packages_installed_by_script.txt"
     # Detect OS version, architecture and script version
     detect_os_version
     PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
