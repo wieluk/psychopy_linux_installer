@@ -9,6 +9,7 @@
 # ==============================================================================
 
 VERSION="1.7.1"
+
 # Define default values
 declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
@@ -344,7 +345,7 @@ process_arguments() {
             VERBOSE=true
             ;;
         --version)
-            grep -m 1 '^#  Version:' "$0" | awk -F: '{gsub(/ /,"",$2); print $2}'
+            echo "${VERSION}"
             exit 0
             ;;
         -h | --help)
