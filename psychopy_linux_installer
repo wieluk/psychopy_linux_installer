@@ -918,13 +918,13 @@ install_dependencies() {
     apt-get)
         script_deps=(curl git jq)
         psychopy_deps=(libnotify4 libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 pulseaudio pulseaudio-utils)
-        build_deps=(pkg‑config g++ make python3-dev libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libsdl2-dev libglu1-mesa-dev portaudio19-dev)
+        build_deps=(g++ make python3-dev libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libsdl2-dev libglu1-mesa-dev portaudio19-dev)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
-        wxpython_deps=(pkg‑config freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
+        wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
         ;;
     yum | dnf)
         script_deps=(curl git jq)
-        psychopy_deps=(alsa-lib gtk3 libnotify portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk3 webkit2gtk4 libusb1)
+        psychopy_deps=(alsa-lib gtk3 libnotify pulseaudio-utils SDL2 webkit2gtk3 mesa-libGLU)
         build_deps=(gcc gcc-c++ make python3-devel alsa-lib-devel gtk3-devel mesa-libEGL-devel mesa-libGLU-devel portaudio-devel SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
         wxpython_deps=(pkgconfig freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
@@ -1166,7 +1166,7 @@ verify_installed_pip_versions() {
             version="${BASH_REMATCH[2]}"
             installed_versions["${name}"]="${version}"
         fi
-    done < <(uv pip list --format=freeze 2>/dev/null)
+    done < <("${UV_INSTALL_DIR}/uv" pip list --format=freeze 2>/dev/null)
 
     IFS=',' read -ra PKG_LIST <<<"${pip_extra_packages}"
     for pkg_spec in "${PKG_LIST[@]}"; do
@@ -1263,7 +1263,7 @@ install_wxpython() {
         fi
     fi
 
-    if ! uv pip show wxPython &>/dev/null; then
+    if ! "${UV_INSTALL_DIR}/uv" pip show wxPython &>/dev/null; then
         log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try '--build=wxpython'."
     fi
 }
@@ -1942,7 +1942,7 @@ main() {
     # Ensure uv is installed and create virtual environment
     ensure_uv_installed
     log_message "INFO: Creating Python environment with uv ..."
-    if log uv venv --python "python${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
+    if log "${UV_INSTALL_DIR}/uv" venv --python "python${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
         log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
     else
         log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
@@ -1983,7 +1983,7 @@ main() {
         log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}"
     fi
 
-    if ! uv pip show psychopy &>/dev/null; then
+    if ! "${UV_INSTALL_DIR}/uv" pip show psychopy &>/dev/null; then
         log_message "ERROR: PsychoPy installation failed."
     fi
 
