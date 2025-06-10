@@ -8,6 +8,7 @@
 #  Version:       1.7.1
 #  License:       GNU General Public License v3.0
 # ==============================================================================
+
 # Define default values
 declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
@@ -821,7 +822,9 @@ save_installed_packages() {
 
 # Installs the provided packages via the identified package manager.
 install_packages() {
-    local packages=("${@}")
+    local dep_type=$1
+    shift
+    local packages=( "$@" )
     local available_packages
     local to_install=()
     local already_installed=()
@@ -841,7 +844,14 @@ install_packages() {
         fi
     done
 
-    save_installed_packages "${to_install[@]}"
+
+    if [[ "${dep_type}" == "wxpython_deps" ]]; then
+        WXPYTHON_DEPS_INSTALLED=("${to_install[@]}")
+    elif [[ "${dep_type}" == "build_deps" ]]; then
+        BUILD_DEPS_INSTALLED=("${to_install[@]}")
+    else
+        save_installed_packages "${to_install[@]}"
+    fi
 
     if [ ${#already_installed[@]} -gt 0 ]; then
         log log_message "INFO: The following ${PKG_MANAGER} packages are already installed: '${already_installed[*]}'"
@@ -907,25 +917,29 @@ install_dependencies() {
     case ${PKG_MANAGER} in
     apt-get)
         script_deps=(curl git jq)
-        psychopy_deps=(python3-dev libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
+        psychopy_deps=(libnotify4 libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 pulseaudio pulseaudio-utils)
+        build_deps=(pkg‑config g++ make python3-dev libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libsdl2-dev libglu1-mesa-dev portaudio19-dev)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
         wxpython_deps=(pkg‑config freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
         ;;
     yum | dnf)
         script_deps=(curl git jq)
-        psychopy_deps=(python3-devel alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+        psychopy_deps=(alsa-lib gtk3 libnotify portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk3 webkit2gtk4 libusb1)
+        build_deps=(gcc gcc-c++ make python3-devel alsa-lib-devel gtk3-devel mesa-libEGL-devel mesa-libGLU-devel portaudio-devel SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
         wxpython_deps=(pkgconfig freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
         ;;
     pacman)
         script_deps=(curl git jq)
-        psychopy_deps=(python alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+        build_deps=(gcc make pkgconf python)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
         wxpython_deps=(pkgconf freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
         ;;
     zypper)
         script_deps=(curl git jq)
-        psychopy_deps=(python3-devel alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+        psychopy_deps=(alsa-lib gtk3 libnotify4 libxcb-xinerama0 pulseaudio pulseaudio-utils)
+        build_deps=(pkg-config gcc gcc-c++ make make python3-devel gcc-c++ alsa-devel gtk3-devel libusb-1_0-devel portaudio-devel SDL2-devel)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(pkg-config freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
         ;;
@@ -937,6 +951,7 @@ install_dependencies() {
     case ${dep_type} in
     script_deps) dependencies=("${script_deps[@]}") ;;
     psychopy_deps) dependencies=("${psychopy_deps[@]}") ;;
+    build_deps) dependencies=("${build_deps[@]}") ;;
     fonts) dependencies=("${fonts[@]}") ;;
     wxpython_deps) dependencies=("${wxpython_deps[@]}") ;;
     *)
@@ -944,9 +959,34 @@ install_dependencies() {
         ;;
     esac
 
-    install_packages "${dependencies[@]}"
+    install_packages "${dep_type}" "${dependencies[@]}"
 }
 
+# Removes specified system packages using the identified package manager.
+remove_system_packages() {
+    local packages=("$@")
+    case "${PKG_MANAGER}" in
+        apt-get)
+            sudo_wrapper apt-get remove -y "${packages[@]}"
+            ;;
+        yum)
+            sudo_wrapper yum remove -y "${packages[@]}"
+            ;;
+        dnf)
+            sudo_wrapper dnf remove -y "${packages[@]}"
+            ;;
+        pacman)
+            sudo_wrapper pacman -Rs --noconfirm "${packages[@]}"
+            ;;
+        zypper)
+            sudo_wrapper zypper remove -y "${packages[@]}"
+            ;;
+        *)
+            log_message "ERROR: Unknown package manager: ${PKG_MANAGER}. Please remove packages manually."
+            return 1
+            ;;
+    esac
+}
 
 # ===============================================================================
 # PYTHON PACKAGE MANAGEMENT - PyPI and pip related functions
@@ -1099,13 +1139,13 @@ install_pip_packages_with_fallback() {
     log_message "INFO: Installing extra uv(pip) packages from --additional-packages and/or --requirements-file."
 
     IFS=',' read -ra PACKAGES <<<"${packages_csv}"
-    if log uv pip install "${PACKAGES[@]}"; then
+    if log "${UV_INSTALL_DIR}/uv" pip install "${PACKAGES[@]}"; then
         log_message "INFO: All extra uv(pip) packages installed successfully."
     else
         log_message "WARNING: Failed to install extra uv(pip) packages as batch. Installing one by one ..."
         for package in "${PACKAGES[@]}"; do
             log log_message "INFO: Installing '${package}' ..."
-            if log uv pip install "${package}"; then
+            if log "${UV_INSTALL_DIR}/uv" pip install "${package}"; then
                 log log_message "INFO: '${pkg_name}' version '${installed_version}' installed successfully."
             else
                 log log_message "WARNING: Failed to install '${package}'. Skipping."
@@ -1173,15 +1213,15 @@ check_python_env() {
 
 # Ensures the 'uv' Python package manager is installed and available.
 ensure_uv_installed() {
-    if command -v uv >/dev/null 2>&1; then
-        log uv self update
+    UV_INSTALL_DIR="${HOME}/.local/bin"
+    if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
+        log "${UV_INSTALL_DIR}/uv" self update
         log_message "INFO: 'uv' is already installed."
         return 0
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
-    if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
-        hash -r
-    if command -v uv >/dev/null 2>&1; then
+    if curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
+        if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
             log_message "INFO: 'uv' installed successfully."
             return 0
         fi
@@ -1202,19 +1242,19 @@ install_wxpython() {
         log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
         install_dependencies wxpython_deps
         log_message "INFO: Building wxPython from git. This might take a while ..."
-        log uv pip install git+https://github.com/wxWidgets/Phoenix
+        log "${UV_INSTALL_DIR}/uv" pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "${BUILD_WX}" = true ]; then
         build_wxpython
     elif [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
-        if log uv pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
+        if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from custom wheel URL."
         else
             log_message "ERROR: Failed to install wxPython from custom wheel index: ${WXPYTHON_WHEEL_INDEX}."
         fi
     else
-        if log uv pip install --only-binary=:all: --find-links "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels/" "wxpython==${WXPYTHON_VERSION}"; then
+        if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels/" "wxpython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from local wheel."
-        elif log uv pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
+        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
         elif install_wxpython_from_github; then
             :
@@ -1245,7 +1285,7 @@ install_wxpython_from_github() {
             log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
             renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
             mv "${download_path}" "${renamed_wheel}"
-            if log uv pip install "${renamed_wheel}"; then
+            if log "${UV_INSTALL_DIR}/uv" pip install "${renamed_wheel}"; then
                 log_message "INFO: Installed wxPython from '${renamed_wheel}'"
                 sudo_wrapper mkdir -p "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels"
                 sudo_wrapper chmod -R a+rX "${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels"
@@ -1278,10 +1318,17 @@ build_wxpython() {
     [ "${tmp_size_gb}" -le 4 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
 
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
-    if log uv pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
+    if log "${UV_INSTALL_DIR}/uv" pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
         log_message "INFO: Successfully built wxPython from source."
     else
+        if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
+            save_installed_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
+        fi
         log_message "ERROR: Building wxPython from source failed."
+    fi
+    if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
+        log_message "INFO: Removing wxPython build dependencies. : ${WXPYTHON_DEPS_INSTALLED[*]}"
+        remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
     fi
 }
 
@@ -1611,8 +1658,8 @@ create_start_psychopy_wrapper() {
         "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
         "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
         "        \${SUDO} rm -rf ${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels" \
-        "        if command -v uv >/dev/null 2>&1; then uv cache clean || true; \${SUDO} rm -rf \"\$(uv python dir)\" 2>/dev/null || true; \${SUDO} rm -rf \"\$(uv tool dir)\" 2>/dev/null || true; fi" \
-        "        \${SUDO} rm -f \"\${HOME}/.local/bin/uv\" \"\${HOME}/.local/bin/uvx\"" \
+        "        if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
+        "        \${SUDO} rm -f \"${UV_INSTALL_DIR}/uv\" \"${UV_INSTALL_DIR}/uvx\"" \
         "        \${SUDO} rm -f /usr/local/bin/uv /usr/local/bin/uvx" \
         "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
         "        read -r -p \"Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: \" resp" \
@@ -1623,10 +1670,10 @@ create_start_psychopy_wrapper() {
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
         "        read -r -p \"Remove wxPython wheels directory (${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels)? [y/N]: \" resp" \
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf ${DEFAULT_OPTS[INSTALL_DIR]}/wx_wheels" \
-        "        read -r -p \"Remove 'uv' binary and all uv data from ~/.local/bin/uv, ~/.local/bin/uvx, and /usr/local/bin/uv? [y/N]: \" resp" \
+        "        read -r -p \"Remove 'uv' binary and all uv data from ${UV_INSTALL_DIR}/uv, ${UV_INSTALL_DIR}/uvx, and /usr/local/bin/uv? [y/N]: \" resp" \
         "        if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-        "            if command -v uv >/dev/null 2>&1; then uv cache clean || true; \${SUDO} rm -rf \"\$(uv python dir)\" 2>/dev/null || true; \${SUDO} rm -rf \"\$(uv tool dir)\" 2>/dev/null || true; fi" \
-        "            \${SUDO} rm -f \"\${HOME}/.local/bin/uv\" \"\${HOME}/.local/bin/uvx\"; \${SUDO} rm -f /usr/local/bin/uv /usr/local/bin/uvx" \
+        "            if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
+        "            \${SUDO} rm -f \"${UV_INSTALL_DIR}/uv\" \"${UV_INSTALL_DIR}/uvx\"; \${SUDO} rm -f /usr/local/bin/uv /usr/local/bin/uvx" \
         "        fi" \
         "    fi" \
         "}" \
@@ -1889,6 +1936,8 @@ main() {
     # Install PsychoPy dependencies
     log_message "INFO: Installing PsychoPy dependencies. This might take a while ..."
     install_dependencies psychopy_deps
+    log_message "INFO: Installing build dependencies. This might take a while ..."
+    install_dependencies build_deps
 
     # Ensure uv is installed and create virtual environment
     ensure_uv_installed
@@ -1905,16 +1954,16 @@ main() {
 
     # Upgrade pip and install required Python packages
     log_message "INFO: Upgrading 'pip' 'distro', 'sip', 'six', 'psychtoolbox', 'attrdict', 'setuptools', 'wheel' ..."
-    log uv pip install -U pip distro sip six psychtoolbox setuptools wheel
+    log "${UV_INSTALL_DIR}/uv" pip install -U pip distro sip six psychtoolbox setuptools wheel
     if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
-        log uv pip install -U attrdict
+        log "${UV_INSTALL_DIR}/uv" pip install -U attrdict
     elif [[ "${PYTHON_VERSION}" == "3.10" ]]; then
-        log uv pip install -U attrdict3
+        log "${UV_INSTALL_DIR}/uv" pip install -U attrdict3
     fi
     # Install numpy<2 if PsychoPy version is < 2024.2.0 or Python version is 3.9
     if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
         log_message "INFO: Installing numpy<2"
-        log uv pip install "numpy<2"
+        log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
     fi
 
     install_wxpython
@@ -1927,11 +1976,11 @@ main() {
     # Install PsychoPy
     log_message "INFO: Installing PsychoPy '${PSYCHOPY_VERSION}' ..."
     if [ "${PSYCHOPY_VERSION}" == "git" ]; then
-        log uv pip install git+https://github.com/psychopy/psychopy.git@dev
+        log "${UV_INSTALL_DIR}/uv" pip install git+https://github.com/psychopy/psychopy.git@dev
     elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
-        log uv pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
     else
-        log uv pip install psychopy=="${PSYCHOPY_VERSION}"
+        log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}"
     fi
 
     if ! uv pip show psychopy &>/dev/null; then
@@ -1944,6 +1993,11 @@ main() {
     fi
 
     deactivate
+
+    if [ "${#BUILD_DEPS_INSTALLED[@]}" -gt 0 ]; then
+        log_message "INFO: Removing build dependencies: ${BUILD_DEPS_INSTALLED[*]}"
+        remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
+    fi
 
     # Install some basic fonts for PsychoPy
     if [ "${NO_FONTS}" = false ]; then
