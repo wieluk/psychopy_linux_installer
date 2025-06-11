@@ -8,7 +8,7 @@
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
-SCRIPT_VERSION="1.7.0"
+SCRIPT_VERSION="1.7.1"
 
 # Define default values
 declare -A DEFAULT_OPTS=(
@@ -617,7 +617,6 @@ check_script_update() {
        [[ "${script_path}" == /proc/self/fd/* ]] || \
        [[ "${script_path}" == /proc/*/fd/* ]] || \
        [[ "${script_path}" == *pipe:* ]]; then
-        log_message "WARNING: Script is running from a file descriptor or pipe (${script_path}). Self-update is not possible in this mode. Please download and run the script as a regular file to enable updates."
         return
     fi
 
