@@ -608,6 +608,10 @@ check_connection() {
 
 # Checks for a new version of the installer script and prompts the user to update.
 check_script_update() {
+    local latest_version rerun_cmd script_path response
+    script_path=$(readlink -f "${0}")
+    local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest"
+    
     # Exclude process substitution and pipe paths
     if [[ "${script_path}" == /dev/fd/* ]] || \
        [[ "${script_path}" == /proc/self/fd/* ]] || \
@@ -626,9 +630,6 @@ check_script_update() {
         log log_message "WARNING: 'curl' command not found. Unable to check for script updates."
         return
     fi
-
-    local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest"
-    local latest_version rerun_cmd script_path response
 
     latest_version=$(curl -Ls -o /dev/null -w '%{url_effective}' "${latest_url}" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?$')
 
