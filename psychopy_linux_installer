@@ -1660,6 +1660,15 @@ main() {
     elif [[ "${PYTHON_VERSION}" == "3.10" ]]; then
         log "${PYTHON_VENV_COMMAND}" -m pip install -U attrdict3
     fi
+    # Install numpy<2 if PsychoPy version is less than 2024.2.0
+    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
+        log_message "INFO: Installing numpy<2"
+        log "${PYTHON_VENV_COMMAND}" -m pip install "numpy<2"
+    fi
+    # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
+    if [ "${PYTHON_VERSION}" == "3.8" ]; then
+        log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
+    fi
 
     # Determine wxPython version and install it
     log_message "INFO: Installing wxpython '${WXPYTHON_VERSION}' ..."
@@ -1690,16 +1699,6 @@ main() {
 
     if ! "${PYTHON_VENV_COMMAND}" -m pip show wxPython &>/dev/null; then
         log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try '--build=wxpython'."
-    fi
-
-    # Install numpy<2 if PsychoPy version is less than 2024.2.0
-    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
-        log_message "INFO: Installing numpy<2"
-        log "${PYTHON_VENV_COMMAND}" -m pip install "numpy<2"
-    fi
-    # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
-    if [ "${PYTHON_VERSION}" == "3.8" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
     fi
 
     # Install additional packages from requirements file and flag
