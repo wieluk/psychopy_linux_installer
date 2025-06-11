@@ -1812,7 +1812,7 @@ main() {
         echo
     fi
 
-    UNIVERSIAL_PKG_FILE="${INSTALL_DIR}/packages_installed_by_script.txt"
+    UNIVERSIAL_PKG_FILE="${INSTALL_DIR}/.pkgs_installed_psychopy_linux_installer.txt"
 
     # Detect OS version, architecture and script version
     detect_os_version
