@@ -613,7 +613,7 @@ check_script_update() {
     local latest_version rerun_cmd script_path response
     script_path=$(readlink -f "${0}")
     local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest"
-    
+
     # Exclude process substitution and pipe paths
     if [[ "${script_path}" == /dev/fd/* ]] || \
        [[ "${script_path}" == /proc/self/fd/* ]] || \
