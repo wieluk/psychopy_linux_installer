@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2025-06-01
-#  Version:       1.7.1
+#  Version:       1.7.2
 #  License:       GNU General Public License v3.0
 # ==============================================================================
 
@@ -1696,6 +1696,10 @@ main() {
     if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
         log_message "INFO: Installing numpy<2"
         log "${PYTHON_VENV_COMMAND}" -m pip install "numpy<2"
+    fi
+    # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
+    if [ "${PYTHON_VERSION}" == "3.8" ]; then
+        log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
     fi
 
     # Install additional packages from requirements file and flag
