@@ -608,8 +608,14 @@ check_connection() {
 
 # Checks for a new version of the installer script and prompts the user to update.
 check_script_update() {
-    script_path=$(readlink -f "${0}")
-    echo "Script path is: ${script_path}"
+    # Exclude process substitution and pipe paths
+    if [[ "${script_path}" == /dev/fd/* ]] || \
+       [[ "${script_path}" == /proc/self/fd/* ]] || \
+       [[ "${script_path}" == /proc/*/fd/* ]] || \
+       [[ "${script_path}" == *pipe:* ]]; then
+        log_message "WARNING: Script is running from a file descriptor or pipe (${script_path}). Self-update is not possible in this mode. Please download and run the script as a regular file to enable updates."
+        return
+    fi
 
     if [ "${SCRIPT_UPDATED}" = "true" ]; then
         return
@@ -1812,6 +1818,7 @@ main() {
     TEMPORARY_SUDO_SETUP_DONE=false
     USE_GUI=false
     PKG_MANAGER_UPDATED=false
+    SCRIPT_UPDATED=false
 
     # Ensure /tmp exists and is writable
     if [ ! -d /tmp ]; then
