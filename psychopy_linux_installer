@@ -931,7 +931,7 @@ install_dependencies() {
     apt-get)
         script_deps=(curl git jq)
         psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
-        build_deps=(g++ make python3-dev pkg‑config libavcodec-dev)
+        build_deps=(g++ make python3-dev pkg‑config)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
         wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
         ;;
@@ -1970,6 +1970,10 @@ main() {
     if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
         log_message "INFO: Installing numpy<2"
         log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
+    fi
+    # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
+    if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
+        log "${UV_INSTALL_DIR}/uv" pip install -U ffpyplayer==4.5.2
     fi
 
     install_wxpython
