@@ -524,6 +524,8 @@ show_gui() {
     if [[ ${options} == *"Run in non-interactive mode"* ]]; then
         NON_INTERACTIVE=true
         SUDO_MODE=auto
+    else
+        NON_INTERACTIVE=false
     fi
 
     if [[ ${options} == *"Force overwrite of existing directory"* ]]; then
