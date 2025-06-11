@@ -62,7 +62,7 @@ Install curl with your package manager. On most distros curl is already installe
 |--------|-------------|---------|
 | `--psychopy-version=VERSION` | Install a specific PsychoPy release. | `latest` |
 | `--python-version=[3.8.x\|3.9.x\|3.10.x]` | Choose the Python interpreter version used by PsychoPy. (Patch version is optional) | `3.10` |
-| `--wxpython-version=VERSION` | Install a specific wxPython release. | `4.2.2` |
+| `--wxpython-version=VERSION` | Install a specific wxPython release. | `4.2.3` |
 | `--build-wxpython` | Build wxPython from source instead of downloading wheels. | *(download pre‑built wheels)* |
 | `--wxpython-wheel-url=URL` | **Advanced.** Use a custom uv(pip) `--find-links` URL as the source for wxPython wheels. Might be useful for rolling distributions like Arch. Example: `--wxpython-wheel-url=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
 | `--install-dir=DIR` | Target directory for the installation. | `/opt/psychopy` |
@@ -72,7 +72,7 @@ Install curl with your package manager. On most distros curl is already installe
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control sudo usage. ask: confirm, auto: auto-confirm, error: exit if sudo needed, continue: continue without sudo, force: use sudo directly. | `ask` |
 | `--non-interactive` | Run unattended; implicitly sets `--sudo-mode=auto` unless already given. | *false* |
 | `--disable-shortcut` | Prevent creation of a desktop shortcut. | *false* |
-| `--disable-path` | Skip linking PsychoPy to `/usr/local/bin`. | *false* |
+| `--disable-path` | Skip linking PsychoPy to `/usr/local/bin` or `~/.local/bin`. | *false* |
 | `--remove-psychopy-settings` | Delete existing user settings at `~/.psychopy3` while installation. | *false* |
 | `--no-fonts` | Skip installation of additional font packages. | *false* |
 | `--gui` | Open a graphical installer (command‑line options are ignored while GUI is running). | *false* |
@@ -89,7 +89,7 @@ Install curl with your package manager. On most distros curl is already installe
 ## Example
 
 ```bash
-./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/ubuntu --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --verbose --force-overwrite
+bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer) --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/ubuntu --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --verbose --force-overwrite
 ```
 
 ## How the Installer Works
