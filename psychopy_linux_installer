@@ -608,12 +608,13 @@ check_connection() {
 
 # Checks for a new version of the installer script and prompts the user to update.
 check_script_update() {
+    script_path=$(readlink -f "${0}")
+    echo "Script path is: ${script_path}"
+
     if [ "${SCRIPT_UPDATED}" = "true" ]; then
         return
     fi
 
-    script_path=$(readlink -f "${0}")
-    echo $script_path
     if ! command -v curl >/dev/null 2>&1; then
         SCRIPT_UPDATED="false"
         log log_message "WARNING: 'curl' command not found. Unable to check for script updates."
