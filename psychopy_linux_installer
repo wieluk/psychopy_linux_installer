@@ -1963,7 +1963,7 @@ main() {
     log "${UV_INSTALL_DIR}/uv" pip install -U pip distro sip six psychtoolbox setuptools wheel
     if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
         log "${UV_INSTALL_DIR}/uv" pip install -U attrdict
-    elif [[ "${PYTHON_VERSION}" == "3.10" ]]; then
+    elif [ "${PYTHON_VERSION}" == "3.10" ]; then
         log "${UV_INSTALL_DIR}/uv" pip install -U attrdict3
     fi
     # Install numpy<2 if PsychoPy version is < 2024.2.0 or Python version is 3.9
@@ -1972,8 +1972,8 @@ main() {
         log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
     fi
     # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
-    if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
-        log "${UV_INSTALL_DIR}/uv" pip install -U ffpyplayer==4.5.2
+    if [ "${PYTHON_VERSION}" == "3.8" ]; then
+        log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
     fi
 
     install_wxpython
