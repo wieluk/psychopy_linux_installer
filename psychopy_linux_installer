@@ -625,6 +625,10 @@ check_script_update() {
 
     if is_version_greater "${latest_version}" "${SCRIPT_VERSION}"; then
         script_path=$(readlink -f "${0}")
+        
+        if [ ! -f "${script_path}" ] || [ ! -w "${script_path}" ]; then
+            return
+        fi
 
         if [ "${USE_GUI}" = true ]; then
             response=$(zenity --question \
