@@ -818,7 +818,6 @@ save_installed_packages() {
     local packages=("${@}")
     local packages_string="${packages[*]}"
     if [ -n "${packages_string}" ]; then
-        sudo_wrapper mkdir -p "$(dirname "${UNIVERSIAL_PKG_FILE}")"
         local tmpfile
         tmpfile=$(mktemp)
         {
@@ -841,7 +840,7 @@ install_packages() {
     local available_packages
     local to_install=()
     local already_installed=()
-
+    local packages_installed_by_function=()
     read -r -a available_packages <<<"$(filter_installable_packages "${packages[@]}")"
 
     # Using grep to compute the difference between packages and available_packages
@@ -853,18 +852,8 @@ install_packages() {
             already_installed+=("${package}")
         else
             to_install+=("${package}")
-            PACKAGES_INSTALLED_BY_SCRIPT+=("${package}")
         fi
     done
-
-
-    if [[ "${dep_type}" == "wxpython_deps" ]]; then
-        WXPYTHON_DEPS_INSTALLED=("${to_install[@]}")
-    elif [[ "${dep_type}" == "build_deps" ]]; then
-        BUILD_DEPS_INSTALLED=("${to_install[@]}")
-    else
-        save_installed_packages "${to_install[@]}"
-    fi
 
     if [ ${#already_installed[@]} -gt 0 ]; then
         log log_message "INFO: The following ${PKG_MANAGER} packages are already installed: '${already_installed[*]}'"
@@ -873,46 +862,56 @@ install_packages() {
     if [ ${#to_install[@]} -eq 0 ]; then
         if [ ${#already_installed[@]} -gt 0 ] && [ -n "${diff}" ]; then
             log log_message "INFO: Nothing to install - some ${PKG_MANAGER} packages already installed, others unavailable or skipped."
-            return 0
         elif [ ${#already_installed[@]} -gt 0 ] && [ -z "${diff}" ]; then
             log log_message "INFO: Nothing to install - all requested ${PKG_MANAGER} packages are already installed."
-            return 0
         else
             log_message "WARNING: Nothing to install - all requested ${PKG_MANAGER} packages unavailable or skipped."
-            return 0
         fi
-    fi
 
-    if {
-        case "${PKG_MANAGER}" in
-        apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
-        yum)     sudo_wrapper yum install -y -q "${to_install[@]}" ;;
-        dnf)     sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
-        pacman)  sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
-        zypper)  sudo_wrapper zypper install -y "${to_install[@]}" ;;
-        *)
-            log_message "ERROR: No compatible package manager found."
-            ;;
-        esac
-    } then
-        return 0
     else
-        log_message "WARNING: ${PKG_MANAGER} batch installation failed. Falling back to per-package installation. This might take sometime ..."
-    fi
+        if {
+            case "${PKG_MANAGER}" in
+            apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
+            yum)     sudo_wrapper yum install -y -q "${to_install[@]}" ;;
+            dnf)     sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
+            pacman)  sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
+            zypper)  sudo_wrapper zypper install -y "${to_install[@]}" ;;
+            *)
+                log_message "ERROR: No compatible package manager found."
+                ;;
+            esac
+        }; then
+            :
+        else
+            log_message "WARNING: ${PKG_MANAGER} batch installation failed. Falling back to per-package installation. This might take sometime ..."
+            for package in "${to_install[@]}"; do
+                case ${PKG_MANAGER} in
+                apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                yum)     sudo_wrapper yum install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                dnf)     sudo_wrapper dnf install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                zypper)  sudo_wrapper zypper install -y "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                *)
+                    log_message "ERROR: No compatible package manager found."
+                    ;;
+                esac
+            done
+        fi
 
-    # If batch install fails, fallback to installing packages one by one
-    for package in "${packages[@]}"; do
-        case ${PKG_MANAGER} in
-        apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        yum)     sudo_wrapper yum install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        dnf)     sudo_wrapper dnf install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        zypper)  sudo_wrapper zypper install -y "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-        *)
-            log_message "ERROR: No compatible package manager found."
-            ;;
-        esac
-    done
+        for package in "${to_install[@]}"; do
+            if is_package_installed "${package}"; then
+                if [[ "${dep_type}" == "wxpython_deps" ]]; then
+                    WXPYTHON_DEPS_INSTALLED+=("${package}")
+                elif [[ "${dep_type}" == "build_deps" ]]; then
+                    BUILD_DEPS_INSTALLED+=("${package}")
+                else
+                    PACKAGES_INSTALLED_BY_SCRIPT+=("${package}")
+                    packages_installed_by_function+=("${package}")
+                fi
+            fi
+        save_installed_packages "${packages_installed_by_function[@]}"
+        done
+    fi
 }
 
 # Installs dependency groups
@@ -978,6 +977,18 @@ install_dependencies() {
 # Removes specified system packages using the identified package manager.
 remove_system_packages() {
     local packages=("$@")
+    local installed_packages=()
+    for pkg in "${packages[@]}"; do
+        if is_package_installed "${pkg}"; then
+            installed_packages+=("${pkg}")
+        fi
+    done
+
+    if [ ${#installed_packages[@]} -eq 0 ]; then
+        log log_message "INFO: No packages to remove (none are currently installed)."
+        return 0
+    fi
+
     case "${PKG_MANAGER}" in
         apt-get)
             sudo_wrapper apt-get remove -y "${packages[@]}"
@@ -1329,9 +1340,6 @@ build_wxpython() {
     if log "${UV_INSTALL_DIR}/uv" pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
         log_message "INFO: Successfully built wxPython from source."
     else
-        if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
-            save_installed_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
-        fi
         log_message "ERROR: Building wxPython from source failed."
     fi
     if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
@@ -1390,13 +1398,27 @@ prepare_psychopy_directory() {
 
 # Sets up the 'psychopy' group, adds the user, and configures system limits.
 setup_psychopy_group_and_limits() {
+    # Check if limits file exists before writing
+    local limits_file="/etc/security/limits.d/99-psychopylimits.conf"
+    if [ -f "${limits_file}" ]; then
+        log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
+    else
+        if sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf' ; then
+            log_message "INFO: Limits file '${limits_file}' created."
+            log_message "NOTE: A system reboot is necessary to apply the security limits."
+        else
+            log_message "WARNING: Failed to create limits file '${limits_file}'. Please create it manually."
+        fi
+    fi
+
     # Check if psychopy group exists, create if not
     if getent group psychopy >/dev/null; then
         log_message "INFO: Group 'psychopy' already exists."
+    elif sudo_wrapper groupadd --system psychopy; then
+        log_message "INFO: Group 'psychopy' created."
     else
-        if sudo_wrapper groupadd --system psychopy; then
-            log_message "INFO: Group 'psychopy' created."
-        fi
+        log_message "WARNING: Failed to create group 'psychopy'. User will not be added to group. Add manually."
+        return
     fi
 
     # Check if user is in group, add if not
@@ -1409,19 +1431,6 @@ setup_psychopy_group_and_limits() {
             log_message "WARNING: Failed to add user '${USER}' to 'psychopy' group. Add manually."
         fi
 
-    fi
-
-    # Check if limits file exists before writing
-    local limits_file="/etc/security/limits.d/99-psychopylimits.conf"
-    if [ -f "${limits_file}" ]; then
-        log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
-    else
-        if sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf' ; then
-            log_message "INFO: Limits file '${limits_file}' created."
-            log_message "NOTE: A system reboot is necessary to apply the security limits."
-        else
-            log_message "WARNING: Failed to create limits file '${limits_file}'. Please create it manually."
-        fi
     fi
 }
 
