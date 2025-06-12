@@ -1,4 +1,4 @@
-name: main merge/release workflow
+name: main push workflow
 
 on:
   push:

@@ -3,7 +3,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/wieluk/psychopy_linux_installer)](https://github.com/wieluk/psychopy_linux_installer/releases)
 [![GitHub commits since latest release (branch)](https://img.shields.io/github/commits-since/wieluk/psychopy_linux_installer/latest/main)](https://github.com/wieluk/psychopy_linux_installer/commits/main/)
 [![GitHub Downloads (specific asset, all releases)](https://img.shields.io/github/downloads/wieluk/psychopy_linux_installer/psychopy_linux_installer)](https://tooomm.github.io/github-release-stats/?username=wieluk&repository=psychopy_linux_installer)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/wieluk/psychopy_linux_installer/push_workflow.yaml?branch=main)](https://github.com/wieluk/psychopy_linux_installer/actions)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/wieluk/psychopy_linux_installer/scheduled_workflow.yaml?branch=main)](https://github.com/wieluk/psychopy_linux_installer/actions)
 
 ---
 

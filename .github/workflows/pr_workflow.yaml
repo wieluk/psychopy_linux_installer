@@ -2,12 +2,11 @@ name: pull request workflow
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - main
     paths:
       - psychopy_linux_installer
-      - .github/workflows/**
-      - .github/PsychoPy_tests/**
   workflow_dispatch:
 
 jobs:
@@ -15,7 +14,15 @@ jobs:
   syntax-check:
     uses: ./.github/workflows/reusable_syntax_check.yaml
 
-  # Test installation
+  # Test installation (quick)
   test-installation-quick:
+    needs: syntax-check
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      test-mode: "quick"
+
+  # Extra tests if PR has a label
+  test-installation:
+    if: contains(join(github.event.pull_request.labels.*.name, ','), 'run-extra-tests')
     needs: syntax-check
     uses: ./.github/workflows/reusable_test.yaml

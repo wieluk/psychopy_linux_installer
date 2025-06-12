@@ -2,6 +2,7 @@ name: reusable syntax check
 
 on:
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   syntax-check:

@@ -8,6 +8,13 @@ on:
         type: string
         default: "normal"
         description: "The test mode to run (normal, build, quick)"
+  workflow_dispatch:
+    inputs:
+      test-mode:
+        required: false
+        type: string
+        default: "normal"
+        description: "The test mode to run (normal, build, quick)"
 
 jobs:
   run-installer:
