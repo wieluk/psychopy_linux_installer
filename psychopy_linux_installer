@@ -1974,7 +1974,7 @@ main() {
     # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
     if [ "${PYTHON_VERSION}" == "3.8" ]; then
         log_message "INFO: Installing ffpyplayer==4.5.2 to prevent building."
-        log "${PYTHON_VENV_COMMAND}" -m pip install ffpyplayer==4.5.2
+        log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
     fi
 
     install_wxpython
