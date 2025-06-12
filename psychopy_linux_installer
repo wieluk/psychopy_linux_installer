@@ -1729,7 +1729,7 @@ main() {
     if getent group psychopy >/dev/null; then
         log_message "INFO: Group 'psychopy' already exists."
     else
-        sudo_wrapper groupadd psychopy
+        sudo_wrapper groupadd --system psychopy
         log_message "INFO: Group 'psychopy' created."
     fi
 
