@@ -1,0 +1,13 @@
+name: push workflow
+
+on:
+  push:
+    paths:
+      - psychopy_linux_installer
+    branches-ignore:
+      - main
+
+jobs:
+  # Syntax check
+  syntax-check:
+    uses: ./.github/workflows/reusable_syntax_check.yaml
