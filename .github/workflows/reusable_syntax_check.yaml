@@ -2,6 +2,12 @@ name: reusable syntax check
 
 on:
   workflow_call:
+  push:
+    paths:
+      - psychopy_linux_installer
+    branches-ignore:
+      - main
+  workflow_dispatch:
 
 jobs:
   syntax-check:
