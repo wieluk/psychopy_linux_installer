@@ -248,9 +248,9 @@ sudo rm /etc/security/limits.d/99-psychopylimits.conf
 sudo groupdel psychopy
 ```
 
-### Unistall UV
+### Uninstall UV
 
-https://docs.astral.sh/uv/getting-started/installation/#uninstallation
+[https://docs.astral.sh/uv/getting-started/installation/#uninstallation](https://docs.astral.sh/uv/getting-started/installation/#uninstallation)
 
 ### (Optional): Remove Dependencies
 
