@@ -2,12 +2,12 @@ name: weekly scheduled workflow
 
 on:
   schedule:
-    - cron: '0 8 * * THU'
-  
+    - cron: '30 8 * * THU'
+  workflow_dispatch:
+
 jobs:
   # Test installation
   test-installation-quick:
-    needs: syntax-check
     uses: ./.github/workflows/reusable_test.yaml
     with:
       test-mode: "quick"
