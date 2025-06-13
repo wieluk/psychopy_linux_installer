@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
-    "name": "Ubuntu 24 with PsychoPy",
+    "name": "Ubuntu 24 with psychopy_linux_installer environment",
     "build": {
         "dockerfile": "Dockerfile",
         "context": ".."
@@ -24,6 +24,6 @@
             ]
         }
     },
-    "postCreateCommand": "sudo ln -sf /usr/local/psychopy/psychopy-test-installation /workspaces/psychopy_linux_installer/ && sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.run_checks.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer",
+    "postCreateCommand": "sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.run_checks.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer",
     "postStartCommand": "sudo chmod +x .devcontainer/.run_checks.sh && ./.devcontainer/.run_checks.sh"
 }
