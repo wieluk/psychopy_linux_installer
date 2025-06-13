@@ -230,7 +230,13 @@ During installation, a symbolic link to the PsychoPy executable is created in `/
 To remove it, run:
 
 ```bash
-rm /usr/local/bin/PsychoPy*
+sudo rm /usr/local/bin/PsychoPy*
+```
+
+or
+
+```bash
+rm ~/.local/bin/PsychoPy*
 ```
 
 ### Remove PsychoPy group and security limits
@@ -242,6 +248,10 @@ sudo rm /etc/security/limits.d/99-psychopylimits.conf
 sudo groupdel psychopy
 ```
 
+### Unistall UV
+
+https://docs.astral.sh/uv/getting-started/installation/#uninstallation
+
 ### (Optional): Remove Dependencies
 
 Dependencies for PsychoPy and for building Python/WxPython are installed via package manager.
@@ -251,34 +261,37 @@ Dependencies for PsychoPy and for building Python/WxPython are installed via pac
 <details>
   <summary>Uninstall dependencies by package manager</summary>
 
-Depending on the installation not all dependencies are installed. `script_deps`, `fonts` and `psychopy_deps` are always installed.
+Depending on the installation not all dependencies are installed. `script_deps` and `psychopy_deps` are always installed.
 
 Here are all dependencies listed that might be installed:
 
 ```text
 apt-get
     script_deps=(curl git jq)
-    psychopy_deps=(python3-dev libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
+    psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
+    build_deps=(g++ make python3-dev pkg‑config)
     fonts=(fonts-dejavu fonts-liberation fontconfig)
-    wxpython_deps=(pkg‑config freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
+    wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
 
 yum | dnf
     script_deps=(curl git jq)
-    psychopy_deps=(python3-devel alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+    psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+    build_deps=(gcc gcc-c++ make python3-devel pkgconf-pkg-config)
     fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
     wxpython_deps=(pkgconfig freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
 
 pacman
     script_deps=(curl git jq)
-    psychopy_deps=(python alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+    psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+    build_deps=(gcc make python pkgconf)
     fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
     wxpython_deps=(pkgconf freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
 
 zypper
     script_deps=(curl git jq)
-    psychopy_deps=(python3-devel alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+    psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
+    build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config)
     fonts=(dejavu-fonts liberation-fonts fontconfig)
-    python_build_deps=(gcc libffi-devel libopenssl-devel make readline-devel sqlite3-devel xz-devel zlib-devel)
     wxpython_deps=(pkgconf‑pkg‑config freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
 ```
 
