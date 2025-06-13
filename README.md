@@ -14,7 +14,7 @@ This script automates the installation of [PsychoPy](https://www.psychopy.org/) 
 1. [Supported and Tested Distributions](#supported-and-tested-distributions)
 2. [Usage](#usage)
 3. [Options](#options)
-4. [Example](#example)
+4. [Examples](#examples)
 5. [How the Installer Works](#how-the-installer-works)
 6. [Post-Installation](#post-installation)
 7. [Uninstalling PsychoPy](#uninstalling-psychopy)
@@ -39,22 +39,51 @@ While these distributions are tested, the script is designed to be compatible wi
 
 ## Usage
 
-Install curl with your package manager. On most distros curl is already installed.
+Install `curl` with your package manager if it is not already installed.
 
-1. **Run the installer:**
-    - **GUI Mode**:
+### Option 1: One-line Install
 
-      ```bash
-      bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer) --gui
-      ```
+Run the installer directly without saving it to disk:
 
-       `curl` and `zenity` are required for the GUI mode.
+- **GUI Mode** (requires `curl` and `zenity`):
 
-    - **Command-Line Mode**:
+  ```bash
+  bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer) --gui
+  ```
 
-      ```bash
-      bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer)
-      ```
+- **Command-Line Mode**:
+
+  ```bash
+  bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer)
+  ```
+
+### Option 2: Download Script for Reuse
+
+1. **Download the installer script:**
+
+   ```bash
+   curl -LOsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer
+   ```
+
+2. **Make it executable:**
+
+   ```bash
+   chmod +x psychopy_linux_installer
+   ```
+
+3. **Run the installer:**
+
+   - **GUI Mode** (requires `curl` and `zenity`):
+
+     ```bash
+     ./psychopy_linux_installer --gui
+     ```
+
+   - **Command-Line Mode**:
+
+     ```bash
+     ./psychopy_linux_installer
+     ```
 
 ## Options
 
@@ -86,10 +115,14 @@ Install curl with your package manager. On most distros curl is already installe
 - Non-Admin Installation: The `--sudo-mode=continue` option enables non-admin users to upgrade or reinstall if the packages are already installed. This option assumes an administrator has previously run the installation.
 - Version Selection: The `--psychopy-version` and `--wxpython-version` options accept specific versions from [PyPI](https://pypi.org), as well as `latest` or `git`. Note that `git` versions may be unstable and are generally not recommended.
 
-## Example
+## Examples
 
 ```bash
 bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer) --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/ubuntu --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --verbose --force-overwrite
+```
+
+```bash
+./psychopy_linux_installer --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/home/ubuntu --venv-name=custom-psychopy --additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2 --sudo-mode=auto --verbose --force-overwrite
 ```
 
 ## How the Installer Works
@@ -100,15 +133,15 @@ bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/la
 - Sets up the PsychoPy installation directory at `${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (default: `/opt/psychopy`). You can customize this with `--install-dir` and `--venv-name`.
 - Creates a virtual environment and installs wxPython (downloads prebuilt wheels, tries GitHub releases, or builds from source if needed).
 - Upgrades pip and required Python packages, then installs the specified PsychoPy version.
-- Adds the current user to a `psychopy` group and sets security limits for optimal performance.
-- Generates a startup wrapper script (`start_psychopy`) and adds a symbolic link in `/usr/local/bin/`.
-- Optionally creates a desktop shortcut for easy launching.
+- Adds the current user to a `psychopy` group and sets security limits.
+- Generates a startup wrapper script (`start_psychopy`) with uninstaller (--unistall).
+- Optionally creates a desktop shortcut and a symbolic link in `/usr/local/bin/` or `~/local/bin`.
 - Logs all actions to a file (initially in `/tmp`, then moved to the install directory). Use `--verbose` for detailed terminal output.
 
 **Notes:**
 
 - If prebuilt wxPython wheels are unavailable for your distribution (e.g., Arch), the script will attempt to build from source.
-- Building Python or wxPython from source may take significant time and require extra disk space (ensure `/tmp` is large enough).
+- Building wxPython from source may take significant time and require extra disk space (ensure `/tmp` is large enough).
 - For non-admin installs, use `--sudo-mode=continue` (assumes dependencies are already present).
 
 ## Post-Installation
@@ -156,8 +189,6 @@ If you have other PsychoPy environments installed on your system, it is recommen
 - user settings at `~/.psychopy3`
 - the `uv` binary and related data
 - installed package manager packages that may have been added for PsychoPy  
-  *(Note: If `/opt/psychopy/packages_installed_by_script.txt` exists, the uninstaller will use it to track and remove all packages installed by this script, even across multiple installations.)*
-
 
 <details>
 <summary>Manually uninstall</summary>
