@@ -9,10 +9,3 @@ RUN apt-get update && \
 
 # Install Python packages
 RUN pip install bashate codespell --break-system-packages
-
-# Copy the installer script
-COPY psychopy_linux_installer /tmp/
-
-# Make the installer executable and run it
-RUN chmod +x /tmp/psychopy_linux_installer && \
-    /tmp/psychopy_linux_installer --venv-name=psychopy-test-installation -f --non-interactive --additional-packages=pytest
