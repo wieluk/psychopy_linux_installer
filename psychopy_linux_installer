@@ -1,12 +1,12 @@
 #!/bin/bash
-# ==============================================================================
+# ===============================================================================
 #  Title:         psychopy_linux_installer
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2025-06-01
 #  License:       GNU General Public License v3.0
-# ==============================================================================
+# ===============================================================================
 
 SCRIPT_VERSION="1.7.2"
 
@@ -48,7 +48,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Log message function that writes colored output to terminal and plain text to the log file. It also handles exits on error.
+# Log message function that writes colored output to terminal and plain text to the log file. It also handles exits on errors.
 log_message() {
     local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m" cyan="\033[36m"
     local timestamp formatted_message plain_message
@@ -1222,6 +1222,7 @@ verify_installed_pip_versions() {
 # ===============================================================================
 # INSTALLATION COMPONENTS - Core component installations
 # ===============================================================================
+
 # Confirms that Python, and venv are available.
 check_python_env() {
     local python_cmd="${1}"
