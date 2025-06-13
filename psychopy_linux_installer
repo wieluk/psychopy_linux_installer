@@ -4,11 +4,11 @@
 #  Description:   This script installs PsychoPy with specified versions of
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
-#  Date:          2025-06-01
+#  Date:          2025-06-13
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="1.7.2"
+SCRIPT_VERSION="2.0.0"
 
 # Define default values
 declare -A DEFAULT_OPTS=(
