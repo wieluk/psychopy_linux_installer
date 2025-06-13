@@ -1792,12 +1792,12 @@ create_start_psychopy_wrapper() {
         "    [ \"\${mode}\" != \"n\" ] && remove_optionals \"\${mode}\"" \
         "    remove_packages \"\${mode}\"" \
         "" \
-        "    # Check if ${DEFAULT_OPTS[INSTALL_DIR]} is empty and remove if so" \
-        "    if [ -d ${DEFAULT_OPTS[INSTALL_DIR]} ] && [ \"\$(ls -A ${DEFAULT_OPTS[INSTALL_DIR]})\" == \"\" ]; then" \
-        "        echo \"Removing empty directory: ${DEFAULT_OPTS[INSTALL_DIR]}\"" \
-        "        \${SUDO} rmdir ${DEFAULT_OPTS[INSTALL_DIR]}" \
+        "    # Check if ${INSTALL_DIR} is empty and remove if so" \
+        "    if [ -d ${DEFAULT_OPTS[INSTALL_DIR]} ] && [ \"\$(ls -A ${INSTALL_DIR})\" == \"\" ]; then" \
+        "        echo \"Removing empty directory: ${INSTALL_DIR}\"" \
+        "        \${SUDO} rmdir ${INSTALL_DIR}" \
         "    else" \
-        "        echo \"WARNING: ${DEFAULT_OPTS[INSTALL_DIR]} is not empty. Not removing.\"" \
+        "        echo \"WARNING: ${INSTALL_DIR} is not empty. Not removing.\"" \
         "    fi" \
         "" \
         "    echo \"Uninstallation complete.\"" \
