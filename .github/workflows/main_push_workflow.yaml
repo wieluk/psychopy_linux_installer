@@ -10,11 +10,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Initial syntax check
   syntax-check:
     uses: ./.github/workflows/reusable_syntax_check.yaml
 
-  # Check if a release already exists
+  # Check if a release already exists and what type
   check-if-release:
     name: Check if Release
     needs: syntax-check
@@ -22,7 +21,47 @@ jobs:
     with:
       release-method: check-release
 
-  # Test installation with build
+  # For no-release
+  test-installation-no-release:
+    name: Test Installation (no new release)
+    needs: check-if-release
+    if: needs.check-if-release.outputs.result == 'no-release'
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      test-mode: "quick"
+    
+  # For patch-release
+  create-pre-release-patch:
+    name: Create pre-release (patch)
+    needs: check-if-release
+    if: needs.check-if-release.outputs.result == 'patch-release'
+    uses: ./.github/workflows/reusable_release_manager.yaml
+    with:
+      release-method: create-pre-release
+      
+  copy-binaries-patch:
+    name: copy Binaries
+    needs: create-pre-release-patch
+    if: needs.check-if-release.outputs.result == 'patch-release'
+    uses: ./.github/workflows/reusable_copy_release_assets.yaml
+
+  test-installation-patch:
+    name: Test Installation (patch release)
+    needs: copy-binaries-patch
+    if: needs.check-if-release.outputs.result == 'patch-release'
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      test-mode: "quick"
+
+  create-release-patch:
+    name: Create release (patch)
+    needs: test-installation-patch
+    if: needs.check-if-release.outputs.result == 'patch-release'
+    uses: ./.github/workflows/reusable_release_manager.yaml
+    with:
+      release-method: create-release
+
+  # For full release
   test-installation-build:
     name: Test Installation (Build)
     needs: check-if-release
@@ -31,7 +70,6 @@ jobs:
     with:
       test-mode: "build"
 
-  # Create a pre-release
   create-pre-release:
     name: Create pre-release
     needs: test-installation-build
@@ -40,21 +78,18 @@ jobs:
     with:
       release-method: create-pre-release
 
-  # Build binaries and upload to release
   build-binaries:
     name: Build Binaries
     needs: create-pre-release
     if: needs.check-if-release.outputs.result == 'release'
     uses: ./.github/workflows/reusable_build.yaml
 
-  # Run testing if check-if-release succeeds.
   test-installation-release:
     name: Test Installation (new release)
     needs: build-binaries
     if: needs.check-if-release.outputs.result == 'release'
     uses: ./.github/workflows/reusable_test.yaml
 
-  # Create a release
   create-release:
     name: Create release
     needs: test-installation-release
@@ -62,10 +97,3 @@ jobs:
     uses: ./.github/workflows/reusable_release_manager.yaml
     with:
       release-method: create-release
-
-  # Run testing if check-if-release fails.
-  test-installation-no-release:
-    name: Test Installation (no new release)
-    needs: check-if-release
-    if: needs.check-if-release.outputs.result == 'no_release'
-    uses: ./.github/workflows/reusable_test.yaml
