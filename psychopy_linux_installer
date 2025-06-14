@@ -16,7 +16,7 @@ declare -A DEFAULT_OPTS=(
     [PYTHON_VERSION]="3.10"
     [WXPYTHON_VERSION]="4.2.3"
     [WXPYTHON_WHEEL_INDEX]=""
-    [BUILD_WX]=false
+    [BUILD_WXPYTHON]=false
     [INSTALL_DIR]="/opt/psychopy"
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
@@ -296,7 +296,7 @@ process_arguments() {
             WXPYTHON_VERSION="${arg#*=}"
             ;;
         --build-wxpython)
-            BUILD_WX=true
+            BUILD_WXPYTHON=true
             ;;
         --wxpython-wheel-index=*)
             WXPYTHON_WHEEL_INDEX="${arg#*=}"
@@ -371,7 +371,7 @@ process_arguments() {
     fi
 
     if [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
-        if [ "${BUILD_WX}" = true ]; then
+        if [ "${BUILD_WXPYTHON}" = true ]; then
             log_message "ERROR: --wxpython-wheel-url cannot be used together with --build-wxpython." nolog
         fi
     fi
@@ -541,7 +541,7 @@ show_gui() {
     fi
 
     if [[ ${options} == *"Build wxPython from source"* ]]; then
-        BUILD_WX=true
+        BUILD_WXPYTHON=true
     fi
 
     if [[ ${options} == *"Enable verbose output"* ]]; then
@@ -569,29 +569,29 @@ show_gui() {
 # Reconstructs a command string to re-run the installer with the current settings.
 create_rerun_command() {
     local cmd lowercase_key curr def
-    cmd=$(readlink -f "${0}")
     for key in "${!DEFAULT_OPTS[@]}"; do
-        [[ "${key}" == "BUILD_PYTHON" || "${key}" == "BUILD_WX" ]] && continue
         curr="${!key}"
         def="${DEFAULT_OPTS[${key}]}"
         lowercase_key=$(echo "${key}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
         if [[ "${curr}" != "${def}" ]]; then
             if [[ "${curr}" == "true" && "${def}" == "false" ]]; then
-                cmd+=" --${lowercase_key}"
+                args+=" --${lowercase_key}"
             elif [[ -n "${curr}" ]]; then
-                cmd+=" --${lowercase_key}=${curr}"
+                args+=" --${lowercase_key}=${curr}"
             fi
         fi
     done
-    if [[ "${BUILD_PYTHON}" == true && "${BUILD_WX}" == true ]]; then
-        cmd+=" --build=both"
-    elif [[ "${BUILD_PYTHON}" == true ]]; then
-        cmd+=" --build=python"
-    elif [[ "${BUILD_WX}" == true ]]; then
-        cmd+=" --build=wxpython"
+    [ -n "${REQUIREMENTS_FILE}" ] && args+=" --requirements-file=${REQUIREMENTS_FILE}"
+
+    cmd=$(readlink -f "${0}")
+    if [[ "${cmd}" == /dev/fd/* ]] || \
+       [[ "${cmd}" == /proc/self/fd/* ]] || \
+       [[ "${cmd}" == /proc/*/fd/* ]] || \
+       [[ "${cmd}" == *pipe:* ]]; then
+        echo "${args}"
+    else
+        echo "${cmd}${args}"
     fi
-    [ -n "${REQUIREMENTS_FILE}" ] && cmd+=" --requirements-file=${REQUIREMENTS_FILE}"
-    echo "${cmd}"
 }
 
 
@@ -1267,7 +1267,7 @@ install_wxpython() {
         install_dependencies wxpython_deps
         log_message "INFO: Building wxPython from git. This might take a while ..."
         log "${UV_INSTALL_DIR}/uv" pip install git+https://github.com/wxWidgets/Phoenix
-    elif [ "${BUILD_WX}" = true ]; then
+    elif [ "${BUILD_WXPYTHON}" = true ]; then
         build_wxpython
     elif [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
         if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
