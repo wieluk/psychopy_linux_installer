@@ -59,8 +59,22 @@ jobs:
               continue
             fi
             echo "Transferring asset: $name"
-            curl -L -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -o "$name" "$url"
-            curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @"$name" "$UPLOAD_URL?name=$name"
+            curl -sS -L -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" "$url" \
+              | curl -sS -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" \
+                --data-binary @- "$UPLOAD_URL?name=$name"
           done
 
-          echo "All eligible assets transferred from $PREV_TAG to $RELEASE_TAG."
+          # Get asset names for previous and current releases
+          PREV_ASSETS=$(echo "$PREV_RELEASE" | jq -r '.assets[].name' | sort)
+          CUR_ASSETS=$(echo "$CUR_RELEASE" | jq -r '.assets[].name' | sort)
+
+          # Compare: show assets in previous release not in current
+          MISSING_ASSETS=$(comm -23 <(echo "$PREV_ASSETS") <(echo "$CUR_ASSETS"))
+
+          if [ -z "$MISSING_ASSETS" ]; then
+            echo "All assets from previous release are present in the current release."
+          else
+            echo "Missing assets in current release:"
+            echo "$MISSING_ASSETS"
+            exit 1
+          fi
