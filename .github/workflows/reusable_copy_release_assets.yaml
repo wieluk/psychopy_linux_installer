@@ -36,8 +36,22 @@ jobs:
           EXISTING_ASSETS=$(echo "$CUR_RELEASE" | jq -r '.assets[].name')
 
           # Download all assets from previous release except those that already exist in the current release
-          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/$PREV_ID/assets")
+          ASSETS=""
+          PAGE=1
+          while :; do
+            RESPONSE=$(curl -s -D - -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/$PREV_ID/assets?per_page=100&page=$PAGE")
+            BODY=$(echo "$RESPONSE" | sed -n '/^\r$/,$p' | sed '1d')
+            ASSETS=$(echo "$ASSETS"; echo "$BODY")
+            # Check for next page in Link header
+            LINK_HEADER=$(echo "$RESPONSE" | grep -i '^Link:')
+            if echo "$LINK_HEADER" | grep -q 'rel="next"'; then
+              PAGE=$((PAGE+1))
+            else
+              break
+            fi
+          done
+          ASSETS=$(echo "$ASSETS" | jq -s 'add')
 
           echo "$ASSETS" | jq -r '.[] | [.name, .url] | @tsv' | while IFS=$'\t' read -r name url; do
             if echo "$EXISTING_ASSETS" | grep -qx "$name"; then
