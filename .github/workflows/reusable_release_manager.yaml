@@ -50,16 +50,15 @@ jobs:
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
 
           # Find the latest release tag
-          LATEST_TAG=$(echo "$RESPONSE" | jq -r '[.[].tag_name] | sort_by(split(".") | map(tonumber)) | last')
+          LATEST_TAG=$(echo "$RESPONSE" | jq -r '[.[].tag_name | sub("^v";"")] | sort_by(split(".") | map(tonumber)) | last')
           if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" == "null" ]; then
             # No previous release, so this is a normal release
             echo "result=release" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # Remove leading 'v' from both current and previous version for comparison
           CUR="${INSTALLER_VERSION}"
-          PREV="${LATEST_TAG#v}"
+          PREV="${LATEST_TAG}"
 
           # Parse versions into major, minor, patch
           IFS='.' read -r CUR_MAJ CUR_MIN CUR_PATCH <<< "$CUR"
