@@ -1,0 +1,52 @@
+name: reusable copy release assets
+
+on:
+  workflow_call:
+
+jobs:
+  copy-assets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Copy assets from previous release to current release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -e
+          INSTALLER_VERSION=$(./psychopy_linux_installer --version)
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+
+          # Get all releases
+          RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
+
+          # Find previous release (not current)
+          PREV_RELEASE=$(echo "$RELEASES" | jq 'map(select(.tag_name != "'"$RELEASE_TAG"'")) | sort_by(.created_at) | reverse | .[0]')
+          PREV_ID=$(echo "$PREV_RELEASE" | jq -r '.id')
+          PREV_TAG=$(echo "$PREV_RELEASE" | jq -r '.tag_name')
+
+          # Get current release upload URL and list of existing asset names
+          CUR_RELEASE=$(echo "$RELEASES" | jq 'map(select(.tag_name == "'"$RELEASE_TAG"'")) | .[0]')
+          UPLOAD_URL=$(echo "$CUR_RELEASE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          EXISTING_ASSETS=$(echo "$CUR_RELEASE" | jq -r '.assets[].name')
+
+          # Download all assets from previous release except those that already exist in the current release
+          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/$PREV_ID/assets")
+
+          echo "$ASSETS" | jq -r '.[] | [.name, .url] | @tsv' | while IFS=$'\t' read -r name url; do
+            if echo "$EXISTING_ASSETS" | grep -qx "$name"; then
+              echo "Skipping $name (already exists in current release)"
+              continue
+            fi
+            echo "Transferring asset: $name"
+            curl -L -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -o "$name" "$url"
+            curl -s -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/octet-stream" --data-binary @"$name" "$UPLOAD_URL?name=$name"
+          done
+
+          echo "All eligible assets transferred from $PREV_TAG to $RELEASE_TAG."

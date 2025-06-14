@@ -1,4 +1,4 @@
-name: reusable combined workflow
+name: reusable release manager
 
 on:
   workflow_call:
@@ -39,24 +39,56 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Check if release exists
+      - name: Check if release exists and detect version bump type
         id: release-checker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
         run: |
-          RELEASE_TAG="v${INSTALLER_VERSION}"
-          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases"
           RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
 
-          if echo "$RESPONSE" | grep -q '"id":'; then
-            echo "Release ${RELEASE_TAG} already exists."
-            echo "result=no_release" >> $GITHUB_OUTPUT
-          else
-            echo "No existing release for version ${RELEASE_TAG}."
+          # Find the latest release tag
+          LATEST_TAG=$(echo "$RESPONSE" | jq -r '[.[].tag_name] | sort_by(split(".") | map(tonumber)) | last')
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" == "null" ]; then
+            # No previous release, so this is a normal release
             echo "result=release" >> $GITHUB_OUTPUT
+            exit 0
           fi
+
+          # Remove leading 'v' from both current and previous version for comparison
+          CUR="${INSTALLER_VERSION}"
+          PREV="${LATEST_TAG#v}"
+
+          # Parse versions into major, minor, patch
+          IFS='.' read -r CUR_MAJ CUR_MIN CUR_PATCH <<< "$CUR"
+          IFS='.' read -r PREV_MAJ PREV_MIN PREV_PATCH <<< "$PREV"
+
+          # 1. If versions are identical, no release
+          if [ "$CUR_MAJ" = "$PREV_MAJ" ] && [ "$CUR_MIN" = "$PREV_MIN" ] && [ "$CUR_PATCH" = "$PREV_PATCH" ]; then
+            echo "No version increase."
+            echo "result=no-release" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 2. If major or minor increased, it's a release
+          if [ "$CUR_MAJ" != "$PREV_MAJ" ] || [ "$CUR_MIN" != "$PREV_MIN" ]; then
+            echo "Major or minor version increased."
+            echo "result=release" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 3. If only patch increased, it's a patch-release
+          if [ "$CUR_PATCH" != "$PREV_PATCH" ]; then
+            echo "Only patch version increased."
+            echo "result=patch-release" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 4. Should not reach here, error
+          echo "Unexpected version comparison result."
+          exit 1
 
   create-pre-release:
     if: ${{ inputs.release-method == 'create-pre-release' }}
