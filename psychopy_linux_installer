@@ -1272,7 +1272,7 @@ ensure_uv_installed() {
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
     prepare_shared_path "${UV_INSTALL_DIR}"
-    if curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
+    if curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
         log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
         prepare_shared_path "${UV_INSTALL_DIR}"
         return 0
