@@ -231,6 +231,28 @@ sudo_wrapper() {
     fi
 }
 
+# Ensures a directory exists, is owned by the current user, and is readable/executable by all users.
+prepare_shared_path() {
+    local path="$1"
+    if [ -f "${path}" ]; then
+        # Path exists as a file
+        sudo_wrapper chmod a+rw "${path}"
+        if getent group psychopy >/dev/null 2>&1; then
+            sudo_wrapper chown "${USER}:psychopy" "${path}"
+        else
+            sudo_wrapper chown "${USER}" "${path}"
+        fi
+    else
+        # Path is a directory or does not exist (create as directory)
+        sudo_wrapper mkdir -p "${path}"
+        sudo_wrapper chmod -R a+rx "${path}"
+        if getent group psychopy >/dev/null 2>&1; then
+            sudo_wrapper chown -R "${USER}:psychopy" "${path}"
+        else
+            sudo_wrapper chown -R "${USER}" "${path}"
+        fi
+    fi
+}
 
 # ===============================================================================
 # USER INPUT & CONFIGURATION - Functions for handling user preferences
@@ -827,8 +849,7 @@ save_installed_packages() {
             done
         } | awk NF | sort -u > "${tmpfile}"
         sudo_wrapper mv "${tmpfile}" "${UNIVERSIAL_PKG_FILE}"
-        sudo_wrapper chmod 777 "${UNIVERSIAL_PKG_FILE}"
-        sudo_wrapper chown "${USER}" "${UNIVERSIAL_PKG_FILE}"
+        prepare_shared_path "${UNIVERSIAL_PKG_FILE}"
     fi
 }
 
@@ -1233,24 +1254,31 @@ check_python_env() {
     if ! "${python_cmd}" -m venv --help >/dev/null 2>&1; then
         log_message "ERROR: '${python_cmd}' found, but venv module is not available. Something went wrong with uv venv"
     fi
+    # Check if Python version matches PYTHON_VERSION
+    local py_version
+    py_version=$("${python_cmd}" --version 2>&1 | awk '{print $2}')
+    if [[ "${py_version}" != "${PYTHON_VERSION}"* ]]; then
+        log_message "ERROR: '${python_cmd}' version ${py_version} does not match required ${PYTHON_VERSION}."
+    fi
 }
 
 # Ensures the 'uv' Python package manager is installed and available.
 ensure_uv_installed() {
-    UV_INSTALL_DIR="${HOME}/.local/bin"
+    UV_INSTALL_DIR="${INSTALL_DIR}/.uv"
     if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
-        log "${UV_INSTALL_DIR}/uv" self update
         log_message "INFO: 'uv' is already installed."
+        prepare_shared_path "${UV_INSTALL_DIR}"
         return 0
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
-    if curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
-        if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
-            log_message "INFO: 'uv' installed successfully."
-            return 0
-        fi
+    prepare_shared_path "${UV_INSTALL_DIR}"
+    if curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
+        log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
+        prepare_shared_path "${UV_INSTALL_DIR}"
+        return 0
+    else
+        log_message "ERROR: 'uv' installation failed. Please install it manually."
     fi
-    log_message "ERROR: Could not install 'uv'. Please install it manually."
 }
 
 # Installs wxPython using the specified method and version.
@@ -1309,6 +1337,7 @@ install_wxpython_from_github() {
             log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
             renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
             mv "${download_path}" "${renamed_wheel}"
+            register_cleanup "${renamed_wheel}"
             if log "${UV_INSTALL_DIR}/uv" pip install "${renamed_wheel}"; then
                 return 0
             else
@@ -1388,9 +1417,7 @@ prepare_psychopy_directory() {
         sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
     fi
 
-    sudo_wrapper chmod -R a+rX "${PSYCHOPY_DIR}"
-    sudo_wrapper chown "${USER}" "${PSYCHOPY_DIR}"
-
+    prepare_shared_path "${PSYCHOPY_DIR}"
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
         log_message "ERROR: Cannot access or cd into '${PSYCHOPY_DIR}'."
         return 1
@@ -1559,7 +1586,7 @@ add_psychopy_to_path() {
     if [ -z "${existing_path}" ] || [ "${existing_path}" = "${syspath}" ]; then
         if [ -L "${syspath}" ] || [ ! -e "${syspath}" ]; then
             if sudo_wrapper ln -sf "${src}" "${syspath}"; then
-                sudo_wrapper chmod +x "${syspath}"
+                prepare_shared_path "${syspath}"
                 PSYCHOPY_LAUNCHER_LINK="${syspath}"
                 log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (/usr/local/bin)."
                 return 0
@@ -1676,8 +1703,8 @@ create_start_psychopy_wrapper() {
         "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
         "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
         "        if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
-        "        \${SUDO} rm -f \"${UV_INSTALL_DIR}/uv\" \"${UV_INSTALL_DIR}/uvx\"" \
-        "        \${SUDO} rm -f /usr/local/bin/uv /usr/local/bin/uvx" \
+        "        \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
+        "        \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
         "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
         "        read -r -p \"Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: \" resp" \
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
@@ -1685,10 +1712,10 @@ create_start_psychopy_wrapper() {
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
         "        read -r -p \"Remove PsychoPy user settings (~/.psychopy3)? [y/N]: \" resp" \
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        read -r -p \"Remove 'uv' binary and all uv data from ${UV_INSTALL_DIR}/uv, ${UV_INSTALL_DIR}/uvx, and /usr/local/bin/uv? [y/N]: \" resp" \
+        "        read -r -p \"Remove 'uv' binary and all uv data from ${UV_INSTALL_DIR}/uv, ${UV_INSTALL_DIR}/uvx, and python versions installed by uv? [y/N]: \" resp" \
         "        if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-        "            if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
-        "            \${SUDO} rm -f \"${UV_INSTALL_DIR}/uv\" \"${UV_INSTALL_DIR}/uvx\"; \${SUDO} rm -f /usr/local/bin/uv /usr/local/bin/uvx" \
+        "            if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
+        "            \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"; \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
         "        fi" \
         "    fi" \
         "}" \
@@ -1816,6 +1843,7 @@ create_start_psychopy_wrapper() {
     )
     printf "%s\n" "${wrapper_script}" | sudo_wrapper tee "${wrapper_path}" > /dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
+    prepare_shared_path "${wrapper_path}"
 }
 
 
@@ -1915,6 +1943,8 @@ main() {
         check_script_update
     fi
 
+    setup_psychopy_group_and_limits
+
     # Check if python version is valid
     if [[ "${PYTHON_VERSION}" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
         python_url="https://www.python.org/ftp/python/${PYTHON_VERSION}/"
@@ -1957,8 +1987,15 @@ main() {
 
     # Ensure uv is installed and create virtual environment
     ensure_uv_installed
+
     log_message "INFO: Creating Python environment with uv ..."
-    if log "${UV_INSTALL_DIR}/uv" venv --python "python${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
+    PYTHON_INSTALL_DIR="${INSTALL_DIR}/.python"
+    prepare_shared_path "${PYTHON_INSTALL_DIR}"
+
+    if UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}" \
+        UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin" \
+        UV_PYTHON_CACHE_DIR="${PYTHON_INSTALL_DIR}/cache" \
+        "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv" >/dev/null 2>&1; then
         log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
     else
         log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
@@ -1967,26 +2004,26 @@ main() {
     if ! source "${PSYCHOPY_DIR}/.venv/bin/activate"; then
         log_message "ERROR: Failed to activate virtual environment."
     fi
+    check_python_env "${PSYCHOPY_DIR}/.venv/bin/python"
 
     # Upgrade pip and install required Python packages
     log_message "INFO: Upgrading 'pip' 'distro', 'sip', 'six', 'psychtoolbox', 'attrdict', 'setuptools', 'wheel' ..."
     log "${UV_INSTALL_DIR}/uv" pip install -U pip distro sip six psychtoolbox setuptools wheel
-    if [[ "${PYTHON_VERSION}" == "3.8" || "${PYTHON_VERSION}" == "3.9" ]]; then
+    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) || "${PYTHON_VERSION}" =~ ^3\.9(\.|$) ]]; then
         log "${UV_INSTALL_DIR}/uv" pip install -U attrdict
-    elif [ "${PYTHON_VERSION}" == "3.10" ]; then
+    else
         log "${UV_INSTALL_DIR}/uv" pip install -U attrdict3
     fi
-    # Install numpy<2 if PsychoPy version is < 2024.2.0 or Python version is 3.9
-    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" == "3.9" ]]; then
+    # Install numpy<2 if PsychoPy version is < 2024.2.0 or Python version is 3.9.x
+    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" =~ ^3\.9(\.|$) ]]; then
         log_message "INFO: Installing numpy<2"
         log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
     fi
-    # Install ffpyplayer==4.5.2 for python 3.8 to prevent building
-    if [ "${PYTHON_VERSION}" == "3.8" ]; then
+    # Install ffpyplayer==4.5.2 for python 3.8.x to prevent building
+    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) ]];then
         log_message "INFO: Installing ffpyplayer==4.5.2 to prevent building."
         log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
     fi
-
     install_wxpython
 
     # Install additional packages from requirements file and flag
@@ -2026,8 +2063,6 @@ main() {
         install_dependencies fonts
     fi
 
-    setup_psychopy_group_and_limits
-
     # Prompt to remove .psychopy3
     remove_psychopy_settings
 
@@ -2045,6 +2080,8 @@ main() {
 
     # Create start wrapper and uninstaller script
     create_start_psychopy_wrapper
+
+    prepare_shared_path "${PSYCHOPY_DIR}"
 
     log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
