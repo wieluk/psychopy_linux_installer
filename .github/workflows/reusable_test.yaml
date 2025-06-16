@@ -98,6 +98,17 @@ jobs:
           fi
           echo "PsychoPy program completed"
 
+      - name: Test PsychoPy venv as new desktop user
+        if: ${{ matrix.os != 'debian-11' && matrix.os != 'debian-12' }}
+        run: |
+          NEWUSER=testpsychopyuser
+          sudo useradd -m -s /bin/bash $NEWUSER
+
+          output=$(sudo -i -u $NEWUSER bash -c 'DISPLAY=:0 /tmp_dir/psychopy/bin/psychopy -v' || true)
+          if ! echo "$output" | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
+            echo "PsychoPy version check failed as new user. Expected version: $PSYCHOPY_VERSION"
+            exit 1
+          fi
 
       - name: Uninstall PsychoPy
         if: always()
