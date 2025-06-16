@@ -98,7 +98,6 @@ jobs:
           fi
           echo "PsychoPy program completed"
 
-
       - name: Uninstall PsychoPy
         if: always()
         run: |
