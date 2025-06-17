@@ -237,20 +237,20 @@ prepare_shared_path() {
     local path="$1"
     if [ -f "${path}" ]; then
         # Path exists as a file
-        sudo_wrapper chmod a+rw "${path}"
+        log sudo_wrapper chmod a+rw "${path}"
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown "${USER}:psychopy" "${path}"
+            log sudo_wrapper chown "${USER}:psychopy" "${path}"
         else
-            sudo_wrapper chown "${USER}" "${path}"
+            log sudo_wrapper chown "${USER}" "${path}"
         fi
     else
         # Path is a directory or does not exist (create as directory)
-        sudo_wrapper mkdir -p "${path}"
-        sudo_wrapper chmod -R a+rx "${path}"
+        log sudo_wrapper mkdir -p "${path}"
+        log sudo_wrapper chmod -R a+rx "${path}"
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown -R "${USER}:psychopy" "${path}"
+            log sudo_wrapper chown -R "${USER}:psychopy" "${path}"
         else
-            sudo_wrapper chown -R "${USER}" "${path}"
+            log sudo_wrapper chown -R "${USER}" "${path}"
         fi
     fi
 }
@@ -1540,7 +1540,7 @@ create_desktop_shortcut() {
     if [ "${USER_INSTALL}" = true ]; then
         applications_dir="${HOME}/.local/share/applications"
     else
-        if sudo_wrapper test -d "/usr/share/applications" && sudo_wrapper test -w "/usr/share/applications"; then
+        if log sudo_wrapper test -d "/usr/share/applications" && log sudo_wrapper test -w "/usr/share/applications"; then
             applications_dir="/usr/share/applications"
         else
             log_message "WARNING: cannot write to /usr/share or /usr/local/share; falling back to user applications directory."
@@ -1667,8 +1667,7 @@ create_start_psychopy_wrapper() {
     printf -v quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
     if [ "${DISABLE_SHORTCUT}" = false ]; then
         shortcut_block=$(printf "%s\n" \
-            "    echo \"Removing desktop shortcut: \${HOME}/.local/share/applications/${VENV_NAME}.desktop\"" \
-            "    \${SUDO} rm -f \"\${HOME}/.local/share/applications/${VENV_NAME}.desktop\"" \
+            "    echo \"Removing desktop shortcuts: \${quoted_files}\"" \
             "    \${SUDO} rm -f ${quoted_files}" \
             "")
     fi
