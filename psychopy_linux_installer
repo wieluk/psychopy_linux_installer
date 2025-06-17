@@ -234,7 +234,11 @@ sudo_wrapper() {
 
 # Ensures a directory exists, is owned by the current user, and is readable/executable by all users.
 prepare_shared_path() {
-    local path="$1"
+    local path="${1}"
+    local recursive="${2}"
+    local rec_flag=""
+    [ "${recursive}" = "recursive" ] && rec_flag="-R"
+
     if [ -f "${path}" ] || [ -L "${path}" ]; then
         sudo_wrapper chmod a+rw "${path}" >/dev/null 2>&1
         if getent group psychopy >/dev/null 2>&1; then
@@ -244,11 +248,11 @@ prepare_shared_path() {
         fi
     else
         sudo_wrapper mkdir -p "${path}" >/dev/null 2>&1
-        sudo_wrapper chmod -R a+rx "${path}" >/dev/null 2>&1
+        sudo_wrapper chmod ${rec_flag} a+rx "${path}" >/dev/null 2>&1
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown -R "${USER}:psychopy" "${path}" >/dev/null 2>&1
+            sudo_wrapper chown ${rec_flag} "${USER}:psychopy" "${path}" >/dev/null 2>&1
         else
-            sudo_wrapper chown -R "${USER}" "${path}" >/dev/null 2>&1
+            sudo_wrapper chown ${rec_flag} "${USER}" "${path}" >/dev/null 2>&1
         fi
     fi
 }
@@ -1283,14 +1287,14 @@ ensure_uv_installed() {
     UV_INSTALL_DIR="${INSTALL_DIR}/.uv"
     if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
         log_message "INFO: 'uv' is already installed."
-        prepare_shared_path "${UV_INSTALL_DIR}"
+        prepare_shared_path "${UV_INSTALL_DIR}" recursive
         return 0
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
-    prepare_shared_path "${UV_INSTALL_DIR}"
+    prepare_shared_path "${UV_INSTALL_DIR}" recursive
     if curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
         log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
-        prepare_shared_path "${UV_INSTALL_DIR}"
+        prepare_shared_path "${UV_INSTALL_DIR}" recursive
         return 0
     else
         log_message "ERROR: 'uv' installation failed. Please install it manually."
@@ -1402,6 +1406,11 @@ build_wxpython() {
 # Prepares the PsychoPy installation directory, handling overwrites and permissions.
 prepare_psychopy_directory() {
     local uninstaller="${PSYCHOPY_DIR}/start_psychopy"
+    local install_dir_existed=false
+
+    if [ -d "${INSTALL_DIR}" ]; then
+        install_dir_existed=true
+    fi
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
         if [ "${FORCE_OVERWRITE}" = true ]; then
@@ -1433,7 +1442,12 @@ prepare_psychopy_directory() {
         sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
     fi
 
-    prepare_shared_path "${PSYCHOPY_DIR}"
+    if [ "${install_dir_existed}" = true ]; then
+        prepare_shared_path "${INSTALL_DIR}" recursive
+    else
+        prepare_shared_path "${PSYCHOPY_DIR}" recursive
+    fi
+
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
         log_message "ERROR: Cannot access or cd into '${PSYCHOPY_DIR}'."
         return 1
@@ -2011,7 +2025,7 @@ main() {
 
     log_message "INFO: Creating Python environment with uv ..."
     PYTHON_INSTALL_DIR="${INSTALL_DIR}/.python"
-    prepare_shared_path "${PYTHON_INSTALL_DIR}"
+    prepare_shared_path "${PYTHON_INSTALL_DIR}" recursive
 
     if UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}" \
         UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin" \
@@ -2102,7 +2116,7 @@ main() {
     # Create start wrapper and uninstaller script
     create_start_psychopy_wrapper
 
-    prepare_shared_path "${PSYCHOPY_DIR}"
+    prepare_shared_path "${PSYCHOPY_DIR}" recursive
 
     log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
