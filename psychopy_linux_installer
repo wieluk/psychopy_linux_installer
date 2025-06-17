@@ -1815,7 +1815,16 @@ create_start_psychopy_wrapper() {
         "        exit 0" \
         "    fi" \
         "" \
-        "    if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+        "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
+        "        y|n)" \
+        "            mode=\"\${NON_INTERACTIVE_ARG,,}\"" \
+        "            if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+        "            ;;" \
+        "        *)" \
+        "            mode=\"prompt\"" \
+        "            if sudo true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+        "            ;;" \
+        "    esac" \
         "" \
         "    uninstall_success=true" \
         "" \
@@ -1825,11 +1834,6 @@ create_start_psychopy_wrapper() {
         "${symlink_block}" \
         "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
         "" \
-        "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
-        "        y) mode=\"y\" ;;" \
-        "        n) mode=\"n\" ;;" \
-        "        *) mode=\"prompt\" ;;" \
-        "    esac" \
         "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; if [ \$? -ne 0 ]; then uninstall_success=false; fi; fi" \
         "    remove_packages \"\${mode}\"" \
         "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
