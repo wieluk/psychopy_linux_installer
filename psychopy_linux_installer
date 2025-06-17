@@ -925,11 +925,11 @@ install_packages() {
             log_message "WARNING: ${PKG_MANAGER} batch installation failed. Falling back to per-package installation. This might take sometime ..."
             for package in "${to_install[@]}"; do
                 case ${PKG_MANAGER} in
-                apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                yum)     sudo_wrapper yum install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                dnf)     sudo_wrapper dnf install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                zypper)  sudo_wrapper zypper install -y "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                yum)     sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                dnf)     sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                zypper)  sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 *)
                     log_message "ERROR: No compatible package manager found."
                     ;;
@@ -1667,7 +1667,7 @@ create_start_psychopy_wrapper() {
     printf -v quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
     if [ "${DISABLE_SHORTCUT}" = false ]; then
         shortcut_block=$(printf "%s\n" \
-            "    echo \"Removing desktop shortcuts: \${quoted_files}\"" \
+            "    echo \"Removing desktop shortcuts: ${quoted_files}\"" \
             "    \${SUDO} rm -f ${quoted_files}" \
             "")
     fi
