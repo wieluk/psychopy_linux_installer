@@ -1406,10 +1406,10 @@ build_wxpython() {
 # Prepares the PsychoPy installation directory, handling overwrites and permissions.
 prepare_psychopy_directory() {
     local uninstaller="${PSYCHOPY_DIR}/start_psychopy"
-    local install_dir_existed=false
+    local install_dir_exists=false
 
     if [ -d "${INSTALL_DIR}" ]; then
-        install_dir_existed=true
+        install_dir_exists=true
     fi
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
@@ -1442,7 +1442,7 @@ prepare_psychopy_directory() {
         sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
     fi
 
-    if [ "${install_dir_existed}" = true ]; then
+    if [ "${install_dir_exists}" = false ]; then
         prepare_shared_path "${INSTALL_DIR}" recursive
     else
         prepare_shared_path "${PSYCHOPY_DIR}" recursive
