@@ -235,22 +235,20 @@ sudo_wrapper() {
 # Ensures a directory exists, is owned by the current user, and is readable/executable by all users.
 prepare_shared_path() {
     local path="$1"
-    if [ -f "${path}" ]; then
-        # Path exists as a file
-        log sudo_wrapper chmod a+rw "${path}"
+    if [ -f "${path}" ] || [ -L "${path}" ]; then
+        sudo_wrapper chmod a+rw "${path}" >/dev/null 2>&1
         if getent group psychopy >/dev/null 2>&1; then
-            log sudo_wrapper chown "${USER}:psychopy" "${path}"
+            sudo_wrapper chown "${USER}:psychopy" "${path}" >/dev/null 2>&1
         else
-            log sudo_wrapper chown "${USER}" "${path}"
+            sudo_wrapper chown "${USER}" "${path}" >/dev/null 2>&1
         fi
     else
-        # Path is a directory or does not exist (create as directory)
-        log sudo_wrapper mkdir -p "${path}"
-        log sudo_wrapper chmod -R a+rx "${path}"
+        sudo_wrapper mkdir -p "${path}" >/dev/null 2>&1
+        sudo_wrapper chmod -R a+rx "${path}" >/dev/null 2>&1
         if getent group psychopy >/dev/null 2>&1; then
-            log sudo_wrapper chown -R "${USER}:psychopy" "${path}"
+            sudo_wrapper chown -R "${USER}:psychopy" "${path}" >/dev/null 2>&1
         else
-            log sudo_wrapper chown -R "${USER}" "${path}"
+            sudo_wrapper chown -R "${USER}" "${path}" >/dev/null 2>&1
         fi
     fi
 }
@@ -925,11 +923,11 @@ install_packages() {
             log_message "WARNING: ${PKG_MANAGER} batch installation failed. Falling back to per-package installation. This might take sometime ..."
             for package in "${to_install[@]}"; do
                 case ${PKG_MANAGER} in
-                apt-get) log sudo_wrapper apt-get install -y -qq "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                yum)     log sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                dnf)     log sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                pacman)  log sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                zypper)  log sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                yum)     sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                dnf)     sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                zypper)  sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 *)
                     log_message "ERROR: No compatible package manager found."
                     ;;
@@ -1537,7 +1535,7 @@ create_desktop_shortcut() {
     if [ "${USER_INSTALL}" = true ]; then
         applications_dir="${HOME}/.local/share/applications"
     else
-        if log sudo_wrapper test -d "/usr/share/applications" && log sudo_wrapper test -w "/usr/share/applications"; then
+        if sudo_wrapper test -d "/usr/share/applications" >/dev/null 2>&1 && sudo_wrapper test -w "/usr/share/applications" >/dev/null 2>&1; then
             applications_dir="/usr/share/applications"
         else
             log_message "WARNING: cannot write to /usr/share or /usr/local/share; falling back to user applications directory."
@@ -1555,7 +1553,7 @@ create_desktop_shortcut() {
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            if log sudo_wrapper curl -s -o "${icon_path}" "${icon_url}"; then
+            if sudo_wrapper curl -s -o "${icon_path}" "${icon_url}" >/dev/null 2>&1; then
                 :
             else
                 log_message "WARNING: Failed to download icon '${icon_url}', skipping."
@@ -1588,7 +1586,7 @@ create_desktop_shortcut() {
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
         sudo_wrapper ln -sf "${desktop_file}" "${desktop_dir}/${pretty_name}.desktop"
-        command -v gio >/dev/null 2>&1 && gio set "${desktop_dir}/${pretty_name}.desktop" metadata::trusted true
+        command -v gio >/dev/null 2>&1 && log gio set "${desktop_dir}/${pretty_name}.desktop" metadata::trusted true
         DESKTOP_FILES+=("${desktop_file}" "${desktop_dir}/${pretty_name}.desktop")
     done
     log_message "INFO: Desktop shortcuts created successfully."
@@ -1607,7 +1605,6 @@ add_psychopy_to_path() {
         if [ -z "${existing_path}" ] || [ "${existing_path}" = "${target}" ]; then
             if [ -L "${target}" ] || [ ! -e "${target}" ]; then
                 if sudo_wrapper ln -sf "${src}" "${target}"; then
-                    prepare_shared_path "${target}"
                     PSYCHOPY_LAUNCHER_LINK="${target}"
                     log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (${target})."
                     return 0
