@@ -383,7 +383,7 @@ process_arguments() {
         esac
     done
 
-    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
+    if [[ "${PYTHON_VERSION}" =~ ^3\.8\.[0-9]+$ ]]; then
         if [[ -z "${WXPYTHON_VERSION}" ]]; then
             WXPYTHON_VERSION="4.2.2"
             log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible."
@@ -480,8 +480,8 @@ show_gui() {
     # wxPython version
     if [[ "${checklist_result}" == *"wxPython version"* ]]; then
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        if [[ "${PYTHON_VERSION}" == "3.8" ]]; then
-            log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible."
+        if [[ "${PYTHON_VERSION}" =~ ^3\.8\.[0-9]+$ ]]; then
+            log_message "INFO: Python 3.8.x selected. Only wxPython versions up to 4.2.2 are compatible."
             wxpython_versions=$(echo "${wxpython_versions}" | awk '$1 <= "4.2.2"')
             wxpython_default="4.2.2"
         else
@@ -1946,7 +1946,7 @@ main() {
     setup_psychopy_group_and_limits
 
     # Check if python version is valid
-    if [[ "${PYTHON_VERSION}" =~ ^3\.(8|9|10)\.[0-9]+$ ]]; then
+    if [[ "${PYTHON_VERSION}" =~ ^3\.([8-9]|[1-9][0-9]+)\.[0-9]+$ ]]; then
         python_url="https://www.python.org/ftp/python/${PYTHON_VERSION}/"
         if ! curl --head --silent --fail "${python_url}" >/dev/null; then
             log_message "ERROR: Python version ${PYTHON_VERSION} not found at ${python_url}. Please choose a valid version from https://www.python.org/ftp/python." nolog
