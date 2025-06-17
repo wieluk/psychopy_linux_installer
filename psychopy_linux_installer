@@ -1516,7 +1516,7 @@ remove_psychopy_settings() {
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local applications_dir desktop_shortcut psychopy_exec resources_dir desktop_content
+    local applications_dir desktop_dir psychopy_exec resources_dir desktop_content
     psychopy_exec="${PSYCHOPY_DIR}/start_psychopy"
     resources_dir="${PSYCHOPY_DIR}/Resources"
     local shortcuts=(
@@ -1525,18 +1525,15 @@ create_desktop_shortcut() {
         "--coder --no-splash" "Coder $(basename "${PSYCHOPY_DIR}")" "coder.png"
     )
 
-    if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
+    if ! desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
         log_message "WARNING: xdg-user-dir not found. Desktop shortcut creation failed."
         DISABLE_SHORTCUT=true
         return
     fi
-    if [ ! -d "${desktop_shortcut}" ]; then
-        log_message "WARNING: Desktop directory '${desktop_shortcut}' does not exist. Skipping shortcut creation."
-        DISABLE_SHORTCUT=true
-        return
+    if [ ! -d "${desktop_dir}" ]; then
+        sudo_wrapper mkdir -p "${desktop_dir}"
     fi
 
-    # decide where to install the .desktop files
     if [ "${USER_INSTALL}" = true ]; then
         applications_dir="${HOME}/.local/share/applications"
     else
@@ -1547,7 +1544,6 @@ create_desktop_shortcut() {
             applications_dir="${HOME}/.local/share/applications"
         fi
     fi
-
     sudo_wrapper mkdir -p "${resources_dir}"
 
     for ((i = 0; i < ${#shortcuts[@]}; i += 3)); do
@@ -1558,7 +1554,6 @@ create_desktop_shortcut() {
         local desktop_file="${applications_dir}/${pretty_name}.desktop"
         local icon_path="${resources_dir}/${icon_file}"
 
-        # download icon if available
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
             if log sudo_wrapper curl -s -o "${icon_path}" "${icon_url}"; then
                 :
@@ -1592,10 +1587,9 @@ create_desktop_shortcut() {
         sudo_wrapper sh -c "echo '${desktop_content}' > '${desktop_file}'"
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
-        command -v gio >/dev/null 2>&1 && gio set "${desktop_file}" metadata::trusted true
-
-        ln -sf "${desktop_file}" "${desktop_shortcut}/${pretty_name}.desktop"
-        DESKTOP_FILES+=("${desktop_file}" "${desktop_shortcut}/${pretty_name}.desktop")
+        sudo_wrapper ln -sf "${desktop_file}" "${desktop_dir}/${pretty_name}.desktop"
+        command -v gio >/dev/null 2>&1 && gio set "${desktop_dir}/${pretty_name}.desktop" metadata::trusted true
+        DESKTOP_FILES+=("${desktop_file}" "${desktop_dir}/${pretty_name}.desktop")
     done
     log_message "INFO: Desktop shortcuts created successfully."
 }
