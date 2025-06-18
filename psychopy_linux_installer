@@ -182,7 +182,7 @@ sudo_wrapper() {
                     PKG_MANAGER_PERMISSION=true
                 fi
                 log_message "INFO: Retrying command '${command[*]}' with sudo ..."
-                log sudo "${command[@]}"
+                log sudo -E "${command[@]}"
                 ;;
             [Cc])
                 return 1 ;;
@@ -190,7 +190,7 @@ sudo_wrapper() {
                 SUDO_MODE=auto
                 setup_temporary_sudo_timeout
                 log_message "INFO: Retrying command '${command[*]}' with sudo (sudo-mode set to auto) ..."
-                log sudo "${command[@]}"
+                log sudo -E "${command[@]}"
                 ;;
             *)
                 log_message "INFO: Exiting."
@@ -204,7 +204,7 @@ sudo_wrapper() {
                 PKG_MANAGER_PERMISSION=true
             fi
             log log_message "WARNING: Command '${command[*]}' failed with: '${error_output}'. Using sudo ..."
-            log sudo "${command[@]}"
+            log sudo -E "${command[@]}"
             ;;
         continue)
             log_message "WARNING: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo ..."
@@ -220,7 +220,7 @@ sudo_wrapper() {
     is_pkg_manager_command=$([ "${1}" == "${PKG_MANAGER}" ] && echo true || echo false)
 
     if [[ "${SUDO_MODE}" == "force" || ("${is_pkg_manager_command}" == true && "${PKG_MANAGER_PERMISSION}" == true) ]]; then
-        log sudo "${command[@]}"
+        log sudo -E "${command[@]}"
         return
     fi
 
@@ -1282,20 +1282,32 @@ check_python_env() {
     fi
 }
 
-# Ensures the 'uv' Python package manager is installed and available.
-ensure_uv_installed() {
+# Sets up the uv environment, ensuring it is installed and configured correctly.
+setup_uv() {
+    # Set up uv environment
     UV_INSTALL_DIR="${INSTALL_DIR}/.uv"
+    PYTHON_INSTALL_DIR="${INSTALL_DIR}/.python"
+    export UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}"
+    export UV_CACHE_DIR="${UV_INSTALL_DIR}/cache"
+    export UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}"
+    export UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin"
+    export UV_PYTHON_CACHE_DIR="${PYTHON_INSTALL_DIR}/cache"
+    export UV_TOOL_DIR="${UV_INSTALL_DIR}/tools"
+    export UV_TOOL_BIN_DIR="${UV_INSTALL_DIR}/tools/bin"
+
+    prepare_shared_path "${UV_INSTALL_DIR}" recursive
+    prepare_shared_path "${PYTHON_INSTALL_DIR}" recursive
+
+    # Check if 'uv' is already installed
     if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
         log_message "INFO: 'uv' is already installed."
-        prepare_shared_path "${UV_INSTALL_DIR}" recursive
         return 0
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
-    prepare_shared_path "${UV_INSTALL_DIR}" recursive
-    if curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
+    if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
         if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
-            log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
             prepare_shared_path "${UV_INSTALL_DIR}" recursive
+            log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
             return 0
         fi
     fi
@@ -1720,7 +1732,6 @@ create_start_psychopy_wrapper() {
         "        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
         "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
         "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv python dir; })\" 2>/dev/null || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
         "        \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
         "        \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
         "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
@@ -1730,11 +1741,10 @@ create_start_psychopy_wrapper() {
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
         "        read -r -p \"Remove PsychoPy user settings (~/.psychopy3)? [y/N]: \" resp" \
         "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        read -r -p \"Remove 'uv' binary and all uv data from ${UV_INSTALL_DIR}/uv, ${UV_INSTALL_DIR}/uvx, and python versions installed by uv? [y/N]: \" resp" \
-        "        if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-        "            if command -v \"${UV_INSTALL_DIR}/uv\" >/dev/null 2>&1; then \"${UV_INSTALL_DIR}/uv\" cache clean || true; \${SUDO} rm -rf \"\$({ ${UV_INSTALL_DIR}/uv tool dir; })\" 2>/dev/null || true; fi" \
-        "            \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"; \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
-        "        fi" \
+        "        read -r -p \"Remove uv with cache? (\"${UV_INSTALL_DIR}\") [y/N]: \" resp" \
+        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
+        "        read -r -p \"Remove python versions installed by this installer? (\"${PYTHON_INSTALL_DIR}\") [y/N]: \" resp" \
+        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
         "    fi" \
         "}" \
         "" \
@@ -2022,17 +2032,12 @@ main() {
     log_message "INFO: Installing build dependencies. This might take a while ..."
     install_dependencies build_deps
 
-    # Ensure uv is installed and create virtual environment
-    ensure_uv_installed
+    # Setup uv create virtual environment
+    setup_uv
 
     log_message "INFO: Creating Python environment with uv ..."
-    PYTHON_INSTALL_DIR="${INSTALL_DIR}/.python"
-    prepare_shared_path "${PYTHON_INSTALL_DIR}" recursive
 
-    if UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}" \
-        UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin" \
-        UV_PYTHON_CACHE_DIR="${PYTHON_INSTALL_DIR}/cache" \
-        "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv" >/dev/null 2>&1; then
+    if "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv" >/dev/null 2>&1; then
         log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
     else
         log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
