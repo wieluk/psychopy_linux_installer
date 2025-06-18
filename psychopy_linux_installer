@@ -18,6 +18,7 @@ declare -A DEFAULT_OPTS=(
     [WXPYTHON_WHEEL_INDEX]=""
     [BUILD_WXPYTHON]=false
     [INSTALL_DIR]="/opt/psychopy"
+    [USER_INSTALL]=false
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
@@ -233,23 +234,25 @@ sudo_wrapper() {
 
 # Ensures a directory exists, is owned by the current user, and is readable/executable by all users.
 prepare_shared_path() {
-    local path="$1"
-    if [ -f "${path}" ]; then
-        # Path exists as a file
-        sudo_wrapper chmod a+rw "${path}"
+    local path="${1}"
+    local recursive="${2}"
+    local rec_flag=""
+    [ "${recursive}" = "recursive" ] && rec_flag="-R"
+
+    if [ -f "${path}" ] || [ -L "${path}" ]; then
+        sudo_wrapper chmod a+rw "${path}" >/dev/null 2>&1
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown "${USER}:psychopy" "${path}"
+            sudo_wrapper chown "${USER}:psychopy" "${path}" >/dev/null 2>&1
         else
-            sudo_wrapper chown "${USER}" "${path}"
+            sudo_wrapper chown "${USER}" "${path}" >/dev/null 2>&1
         fi
     else
-        # Path is a directory or does not exist (create as directory)
-        sudo_wrapper mkdir -p "${path}"
-        sudo_wrapper chmod -R a+rx "${path}"
+        sudo_wrapper mkdir -p "${path}" >/dev/null 2>&1
+        sudo_wrapper chmod ${rec_flag} a+rx "${path}" >/dev/null 2>&1
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown -R "${USER}:psychopy" "${path}"
+            sudo_wrapper chown ${rec_flag} "${USER}:psychopy" "${path}" >/dev/null 2>&1
         else
-            sudo_wrapper chown -R "${USER}" "${path}"
+            sudo_wrapper chown ${rec_flag} "${USER}" "${path}" >/dev/null 2>&1
         fi
     fi
 }
@@ -271,6 +274,7 @@ show_help() {
             "  --build-wxpython                             Build wxPython from source" \
             "  --wxpython-wheel-index=URL                   Custom wxPython wheel index" \
             "  --install-dir=DIR                            Install directory (default: ${DEFAULT_OPTS[INSTALL_DIR]})" \
+            "  --user-install                               Install for the current user; changes install-dir to ${HOME}/psychopy if not set" \
             "  --venv-name=NAME                             Virtual environment name" \
             "  --additional-packages=PKG,PKG,...            Extra pip packages; Format: package1==version,package2." \
             "  --requirements-file=FILE                     Install pip packages from requirements.txt" \
@@ -325,6 +329,12 @@ process_arguments() {
             ;;
         --install-dir=*)
             INSTALL_DIR="${arg#*=}"
+            ;;
+        --user-install)
+            USER_INSTALL=true
+            if [[ -z "${INSTALL_DIR}" ]]; then
+                INSTALL_DIR="${HOME}/psychopy"
+            fi
             ;;
         --venv-name=*)
             VENV_NAME="${arg#*=}"
@@ -524,6 +534,7 @@ show_gui() {
         --column="Select" --column="Option" \
         TRUE "Add PsychoPy to system PATH" \
         TRUE "Create desktop shortcuts" \
+        FALSE "Install only for current user (PATH/shortcut/install-dir)" \
         FALSE "Run in non-interactive mode" \
         FALSE "Force overwrite of existing directory" \
         FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)" \
@@ -541,6 +552,15 @@ show_gui() {
 
     if [[ ${options} != *"Create desktop shortcuts"* ]]; then
         DISABLE_SHORTCUT=true
+    fi
+
+    if [[ ${options} == *"Install only for current user (PATH/shortcut/install-dir)"* ]]; then
+        USER_INSTALL=true
+        if [[ -z "${INSTALL_DIR}" ]]; then
+            INSTALL_DIR="${HOME}/psychopy"
+        fi
+    else
+        USER_INSTALL=false
     fi
 
     if [[ ${options} == *"Run in non-interactive mode"* ]]; then
@@ -907,11 +927,11 @@ install_packages() {
             log_message "WARNING: ${PKG_MANAGER} batch installation failed. Falling back to per-package installation. This might take sometime ..."
             for package in "${to_install[@]}"; do
                 case ${PKG_MANAGER} in
-                apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                yum)     sudo_wrapper yum install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                dnf)     sudo_wrapper dnf install -y -q "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
-                zypper)  sudo_wrapper zypper install -y "${package}" || log_message "WARNING: Package '${package}' not found, skipping." ;;
+                apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                yum)     sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                dnf)     sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                zypper)  sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 *)
                     log_message "ERROR: No compatible package manager found."
                     ;;
@@ -1267,18 +1287,20 @@ ensure_uv_installed() {
     UV_INSTALL_DIR="${INSTALL_DIR}/.uv"
     if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
         log_message "INFO: 'uv' is already installed."
-        prepare_shared_path "${UV_INSTALL_DIR}"
+        prepare_shared_path "${UV_INSTALL_DIR}" recursive
         return 0
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
-    prepare_shared_path "${UV_INSTALL_DIR}"
+    prepare_shared_path "${UV_INSTALL_DIR}" recursive
     if curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
-        log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
-        prepare_shared_path "${UV_INSTALL_DIR}"
-        return 0
-    else
-        log_message "ERROR: 'uv' installation failed. Please install it manually."
+        if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
+            log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
+            prepare_shared_path "${UV_INSTALL_DIR}" recursive
+            return 0
+        fi
     fi
+
+    log_message "ERROR: 'uv' installation failed."
 }
 
 # Installs wxPython using the specified method and version.
@@ -1386,6 +1408,11 @@ build_wxpython() {
 # Prepares the PsychoPy installation directory, handling overwrites and permissions.
 prepare_psychopy_directory() {
     local uninstaller="${PSYCHOPY_DIR}/start_psychopy"
+    local install_dir_exists=false
+
+    if [ -d "${INSTALL_DIR}" ]; then
+        install_dir_exists=true
+    fi
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
         if [ "${FORCE_OVERWRITE}" = true ]; then
@@ -1417,7 +1444,12 @@ prepare_psychopy_directory() {
         sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
     fi
 
-    prepare_shared_path "${PSYCHOPY_DIR}"
+    if [ "${install_dir_exists}" = false ]; then
+        prepare_shared_path "${INSTALL_DIR}" recursive
+    else
+        prepare_shared_path "${PSYCHOPY_DIR}" recursive
+    fi
+
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
         log_message "ERROR: Cannot access or cd into '${PSYCHOPY_DIR}'."
         return 1
@@ -1498,30 +1530,34 @@ remove_psychopy_settings() {
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local desktop_shortcut desktop_dir psychopy_exec resources_dir desktop_content
-    desktop_dir="${HOME}/.local/share/applications"
+    local applications_dir desktop_dir psychopy_exec resources_dir desktop_content
     psychopy_exec="${PSYCHOPY_DIR}/start_psychopy"
     resources_dir="${PSYCHOPY_DIR}/Resources"
-    local shortcuts=()
-
-    if ! desktop_shortcut="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
-        log_message "WARNING: xdg-user-dir not found. Desktop shortcut creation failed."
-        DISABLE_SHORTCUT=true
-        return
-    fi
-
-    shortcuts+=(
+    local shortcuts=(
         "--no-splash" "$(basename "${PSYCHOPY_DIR}")" "psychopy.png"
         "--builder --no-splash" "Builder $(basename "${PSYCHOPY_DIR}")" "builder.png"
         "--coder --no-splash" "Coder $(basename "${PSYCHOPY_DIR}")" "coder.png"
     )
 
-    if [ ! -d "${desktop_shortcut}" ]; then
-        log_message "WARNING: Desktop directory '${desktop_shortcut}' does not exist. Skipping shortcut creation."
+    if ! desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
+        log_message "WARNING: xdg-user-dir not found. Desktop shortcut creation failed."
         DISABLE_SHORTCUT=true
         return
     fi
+    if [ ! -d "${desktop_dir}" ]; then
+        sudo_wrapper mkdir -p "${desktop_dir}"
+    fi
 
+    if [ "${USER_INSTALL}" = true ]; then
+        applications_dir="${HOME}/.local/share/applications"
+    else
+        if sudo_wrapper test -d "/usr/share/applications" >/dev/null 2>&1 && sudo_wrapper test -w "/usr/share/applications" >/dev/null 2>&1; then
+            applications_dir="/usr/share/applications"
+        else
+            log_message "WARNING: cannot write to /usr/share or /usr/local/share; falling back to user applications directory."
+            applications_dir="${HOME}/.local/share/applications"
+        fi
+    fi
     sudo_wrapper mkdir -p "${resources_dir}"
 
     for ((i = 0; i < ${#shortcuts[@]}; i += 3)); do
@@ -1529,17 +1565,17 @@ create_desktop_shortcut() {
         local pretty_name="${shortcuts[i + 1]}"
         local icon_file="${shortcuts[i + 2]}"
         local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}"
-        local desktop_file="${desktop_shortcut}/${pretty_name}.desktop"
+        local desktop_file="${applications_dir}/${pretty_name}.desktop"
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            if log sudo_wrapper curl -s -o "${icon_path}" "${icon_url}"; then
+            if sudo_wrapper curl -s -o "${icon_path}" "${icon_url}" >/dev/null 2>&1; then
                 :
             else
-                log_message "WARNING: Failed to download icon file '${icon_url}', skipping ..."
+                log_message "WARNING: Failed to download icon '${icon_url}', skipping."
             fi
         else
-            log_message "WARNING: Icon file '${icon_url}' not found, skipping ..."
+            log_message "WARNING: Icon '${icon_url}' not found, skipping."
         fi
 
         local icon_line=""
@@ -1563,12 +1599,11 @@ create_desktop_shortcut() {
             "StartupWMClass=psychopy")
 
         sudo_wrapper sh -c "echo '${desktop_content}' > '${desktop_file}'"
-        DESKTOP_FILES+=("${desktop_file}")
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
-        command -v gio >/dev/null 2>&1 && gio set "${desktop_file}" metadata::trusted true
-
         sudo_wrapper ln -sf "${desktop_file}" "${desktop_dir}/${pretty_name}.desktop"
+        command -v gio >/dev/null 2>&1 && log gio set "${desktop_dir}/${pretty_name}.desktop" metadata::trusted true
+        DESKTOP_FILES+=("${desktop_file}" "${desktop_dir}/${pretty_name}.desktop")
     done
     log_message "INFO: Desktop shortcuts created successfully."
 }
@@ -1580,46 +1615,30 @@ add_psychopy_to_path() {
     syspath="/usr/local/bin/${VENV_NAME}"
     localbin="${HOME}/.local/bin/${VENV_NAME}"
 
-    existing_path=$(command -v "${VENV_NAME}" 2>/dev/null || true)
-
-    # Try system-wide symlink first
-    if [ -z "${existing_path}" ] || [ "${existing_path}" = "${syspath}" ]; then
-        if [ -L "${syspath}" ] || [ ! -e "${syspath}" ]; then
-            if sudo_wrapper ln -sf "${src}" "${syspath}"; then
-                prepare_shared_path "${syspath}"
-                PSYCHOPY_LAUNCHER_LINK="${syspath}"
-                log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (/usr/local/bin)."
-                return 0
-            else
-                log_message "WARNING: Failed to create symlink in /usr/local/bin. Trying ~/local/bin ..."
+    try_link() {
+        local target="$1"
+        existing_path=$(command -v "${VENV_NAME}" 2>/dev/null || true)
+        if [ -z "${existing_path}" ] || [ "${existing_path}" = "${target}" ]; then
+            if [ -L "${target}" ] || [ ! -e "${target}" ]; then
+                if sudo_wrapper ln -sf "${src}" "${target}"; then
+                    PSYCHOPY_LAUNCHER_LINK="${target}"
+                    log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (${target})."
+                    return 0
+                else
+                    log_message "WARNING: Failed to create symlink in ${target}."
+                fi
             fi
-        fi
-    else
-        log_message "WARNING: '${VENV_NAME}' already exists in PATH at '${existing_path}', not '${syspath}'. Skipping /usr/local/bin symlink."
-    fi
-
-    # Try user-local symlink
-    existing_path=$(command -v "${VENV_NAME}" 2>/dev/null || true)
-    if [ -z "${existing_path}" ] || [ "${existing_path}" = "${localbin}" ]; then
-        if [ -L "${localbin}" ]; then
-            log_message "INFO: Replacing existing symlink at '${localbin}'."
-        elif [ ! -e "${localbin}" ]; then
-            log_message "INFO: Creating new symlink at '${localbin}'."
         else
-            log_message "WARNING: '${localbin}' exists and is not a symlink. Skipping ~/local/bin symlink."
+            log_message "WARNING: '${VENV_NAME}' already exists in PATH at '${existing_path}', not '${target}'. Skipping ${target} symlink."
         fi
-        if [ -L "${localbin}" ] || [ ! -e "${localbin}" ]; then
-            mkdir -p "${HOME}/.local/bin"
-            if sudo_wrapper ln -sf "${src}" "${localbin}"; then
-                PSYCHOPY_LAUNCHER_LINK="${localbin}"
-                log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (~/local/bin)."
-                return 0
-            else
-                log_message "WARNING: Failed to create symlink in ~/.local/bin."
-            fi
-        fi
+        return 1
+    }
+
+    if [ "${USER_INSTALL}" = true ]; then
+        try_link "${localbin}" && return 0
     else
-        log_message "WARNING: '${VENV_NAME}' already exists in PATH at '${existing_path}', not '${localbin}'. Skipping user-local symlink."
+        try_link "${syspath}" && return 0
+        try_link "${localbin}" && return 0
     fi
 
     log_message "WARNING: Could not add PsychoPy to PATH as '${VENV_NAME}'. Name may already exist in PATH or permissions are insufficient."
@@ -1655,8 +1674,7 @@ create_start_psychopy_wrapper() {
     printf -v quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
     if [ "${DISABLE_SHORTCUT}" = false ]; then
         shortcut_block=$(printf "%s\n" \
-            "    echo \"Removing desktop shortcut: \${HOME}/.local/share/applications/${VENV_NAME}.desktop\"" \
-            "    \${SUDO} rm -f \"\${HOME}/.local/share/applications/${VENV_NAME}.desktop\"" \
+            "    echo \"Removing desktop shortcuts: ${quoted_files}\"" \
             "    \${SUDO} rm -f ${quoted_files}" \
             "")
     fi
@@ -1803,25 +1821,44 @@ create_start_psychopy_wrapper() {
         "        exit 0" \
         "    fi" \
         "" \
-        "    if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+        "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
+        "        y|n)" \
+        "            mode=\"\${NON_INTERACTIVE_ARG,,}\"" \
+        "            if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+        "            ;;" \
+        "        *)" \
+        "            mode=\"prompt\"" \
+        "            if sudo true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+        "            ;;" \
+        "    esac" \
         "" \
-        "    echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
-        "    \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
+        "    uninstall_success=true" \
         "" \
         "${shortcut_block}" \
+        "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
         "" \
         "${symlink_block}" \
+        "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
         "" \
-        "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
-        "        y) mode=\"y\" ;;" \
-        "        n) mode=\"n\" ;;" \
-        "        *) mode=\"prompt\" ;;" \
-        "    esac" \
-        "    [ \"\${mode}\" != \"n\" ] && remove_optionals \"\${mode}\"" \
+        "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; if [ \$? -ne 0 ]; then uninstall_success=false; fi; fi" \
         "    remove_packages \"\${mode}\"" \
+        "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
+        "" \
+        "    # Only remove PsychoPy directory if all previous steps succeeded" \
+        "    if [ \"\${uninstall_success}\" = true ]; then" \
+        "        echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
+        "        \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
+        "        if [ \$? -ne 0 ]; then" \
+        "            echo \"ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting.\"" \
+        "            exit 1" \
+        "        fi" \
+        "    else" \
+        "        echo \"ERROR: Previous uninstall steps failed. PsychoPy directory will NOT be removed.\"" \
+        "        exit 1" \
+        "    fi" \
         "" \
         "    # Check if ${INSTALL_DIR} is empty and remove if so" \
-        "    if [ -d ${DEFAULT_OPTS[INSTALL_DIR]} ] && [ \"\$(ls -A ${INSTALL_DIR})\" == \"\" ]; then" \
+        "    if [ -d ${INSTALL_DIR} ] && [ \"\$(ls -A ${INSTALL_DIR})\" == \"\" ]; then" \
         "        echo \"Removing empty directory: ${INSTALL_DIR}\"" \
         "        \${SUDO} rmdir ${INSTALL_DIR}" \
         "    else" \
@@ -1990,7 +2027,7 @@ main() {
 
     log_message "INFO: Creating Python environment with uv ..."
     PYTHON_INSTALL_DIR="${INSTALL_DIR}/.python"
-    prepare_shared_path "${PYTHON_INSTALL_DIR}"
+    prepare_shared_path "${PYTHON_INSTALL_DIR}" recursive
 
     if UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}" \
         UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin" \
@@ -2081,7 +2118,7 @@ main() {
     # Create start wrapper and uninstaller script
     create_start_psychopy_wrapper
 
-    prepare_shared_path "${PSYCHOPY_DIR}"
+    prepare_shared_path "${PSYCHOPY_DIR}" recursive
 
     log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
