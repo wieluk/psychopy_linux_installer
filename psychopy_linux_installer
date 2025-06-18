@@ -8,7 +8,7 @@
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="2.0.2"
+SCRIPT_VERSION="2.0.3"
 
 # Define default values
 declare -A DEFAULT_OPTS=(
@@ -207,7 +207,7 @@ sudo_wrapper() {
             log sudo -E "${command[@]}"
             ;;
         continue)
-            log_message "WARNING: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo ..."
+            log log_message "WARNING: Command '${command[*]}' failed with: '${error_output}'. Continuing without sudo ..."
             return 1
             ;;
         error)
@@ -240,19 +240,19 @@ prepare_shared_path() {
     [ "${recursive}" = "recursive" ] && rec_flag="-R"
 
     if [ -f "${path}" ] || [ -L "${path}" ]; then
-        sudo_wrapper chmod a+rw "${path}" >/dev/null 2>&1
+        sudo_wrapper chmod a+rw "${path}"
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown "${USER}:psychopy" "${path}" >/dev/null 2>&1
+            sudo_wrapper chown "${USER}:psychopy" "${path}"
         else
-            sudo_wrapper chown "${USER}" "${path}" >/dev/null 2>&1
+            sudo_wrapper chown "${USER}" "${path}"
         fi
     else
-        sudo_wrapper mkdir -p "${path}" >/dev/null 2>&1
-        sudo_wrapper chmod ${rec_flag} a+rx "${path}" >/dev/null 2>&1
+        sudo_wrapper mkdir -p "${path}"
+        sudo_wrapper chmod ${rec_flag} a+rx "${path}"
         if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown ${rec_flag} "${USER}:psychopy" "${path}" >/dev/null 2>&1
+            sudo_wrapper chown ${rec_flag} "${USER}:psychopy" "${path}"
         else
-            sudo_wrapper chown ${rec_flag} "${USER}" "${path}" >/dev/null 2>&1
+            sudo_wrapper chown ${rec_flag} "${USER}" "${path}"
         fi
     fi
 }
@@ -1563,7 +1563,7 @@ create_desktop_shortcut() {
     if [ "${USER_INSTALL}" = true ]; then
         applications_dir="${HOME}/.local/share/applications"
     else
-        if sudo_wrapper test -d "/usr/share/applications" >/dev/null 2>&1 && sudo_wrapper test -w "/usr/share/applications" >/dev/null 2>&1; then
+        if sudo_wrapper test -d "/usr/share/applications" && sudo_wrapper test -w "/usr/share/applications"; then
             applications_dir="/usr/share/applications"
         else
             log_message "WARNING: cannot write to /usr/share or /usr/local/share; falling back to user applications directory."
@@ -1581,7 +1581,7 @@ create_desktop_shortcut() {
         local icon_path="${resources_dir}/${icon_file}"
 
         if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            if sudo_wrapper curl -s -o "${icon_path}" "${icon_url}" >/dev/null 2>&1; then
+            if sudo_wrapper curl -s -o "${icon_path}" "${icon_url}"; then
                 :
             else
                 log_message "WARNING: Failed to download icon '${icon_url}', skipping."
