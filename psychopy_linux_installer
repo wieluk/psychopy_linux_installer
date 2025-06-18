@@ -233,27 +233,18 @@ sudo_wrapper() {
 }
 
 # Ensures a directory exists, is owned by the current user, and is readable/executable by all users.
-prepare_shared_path() {
-    local path="${1}"
-    local recursive="${2}"
-    local rec_flag=""
-    [ "${recursive}" = "recursive" ] && rec_flag="-R"
+set_shared_permissions() {
+    local path="${1}" rec_flag="" group
+    [ "${2}" = "recursive" ] && rec_flag="-R"
+    [ ! -e "${path}" ] && return
 
+    group=$(getent group psychopy >/dev/null 2>&1 && echo ":psychopy")
     if [ -f "${path}" ] || [ -L "${path}" ]; then
         sudo_wrapper chmod a+rw "${path}"
-        if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown "${USER}:psychopy" "${path}"
-        else
-            sudo_wrapper chown "${USER}" "${path}"
-        fi
+        sudo_wrapper chown "${USER}${group}" "${path}"
     else
-        sudo_wrapper mkdir -p "${path}"
         sudo_wrapper chmod ${rec_flag} a+rx "${path}"
-        if getent group psychopy >/dev/null 2>&1; then
-            sudo_wrapper chown ${rec_flag} "${USER}:psychopy" "${path}"
-        else
-            sudo_wrapper chown ${rec_flag} "${USER}" "${path}"
-        fi
+        sudo_wrapper chown ${rec_flag} "${USER}${group}" "${path}"
     fi
 }
 
@@ -869,7 +860,7 @@ save_installed_packages() {
             done
         } | awk NF | sort -u > "${tmpfile}"
         sudo_wrapper mv "${tmpfile}" "${UNIVERSIAL_PKG_FILE}"
-        prepare_shared_path "${UNIVERSIAL_PKG_FILE}"
+        set_shared_permissions "${UNIVERSIAL_PKG_FILE}"
     fi
 }
 
@@ -1295,8 +1286,10 @@ setup_uv() {
     export UV_TOOL_DIR="${UV_INSTALL_DIR}/tools"
     export UV_TOOL_BIN_DIR="${UV_INSTALL_DIR}/tools/bin"
 
-    prepare_shared_path "${UV_INSTALL_DIR}" recursive
-    prepare_shared_path "${PYTHON_INSTALL_DIR}" recursive
+    sudo_wrapper mkdir -p "${UV_INSTALL_DIR}"
+    set_shared_permissions "${UV_INSTALL_DIR}" recursive
+    sudo_wrapper mkdir -p "${PYTHON_INSTALL_DIR}"
+    set_shared_permissions "${PYTHON_INSTALL_DIR}" recursive
 
     # Check if 'uv' is already installed
     if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
@@ -1306,7 +1299,7 @@ setup_uv() {
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
     if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
         if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
-            prepare_shared_path "${UV_INSTALL_DIR}" recursive
+            set_shared_permissions "${UV_INSTALL_DIR}" recursive
             log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
             return 0
         fi
@@ -1457,9 +1450,9 @@ prepare_psychopy_directory() {
     fi
 
     if [ "${install_dir_exists}" = false ]; then
-        prepare_shared_path "${INSTALL_DIR}" recursive
+        set_shared_permissions "${INSTALL_DIR}" recursive
     else
-        prepare_shared_path "${PSYCHOPY_DIR}" recursive
+        set_shared_permissions "${PSYCHOPY_DIR}" recursive
     fi
 
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
@@ -1890,7 +1883,7 @@ create_start_psychopy_wrapper() {
     )
     printf "%s\n" "${wrapper_script}" | sudo_wrapper tee "${wrapper_path}" > /dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
-    prepare_shared_path "${wrapper_path}"
+    set_shared_permissions "${wrapper_path}"
 }
 
 
@@ -2123,7 +2116,7 @@ main() {
     # Create start wrapper and uninstaller script
     create_start_psychopy_wrapper
 
-    prepare_shared_path "${PSYCHOPY_DIR}" recursive
+    set_shared_permissions "${PSYCHOPY_DIR}" recursive
 
     log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
