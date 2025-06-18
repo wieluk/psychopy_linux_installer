@@ -1293,12 +1293,14 @@ ensure_uv_installed() {
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
     prepare_shared_path "${UV_INSTALL_DIR}" recursive
     if curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}" sh >/dev/null 2>&1; then
-        log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
-        prepare_shared_path "${UV_INSTALL_DIR}" recursive
-        return 0
-    else
-        log_message "ERROR: 'uv' installation failed. Please install it manually."
+        if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
+            log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
+            prepare_shared_path "${UV_INSTALL_DIR}" recursive
+            return 0
+        fi
     fi
+
+    log_message "ERROR: 'uv' installation failed."
 }
 
 # Installs wxPython using the specified method and version.
