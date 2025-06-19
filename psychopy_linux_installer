@@ -784,7 +784,22 @@ update_package_manager() {
     apt-get) sudo_wrapper apt-get update -qq ;;
     yum)     sudo_wrapper yum makecache -q ;;
     dnf)     sudo_wrapper dnf makecache -q ;;
-    pacman)  log_message "WARNING: Skipping 'pacman -Syu' to avoid unintended system upgrades. If you encounter a lot of 'package not found' errors, manually run 'sudo pacman -Syu' to update your package database, then rerun this script." ;;
+    pacman)
+        if [[ "${NON_INTERACTIVE}" == true ]]; then
+            sudo_wrapper pacman -Syu --noconfirm
+        else
+            echo
+            read -r -p "Do you want to fully upgrade all packages using pacman before continuing? This is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability.
+            [y] Yes
+            [n] No
+            Enter your choice [y/n]: " response
+            echo
+            if [[ "${response}" =~ ^[Yy]$ ]]; then
+                log_message "INFO: Upgrading all packages with pacman."
+                sudo_wrapper pacman -Syu --noconfirm
+            fi
+        fi
+        ;;
     zypper)  sudo_wrapper zypper refresh ;;
     *)
         log_message "ERROR: No compatible package manager found."
@@ -859,6 +874,7 @@ save_installed_packages() {
                 echo "${pkg}"
             done
         } | awk NF | sort -u > "${tmpfile}"
+        sudo_wrapper mkdir -p "$(dirname "${UNIVERSIAL_PKG_FILE}")"
         sudo_wrapper mv "${tmpfile}" "${UNIVERSIAL_PKG_FILE}"
         set_shared_permissions "${UNIVERSIAL_PKG_FILE}"
     fi
@@ -975,7 +991,7 @@ install_dependencies() {
         ;;
     pacman)
         script_deps=(curl git jq)
-        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils SDL2 webkit2gtk xcb-util-cursor libxcb glu)
+        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils sdl2 webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu)
         build_deps=(gcc make python pkgconf)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
         wxpython_deps=(pkgconf freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
@@ -1468,6 +1484,7 @@ setup_psychopy_group_and_limits() {
     if [ -f "${limits_file}" ]; then
         log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
     else
+        sudo_wrapper mkdir -p /etc/security/limits.d
         if sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf' ; then
             log_message "INFO: Limits file '${limits_file}' created."
             log_message "NOTE: A system reboot is necessary to apply the security limits."
