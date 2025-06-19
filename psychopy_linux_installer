@@ -395,7 +395,7 @@ process_arguments() {
 
     if [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
         if [ "${BUILD_WXPYTHON}" = true ]; then
-            log_message "ERROR: --wxpython-wheel-url cannot be used together with --build-wxpython." nolog
+            log_message "ERROR: --wxpython-wheel-index cannot be used together with --build-wxpython." nolog
         fi
     fi
 }
