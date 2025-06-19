@@ -93,7 +93,7 @@ Run the installer directly without saving it to disk:
 | `--python-version=[3.8.x\|3.9.x\|3.10.x]` | Choose the Python interpreter version used by PsychoPy. (Patch version is optional) | `3.10` |
 | `--wxpython-version=VERSION` | Install a specific wxPython release. | `4.2.3` |
 | `--build-wxpython` | Build wxPython from source instead of downloading wheels. | *(download pre‑built wheels)* |
-| `--wxpython-wheel-url=URL` | **Advanced.** Use a custom uv(pip) `--find-links` URL as the source for wxPython wheels. Might be useful for rolling distributions like Arch. Example: `--wxpython-wheel-url=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
+| `--wxpython-wheel-index=URL` | **Advanced.** Use a custom uv(pip) `--find-links` URL as the source for wxPython wheels. Might be useful for rolling distributions like Arch. Example: `--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
 | `--install-dir=DIR` | Target directory for the installation. | `/opt/psychopy` |
 | `--user-install` | Install PsychoPy for the current user only. Sets all paths (desktop shortcut, start menu entry, and symlinks) to user locations. If `--install-dir` is not set, it defaults to `${HOME}/psychopy`. | *false* |
 | `--venv-name=NAME` | Custom name for the virtual environment folder (must **not** be `python` or any name that may already exist in your system PATH). | *(auto: versioned subfolder)* |
