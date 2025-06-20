@@ -412,7 +412,8 @@ show_gui() {
         FALSE "Virtual environment name" "PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}" \
         FALSE "PsychoPy version" "${DEFAULT_OPTS[PSYCHOPY_VERSION]}" \
         FALSE "Python version" "${DEFAULT_OPTS[PYTHON_VERSION]}" \
-        FALSE "wxPython version" "${DEFAULT_OPTS[WXPYTHON_VERSION]}" \
+        FALSE "wxpython version" "${DEFAULT_OPTS[WXPYTHON_VERSION]}" \
+        FALSE "Custom wxPython wheel index" "None" \
         FALSE "Additional pip packages" "None" \
         FALSE "Use requirements.txt" "False" \
     ); then
@@ -434,7 +435,7 @@ show_gui() {
     if [[ "${checklist_result}" == *"Virtual environment name"* ]]; then
         if VENV_NAME=$(zenity --entry --title="Virtual Environment Name" --width=800 --height=500 \
             --text="Enter a name for the virtual environment folder.\n\n\nNotes:\nSpaces in the name will be replaced with underscores.\nThe name cannot be 'python' or any existing system command, as it will be used in your PATH.\n\n" \
-            --entry-text=""); then
+            --entry-text="psychopy"); then
             VENV_NAME=$(echo "${VENV_NAME}" | xargs)
         else
             exit 0
@@ -479,7 +480,7 @@ show_gui() {
     fi
 
     # wxPython version
-    if [[ "${checklist_result}" == *"wxPython version"* ]]; then
+    if [[ "${checklist_result}" == *"wxpython version"* ]]; then
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
         if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
             log_message "INFO: Python 3.8.x selected. Only wxPython versions up to 4.2.2 are compatible."
@@ -494,6 +495,17 @@ show_gui() {
             --radiolist --column="Select" --column="Version" \
             TRUE "${wxpython_default}" "${wxpython_false_opts[@]}" | tr -d '"') && [ -n "${WXPYTHON_VERSION}" ]; then
             WXPYTHON_VERSION=$(echo "${WXPYTHON_VERSION}" | xargs)
+        else
+            exit 0
+        fi
+    fi
+
+    # Custom wxPython wheel index
+    if [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
+        if WXPYTHON_WHEEL_INDEX=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
+            --text="Enter the URL for a custom wxPython wheel index.\n\nYou can find pre-built wheels for many Linux distributions here:\n    https://extras.wxpython.org/wxPython4/extras/linux/gtk3/\n\nThis option is useful if you are using a derivative or less common system, or if you know a specific wheel index URL that works for your distribution.\n\n" \
+            --entry-text="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"); then
+            WXPYTHON_WHEEL_INDEX=$(echo "${WXPYTHON_WHEEL_INDEX}" | xargs)
         else
             exit 0
         fi
@@ -520,18 +532,25 @@ show_gui() {
     fi
 
     # Additional options
+    options_array=(
+        TRUE "Add PsychoPy to system PATH"
+        TRUE "Create desktop shortcuts"
+        FALSE "Install only for current user (PATH/shortcut/install-dir)"
+        FALSE "Run in non-interactive mode"
+        FALSE "Force overwrite of existing directory"
+        FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
+        TRUE "Install font packages"
+        FALSE "Enable verbose output"
+    )
+
+    if [[ -z "${WXPYTHON_WHEEL_INDEX+x}" || -z "${WXPYTHON_WHEEL_INDEX}" ]]; then
+        options_array+=(FALSE "Build wxPython from source")
+    fi
+
     if options=$(zenity --list --checklist --title="Additional Options" --width=800 --height=500 \
         --text="Select additional options:" \
         --column="Select" --column="Option" \
-        TRUE "Add PsychoPy to system PATH" \
-        TRUE "Create desktop shortcuts" \
-        FALSE "Install only for current user (PATH/shortcut/install-dir)" \
-        FALSE "Run in non-interactive mode" \
-        FALSE "Force overwrite of existing directory" \
-        FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)" \
-        TRUE "Install font packages" \
-        FALSE "Build wxPython from source" \
-        FALSE "Enable verbose output"); then
+        "${options_array[@]}"); then
         :
     else
         exit 0
@@ -1852,28 +1871,17 @@ create_start_psychopy_wrapper() {
         "            ;;" \
         "    esac" \
         "" \
-        "    uninstall_success=true" \
-        "" \
         "${shortcut_block}" \
-        "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
         "" \
         "${symlink_block}" \
-        "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
         "" \
-        "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; if [ \$? -ne 0 ]; then uninstall_success=false; fi; fi" \
+        "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; fi" \
         "    remove_packages \"\${mode}\"" \
-        "    if [ \$? -ne 0 ]; then uninstall_success=false; fi" \
         "" \
-        "    # Only remove PsychoPy directory if all previous steps succeeded" \
-        "    if [ \"\${uninstall_success}\" = true ]; then" \
-        "        echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
-        "        \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
-        "        if [ \$? -ne 0 ]; then" \
-        "            echo \"ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting.\"" \
-        "            exit 1" \
-        "        fi" \
-        "    else" \
-        "        echo \"ERROR: Previous uninstall steps failed. PsychoPy directory will NOT be removed.\"" \
+        "    echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
+        "    \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
+        "    if [ \$? -ne 0 ]; then" \
+        "        echo \"ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting.\"" \
         "        exit 1" \
         "    fi" \
         "" \
