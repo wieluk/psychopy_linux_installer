@@ -384,15 +384,6 @@ process_arguments() {
         esac
     done
 
-    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
-        if [[ -z "${WXPYTHON_VERSION}" ]]; then
-            WXPYTHON_VERSION="4.2.2"
-            log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible."
-        elif is_version_greater "${WXPYTHON_VERSION}" "4.2.2"; then
-            log_message "ERROR: wxPython > 4.2.2 is not supported with Python 3.8." nolog
-        fi
-    fi
-
     if [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
         if [ "${BUILD_WXPYTHON}" = true ]; then
             log_message "ERROR: --wxpython-wheel-index cannot be used together with --build-wxpython." nolog
@@ -1963,6 +1954,15 @@ main() {
     fi
 
     log_message "NOTE: Logging to temporary file: '${LOG_FILE}'"
+
+    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
+        if [[ -z "${WXPYTHON_VERSION}" ]]; then
+            WXPYTHON_VERSION="4.2.2"
+            log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible. Using: ${WXPYTHON_VERSION}."
+        elif is_version_greater "${WXPYTHON_VERSION}" "4.2.2"; then
+            log_message "ERROR: wxPython > 4.2.2 is not supported with Python 3.8." nolog
+        fi
+    fi
 
     if [ -n "${REQUIREMENTS_FILE}" ]; then
         log_message "INFO: Parsing requirements file: '${REQUIREMENTS_FILE}' ..."
