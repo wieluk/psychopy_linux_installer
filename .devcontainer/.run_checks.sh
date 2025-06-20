@@ -84,3 +84,6 @@ else
     echo -e "${RED}${BOLD}$ERRORS out of $CHECKS checks failed.${NC}"
     exit 1
 fi
+
+sed -i "s/^#  Last Updated:.*/#  Last Updated:  $(date +%Y-%m-%d)/" psychopy_linux_installer
+git add psychopy_linux_installer
