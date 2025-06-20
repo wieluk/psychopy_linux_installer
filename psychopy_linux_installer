@@ -428,6 +428,7 @@ show_gui() {
             --text="Enter a name for the virtual environment folder.\n\n\nNotes:\nSpaces in the name will be replaced with underscores.\nThe name cannot be 'python' or any existing system command, as it will be used in your PATH.\n\n" \
             --entry-text="psychopy"); then
             VENV_NAME=$(echo "${VENV_NAME}" | xargs)
+            VENV_NAME=${VENV_NAME//[[:space:]]/_}
         else
             exit 0
         fi
@@ -645,6 +646,8 @@ create_rerun_command() {
 # Try to connect to github.com
 check_connection() {
     if (bash -c "echo >/dev/tcp/github.com/443" &>/dev/null); then
+        return 0
+    elif (bash -c "echo >/dev/tcp/google.com/443" &>/dev/null); then
         return 0
     else
         log_message "ERROR: No internet connection. This script requires internet access to download packages." nolog
@@ -1953,8 +1956,6 @@ main() {
         process_arguments "${@}"
     fi
 
-    log_message "NOTE: Logging to temporary file: '${LOG_FILE}'"
-
     if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
         if [[ -z "${WXPYTHON_VERSION}" ]]; then
             WXPYTHON_VERSION="4.2.2"
@@ -1963,6 +1964,12 @@ main() {
             log_message "ERROR: wxPython > 4.2.2 is not supported with Python 3.8." nolog
         fi
     fi
+
+    if [[ "${VENV_NAME,,}" =~ ^(\.?python|\.?uv)$ ]]; then
+        log_message "ERROR: The virtual environment name cannot be 'python', '.python', 'uv', or '.uv'. It is best to choose something unique to avoid conflicts." nolog
+    fi
+
+    log_message "NOTE: Logging to temporary file: '${LOG_FILE}'"
 
     if [ -n "${REQUIREMENTS_FILE}" ]; then
         log_message "INFO: Parsing requirements file: '${REQUIREMENTS_FILE}' ..."
@@ -1976,10 +1983,6 @@ main() {
         fi
     done
 
-    VENV_NAME=${VENV_NAME//[[:space:]]/_}
-    if [[ "${INSTALL_DIR}" == "${DEFAULT_OPTS[INSTALL_DIR]}" && "${VENV_NAME,,}" == "python" ]]; then
-        log_message "ERROR: The virtual environment name cannot be 'python' (case-insensitive) when installing into the default directory ('${DEFAULT_OPTS[INSTALL_DIR]}')." nolog
-    fi
 
     if ${USE_GUI}; then
         rerun_cmd=$(create_rerun_command)
