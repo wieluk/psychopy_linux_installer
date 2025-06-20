@@ -393,7 +393,7 @@ process_arguments() {
 
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
-    local wxpython_versions psychopy_versions options checklist_result
+    local wxpython_versions psychopy_versions options checklist_result wx_url folders selected_folder
 
     # Checkbox page
     if  checklist_result=$(zenity --list --checklist --title="Customize Installation" --width=800 --height=500 \
@@ -492,12 +492,33 @@ show_gui() {
         fi
     fi
 
-    # Custom wxPython wheel index
     if [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
-        if WXPYTHON_WHEEL_INDEX=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
-            --text="Enter the URL for a custom wxPython wheel index.\n\nYou can find pre-built wheels for many Linux distributions here:\n    https://extras.wxpython.org/wxPython4/extras/linux/gtk3/\n\nThis option is useful if you are using a derivative or less common system, or if you know a specific wheel index URL that works for your distribution.\n\n" \
-            --entry-text="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"); then
-            WXPYTHON_WHEEL_INDEX=$(echo "${WXPYTHON_WHEEL_INDEX}" | xargs)
+        wx_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3"
+        folders=$(curl -s "${wx_url}/" | grep -oP '(?<=href=")[^/]+(?=/")' | grep -vE 'Parent|^$' | sort)
+        if [ -z "${folders}" ]; then
+            log_message "ERROR: Could not fetch folder list from ${wx_url}." nolog
+        fi
+
+        # Add an option for custom URL
+        folders="${folders} Other_(enter_custom_URL)"
+
+        # shellcheck disable=SC2086
+        selected_folder=$(zenity --list --title="Select wxPython Wheel Index Folder" --width=800 --height=500 \
+            --text="Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro." \
+            --column="Folder" ${folders})
+
+        if [ -n "${selected_folder}" ]; then
+            if [[ "${selected_folder}" == "Other_(enter_custom_URL)" ]]; then
+                if WXPYTHON_WHEEL_INDEX=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
+                    --text="Enter the URL for a custom wxPython wheel index.\n\nYou can find pre-built wheels for many Linux distributions here:\n    https://extras.wxpython.org/wxPython4/extras/linux/gtk3/\n\nThis option is useful if you are using a derivative or less common system, or if you know a specific wheel index URL that works for your distribution.\n\n" \
+                    --entry-text="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"); then
+                    WXPYTHON_WHEEL_INDEX=$(echo "${WXPYTHON_WHEEL_INDEX}" | xargs)
+                else
+                    exit 0
+                fi
+            else
+                WXPYTHON_WHEEL_INDEX="${wx_url}/${selected_folder}/"
+            fi
         else
             exit 0
         fi
