@@ -235,7 +235,7 @@ sudo_wrapper() {
 # Ensures a directory exists, is owned by the current user, and is readable/executable by all users.
 set_shared_permissions() {
     local path="${1}" rec_flag="" group
-    [ "${2}" = "recursive" ] && rec_flag="-R"
+    [ "${2}" = "recursive" ] && rec_flag="-f -R"
     [ ! -e "${path}" ] && return
 
     group=$(getent group psychopy >/dev/null 2>&1 && echo ":psychopy")
@@ -243,7 +243,9 @@ set_shared_permissions() {
         sudo_wrapper chmod a+rw "${path}"
         sudo_wrapper chown "${USER}${group}" "${path}"
     else
+        # shellcheck disable=SC2086
         sudo_wrapper chmod ${rec_flag} a+rx "${path}"
+        # shellcheck disable=SC2086
         sudo_wrapper chown ${rec_flag} "${USER}${group}" "${path}"
     fi
 }
