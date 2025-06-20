@@ -85,5 +85,8 @@ else
     exit 1
 fi
 
-sed -i "s/^#  Last Updated:.*/#  Last Updated:  $(date +%Y-%m-%d)/" psychopy_linux_installer
-git add psychopy_linux_installer
+# Only update Last Updated if psychopy_linux_installer is staged for commit
+if git diff --cached --name-only | grep -q '^psychopy_linux_installer$'; then
+    sed -i "s/^#  Last Updated:.*/#  Last Updated:  $(date +%Y-%m-%d)/" psychopy_linux_installer
+    git add psychopy_linux_installer
+fi

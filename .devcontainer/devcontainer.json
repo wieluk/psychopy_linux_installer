@@ -25,5 +25,5 @@
         }
     },
     "postCreateCommand": "sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.run_checks.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer",
-    "postStartCommand": "sudo chmod +x .devcontainer/.run_checks.sh && ./.devcontainer/.run_checks.sh"
+    "postStartCommand": "sudo chmod +x .devcontainer/.run_checks.sh"
 }
