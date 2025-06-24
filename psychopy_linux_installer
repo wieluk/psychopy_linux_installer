@@ -195,7 +195,7 @@ sudo_wrapper() {
                 retry_text="Retry with sudo"
             fi
 
-            response=$(prompt_user "Command '${command[*]}' failed with error: '${error_output}'.\n\nHow would you like to proceed?" \
+            response=$(prompt_user "Command '${command[*]}' failed with error: \n'${error_output}'.\n\nHow would you like to proceed?" \
                 "${retry_text}" \
                 "Automatically use sudo" \
                 "Continue without sudo" \
@@ -846,7 +846,7 @@ update_package_manager() {
             sudo_wrapper pacman -Syu --noconfirm
         else
             echo
-            response=$(prompt_user "Do you want to fully upgrade all packages using pacman before continuing? This is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability." "Upgrade all packages" "Skip upgrade")
+            response=$(prompt_user "Do you want to fully upgrade all packages using pacman before continuing? \nThis is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability." "Upgrade all packages" "Skip upgrade")
             echo
             if [[ "${response}" == "Upgrade all packages" ]]; then
                 log_message "INFO: Upgrading all packages with pacman."
@@ -1576,7 +1576,7 @@ remove_psychopy_settings() {
         fi
     elif [ "${NON_INTERACTIVE}" = false ]; then
         if [ -d "${HOME}/.psychopy3" ]; then
-            response=$(prompt_user "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages." "Remove settings folder" "Keep settings folder")
+            response=$(prompt_user "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'?\nKeeping it may cause conflicts with plugins or user-installed pip packages." "Remove settings folder" "Keep settings folder")
 
             if [[ "${response}" == "Remove settings folder" ]]; then
                 log_message "INFO: Removing existing '.psychopy3' directory."
