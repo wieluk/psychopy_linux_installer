@@ -117,21 +117,13 @@ prompt_user() {
     local opts=("$@"); local count=${#opts[@]}
     local choice input
 
-    if [[ "${USE_GUI:-false}" == true ]] && command -v zenity &>/dev/null; then
-        if (( count == 2 )); then
-            if zenity --question --width=800 --height=500 --text="${message}"; then
-                choice="${opts[0]}"
-            else
-                choice="${opts[1]}"
-            fi
-        else
-            local args=(--list --radiolist --width=800 --height=500 \
-                        --text="${message}" --column "" --column "Option")
-            for i in "${!opts[@]}"; do
-                args+=( "$([ "${i}" -eq 0 ] && echo TRUE || echo FALSE)" "${opts[i]}" )
-            done
-            choice=$(zenity "${args[@]}")
-        fi
+    if [[ "${USE_GUI}" == true ]] && command -v zenity &>/dev/null; then
+        local args=(--list --radiolist --width=800 --height=500 \
+                    --text="${message}" --column "" --column "Option")
+        for i in "${!opts[@]}"; do
+            args+=( "$([ "${i}" -eq 0 ] && echo TRUE || echo FALSE)" "${opts[i]}" )
+        done
+        choice=$(zenity "${args[@]}")
     else
         while true; do
             echo -e "\n${message}" >&2
@@ -752,9 +744,9 @@ check_script_update() {
             fi
         fi
 
-        response=$(prompt_user "A new version (${latest_version}) of the installer script is available.\n\n🔹 Repository: https://github.com/wieluk/psychopy_linux_installer\n🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases\n🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues\n\n${release_notes}Would you like to update?" "Yes" "No")
+        response=$(prompt_user "A new version (${latest_version}) of the installer script is available.\n\n🔹 Repository: https://github.com/wieluk/psychopy_linux_installer\n🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases\n🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues\n\n${release_notes}Would you like to update?" "Update now" "Skip update")
 
-        if [[ "${response}" == "Yes" ]]; then
+        if [[ "${response}" == "Update now" ]]; then
             log_message "INFO: Updating to version '${latest_version}' ..."
 
             if curl -sLo "${script_path}" "${latest_url}/download/psychopy_linux_installer"; then
@@ -854,9 +846,9 @@ update_package_manager() {
             sudo_wrapper pacman -Syu --noconfirm
         else
             echo
-            response=$(prompt_user "Do you want to fully upgrade all packages using pacman before continuing? This is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability." "Yes" "No")
+            response=$(prompt_user "Do you want to fully upgrade all packages using pacman before continuing? This is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability." "Upgrade all packages" "Skip upgrade")
             echo
-            if [[ "${response}" == "Yes" ]]; then
+            if [[ "${response}" == "Upgrade all packages" ]]; then
                 log_message "INFO: Upgrading all packages with pacman."
                 sudo_wrapper pacman -Syu --noconfirm
             fi
@@ -1584,9 +1576,9 @@ remove_psychopy_settings() {
         fi
     elif [ "${NON_INTERACTIVE}" = false ]; then
         if [ -d "${HOME}/.psychopy3" ]; then
-            response=$(prompt_user "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages." "Yes" "No")
+            response=$(prompt_user "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages." "Remove settings folder" "Keep settings folder")
 
-            if [[ "${response}" == "Yes" ]]; then
+            if [[ "${response}" == "Remove settings folder" ]]; then
                 log_message "INFO: Removing existing '.psychopy3' directory."
                 sudo_wrapper rm -rf "${HOME}/.psychopy3"
                 if [ -d "${HOME}/.psychopy3" ]; then
