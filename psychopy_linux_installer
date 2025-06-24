@@ -1953,7 +1953,7 @@ main() {
         chmod 1777 /tmp
     fi
     if [ ! -w /tmp ]; then
-        log_message "ERROR: /tmp directory is not writable or does not exist. Please check your system permissions."
+        echo "ERROR: /tmp directory is not writable or does not exist. Please check your system permissions."
         exit 1
     fi
 
