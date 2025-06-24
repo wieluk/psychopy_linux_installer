@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-06-20
+#  Last Updated:  2025-06-24
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -112,6 +112,44 @@ log() {
     fi
 }
 
+prompt_user() {
+    local message="$1"; shift
+    local opts=("$@"); local count=${#opts[@]}
+    local choice input
+
+    if [[ "${USE_GUI:-false}" == true ]] && command -v zenity &>/dev/null; then
+        if (( count == 2 )); then
+            if zenity --question --width=800 --height=500 --text="${message}"; then
+                choice="${opts[0]}"
+            else
+                choice="${opts[1]}"
+            fi
+        else
+            local args=(--list --radiolist --width=800 --height=500 \
+                        --text="${message}" --column "" --column "Option")
+            for i in "${!opts[@]}"; do
+                args+=( "$([ "${i}" -eq 0 ] && echo TRUE || echo FALSE)" "${opts[i]}" )
+            done
+            choice=$(zenity "${args[@]}")
+        fi
+    else
+        while true; do
+            echo -e "\n${message}" >&2
+            for i in "${!opts[@]}"; do
+                printf "  %d) %s\n" $((i+1)) "${opts[${i}]}" >&2
+            done
+            read -r -p "Enter choice [1-${count}]: " input
+            if [[ "${input}" =~ ^[1-9][0-9]*$ ]] && (( input >= 1 && input <= count )); then
+                choice="${opts[$((input-1))]}"
+                break
+            fi
+            echo "Invalid selection." >&2
+        done
+    fi
+
+    printf '%s' "${choice}"
+}
+
 # Compares two version strings and returns true if the first is greater.
 is_version_greater() {
     if [[ "${1}" =~ ^[0-9]+(\.[0-9]+)*$ ]] && [[ "${2}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
@@ -154,44 +192,42 @@ sudo_wrapper() {
     }
 
     handle_sudo_request() {
-        local response
+        local response retry_text
         local command=("${@}")
 
         case "${SUDO_MODE}" in
         ask)
             if ${is_pkg_manager_command}; then
-                retry_text="[r] Retry with sudo (this and future '${PKG_MANAGER}' commands)"
+                retry_text="Retry with sudo (this and future '${PKG_MANAGER}' commands)"
             else
-                retry_text="[r] Retry with sudo"
+                retry_text="Retry with sudo"
             fi
 
-            log_message "WARNING: Command '${command[*]}' failed with error: '${error_output}'."
-            echo
-            read -r -p "How would you like to proceed?
-
-            ${retry_text}
-            [a] Automatically use sudo when needed  (this and future commands)
-            [c] Continue without sudo (this command will be skipped)
-            [q] Quit
-
-            Enter your choice [r/a/c/q]: " response
-            echo
+            response=$(prompt_user "Command '${command[*]}' failed with error: '${error_output}'.\n\nHow would you like to proceed?" \
+                "${retry_text}" \
+                "Automatically use sudo" \
+                "Continue without sudo" \
+                "Quit")
 
             case "${response}" in
-            [Rr])
+            "${retry_text}")
                 if ${is_pkg_manager_command}; then
                     PKG_MANAGER_PERMISSION=true
                 fi
                 log_message "INFO: Retrying command '${command[*]}' with sudo ..."
                 log sudo -E "${command[@]}"
                 ;;
-            [Cc])
+            "Continue without sudo")
                 return 1 ;;
-            [aA])
+            "Automatically use sudo")
                 SUDO_MODE=auto
                 setup_temporary_sudo_timeout
                 log_message "INFO: Retrying command '${command[*]}' with sudo (sudo-mode set to auto) ..."
                 log sudo -E "${command[@]}"
+                ;;
+            "Quit")
+                log_message "INFO: Exiting."
+                exit 0
                 ;;
             *)
                 log_message "INFO: Exiting."
@@ -680,9 +716,10 @@ check_connection() {
 
 # Checks for a new version of the installer script and prompts the user to update.
 check_script_update() {
-    local latest_version rerun_cmd script_path response
+    local latest_version rerun_cmd script_path response release_notes indented_notes fetched_notes
     script_path=$(readlink -f "${0}")
     local latest_url="https://github.com/wieluk/psychopy_linux_installer/releases/latest"
+    local api_url="https://api.github.com/repos/wieluk/psychopy_linux_installer/releases/latest"
 
     # Exclude process substitution and pipe paths
     if [[ "${script_path}" == /dev/fd/* ]] || \
@@ -705,30 +742,19 @@ check_script_update() {
     latest_version=$(curl -Ls -o /dev/null -w '%{url_effective}' "${latest_url}" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?$')
 
     if is_version_greater "${latest_version}" "${SCRIPT_VERSION}"; then
-        script_path=$(readlink -f "${0}")
-
-        if [ "${USE_GUI}" = true ]; then
-            response=$(zenity --question \
-                --title="PsychoPy Installer Update" \
-                --width=600 \
-                --text="A new version (${latest_version}) of the installer script is available.\n\n🔹 Repository: https://github.com/wieluk/psychopy_linux_installer\n🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases\n🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues\n\nWould you like to update?" \
-                && echo "y" || echo "n")
-        else
-            echo -e "\nA new version (${latest_version}) of the installer script is available."
-            echo "    🔹 Repository: https://github.com/wieluk/psychopy_linux_installer"
-            echo "    🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases"
-            echo "    🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues"
-            echo
-            read -r -p "Would you like to update?
-
-        [y] Yes
-        [n] No
-
-        Enter your choice [y/n]: " response
-            echo
+        # Fetch release notes dynamically from GitHub API
+        release_notes=""
+        if command -v jq >/dev/null 2>&1; then
+            fetched_notes=$(curl -s "${api_url}" | jq -r '.body')
+            if [ -n "${fetched_notes}" ] && [ "${fetched_notes}" != "null" ]; then
+                indented_notes=$(printf "%s\n" "${fetched_notes}" | sed 's/^/    /')
+                release_notes="\nRelease notes:\n${indented_notes}\n\n\n"
+            fi
         fi
 
-        if [[ "${response}" =~ ^[Yy]$ ]]; then
+        response=$(prompt_user "A new version (${latest_version}) of the installer script is available.\n\n🔹 Repository: https://github.com/wieluk/psychopy_linux_installer\n🔹 Releases:   https://github.com/wieluk/psychopy_linux_installer/releases\n🔹 Issues:     https://github.com/wieluk/psychopy_linux_installer/issues\n\n${release_notes}Would you like to update?" "Yes" "No")
+
+        if [[ "${response}" == "Yes" ]]; then
             log_message "INFO: Updating to version '${latest_version}' ..."
 
             if curl -sLo "${script_path}" "${latest_url}/download/psychopy_linux_installer"; then
@@ -816,6 +842,8 @@ detect_package_manager() {
 
 # Updates the package manager's database.
 update_package_manager() {
+    local response
+
     log_message "INFO: Updating '${PKG_MANAGER}' package manager."
     case ${PKG_MANAGER} in
     apt-get) sudo_wrapper apt-get update -qq ;;
@@ -826,12 +854,9 @@ update_package_manager() {
             sudo_wrapper pacman -Syu --noconfirm
         else
             echo
-            read -r -p "Do you want to fully upgrade all packages using pacman before continuing? This is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability.
-            [y] Yes
-            [n] No
-            Enter your choice [y/n]: " response
+            response=$(prompt_user "Do you want to fully upgrade all packages using pacman before continuing? This is recommended because pacman does not support partial upgrades, and installing new packages without upgrading can result in broken dependencies or system instability." "Yes" "No")
             echo
-            if [[ "${response}" =~ ^[Yy]$ ]]; then
+            if [[ "${response}" == "Yes" ]]; then
                 log_message "INFO: Upgrading all packages with pacman."
                 sudo_wrapper pacman -Syu --noconfirm
             fi
@@ -994,8 +1019,8 @@ install_packages() {
                     packages_installed_by_function+=("${package}")
                 fi
             fi
-        save_installed_packages "${packages_installed_by_function[@]}"
         done
+        save_installed_packages "${packages_installed_by_function[@]}"
     fi
 }
 
@@ -1467,40 +1492,32 @@ build_wxpython() {
 prepare_psychopy_directory() {
     local uninstaller="${PSYCHOPY_DIR}/start_psychopy"
     local install_dir_exists=false
+    local response
 
-    if [ -d "${INSTALL_DIR}" ]; then
-        install_dir_exists=true
-    fi
+    [ -d "${INSTALL_DIR}" ] && install_dir_exists=true
 
     if [ -d "${PSYCHOPY_DIR}" ]; then
         if [ "${FORCE_OVERWRITE}" = true ]; then
-            if [ -x "${uninstaller}" ] && grep -q -- '--uninstall' "${uninstaller}" && grep -q -- '--non-interactive' "${uninstaller}"; then
-                log_message "WARNING: Directory '${PSYCHOPY_DIR}' exists. Running uninstaller ..."
-                if ! log "${PSYCHOPY_DIR}/start_psychopy" --uninstall --non-interactive=n; then
-                    log_message "WARNING: Uninstaller script failed. Removing directory manually ..."
-                    if ! sudo_wrapper rm -rf "${PSYCHOPY_DIR}"; then
-                        log_message "ERROR: Failed to remove '${PSYCHOPY_DIR}'. Check permissions or remove manually."
-                    fi
-                fi
-            else
-                log_message "WARNING: No suitable uninstaller found. Removing directory manually ..."
-                sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
-            fi
-            # Attempt to create fresh directory if previous steps removed it
-            if [ ! -d "${PSYCHOPY_DIR}" ]; then
-                log_message "INFO: Creating PsychoPy directory at '${PSYCHOPY_DIR}' ..."
-                sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
-            else
-                log_message "ERROR: Failed to delete '${PSYCHOPY_DIR}'. Check permissions or remove manually."
-            fi
-        else
+            :
+        elif [ "${NON_INTERACTIVE}" = "true" ]; then
             log_message "ERROR: Directory '${PSYCHOPY_DIR}' already exists. Use --force-overwrite to overwrite."
-            return 1
+        else
+            response=$(prompt_user "Directory '${PSYCHOPY_DIR}' already exists.\n\nWhat would you like to do?" "Overwrite directory" "Cancel installation")
+            [ "${response}" != "Overwrite directory" ] && log_message "ERROR: Directory '${PSYCHOPY_DIR}' already exists. Use --force-overwrite to overwrite."
         fi
-    else
-        log_message "INFO: Creating PsychoPy directory at '${PSYCHOPY_DIR}' ..."
-        sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
+
+        if [ -x "${uninstaller}" ] && grep -q -- '--uninstall' "${uninstaller}" && grep -q -- '--non-interactive' "${uninstaller}"; then
+            log_message "WARNING: Directory '${PSYCHOPY_DIR}' exists. Running uninstaller ..."
+            log "${uninstaller}" --uninstall --non-interactive=n || sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
+        else
+            log_message "WARNING: No suitable uninstaller found. Removing directory manually ..."
+            sudo_wrapper rm -rf "${PSYCHOPY_DIR}"
+        fi
+        [ -d "${PSYCHOPY_DIR}" ] && log_message "ERROR: Failed to delete '${PSYCHOPY_DIR}'. Check permissions or remove manually."
     fi
+
+    log_message "INFO: Creating PsychoPy directory at '${PSYCHOPY_DIR}' ..."
+    sudo_wrapper mkdir -p "${PSYCHOPY_DIR}"
 
     if [ "${install_dir_exists}" = false ]; then
         set_shared_permissions "${INSTALL_DIR}" recursive
@@ -1555,6 +1572,8 @@ setup_psychopy_group_and_limits() {
 
 # Removes the PsychoPy user settings directory (~/.psychopy3) if requested.
 remove_psychopy_settings() {
+    local response
+
     if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
         if [ -d "${HOME}/.psychopy3" ]; then
             log_message "INFO: Removing existing '.psychopy3' directory."
@@ -1565,16 +1584,9 @@ remove_psychopy_settings() {
         fi
     elif [ "${NON_INTERACTIVE}" = false ]; then
         if [ -d "${HOME}/.psychopy3" ]; then
-            echo
-            read -r -p "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages.
+            response=$(prompt_user "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'? Keeping it may cause conflicts with plugins or user-installed pip packages." "Yes" "No")
 
-            [y] Yes
-            [n] No
-
-            Enter your choice [y/n]: " response
-            echo
-
-            if [[ "${response}" =~ ^[Yy]$ ]]; then
+            if [[ "${response}" == "Yes" ]]; then
                 log_message "INFO: Removing existing '.psychopy3' directory."
                 sudo_wrapper rm -rf "${HOME}/.psychopy3"
                 if [ -d "${HOME}/.psychopy3" ]; then
@@ -1949,7 +1961,7 @@ main() {
         chmod 1777 /tmp
     fi
     if [ ! -w /tmp ]; then
-        echo "ERROR: /tmp directory is not writable or does not exist. Please check your system permissions."
+        log_message "ERROR: /tmp directory is not writable or does not exist. Please check your system permissions."
         exit 1
     fi
 
@@ -1983,7 +1995,7 @@ main() {
     if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
         if [[ -z "${WXPYTHON_VERSION}" ]]; then
             WXPYTHON_VERSION="4.2.2"
-            log_message "INFO: Python 3.8 selected. Only wxPython versions up to 4.2.2 are compatible. Using: ${WXPYTHON_VERSION}."
+            log_message "INFO: Python 3.8.x selected. Only wxPython versions up to 4.2.2 are compatible. Using: ${WXPYTHON_VERSION}."
         elif is_version_greater "${WXPYTHON_VERSION}" "4.2.2"; then
             log_message "ERROR: wxPython > 4.2.2 is not supported with Python 3.8." nolog
         fi
