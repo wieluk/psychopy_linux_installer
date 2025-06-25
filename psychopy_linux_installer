@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-06-24
+#  Last Updated:  2025-06-25
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -124,6 +124,9 @@ prompt_user() {
             args+=( "$([ "${i}" -eq 0 ] && echo TRUE || echo FALSE)" "${opts[i]}" )
         done
         choice=$(zenity "${args[@]}")
+        if [[ $? -ne 0 || -z "${choice}" ]]; then
+            exit 0
+        fi
     else
         while true; do
             echo -e "\n${message}" >&2
@@ -140,6 +143,25 @@ prompt_user() {
     fi
 
     printf '%s' "${choice}"
+    return 0
+}
+
+prompt_text_input() {
+    local prompt="$1"
+    local default="$2"
+    local input
+    if [[ "${USE_GUI}" == true ]] && command -v zenity &>/dev/null; then
+        input=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
+            --text="${prompt}" --entry-text="${default}")
+        if [[ $? -ne 0 || -z "${input}" ]]; then
+            exit 0
+        fi
+    else
+        echo -e "\n${prompt}"
+        read -r -p "Custom URL [default: ${default}]: " input
+        input="${input:-${default}}"
+    fi
+    echo "${input}" | xargs
 }
 
 # Compares two version strings and returns true if the first is greater.
@@ -422,6 +444,68 @@ process_arguments() {
     fi
 }
 
+select_wxpython_wheel_index() {
+    if ! command -v curl >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local wx_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3"
+    local folders selected_folder python_abi wheel_exists
+
+    folders=$(curl -s "${wx_url}/" | grep -oP '(?<=href=")[^/]+(?=/")' | grep -vE 'Parent|^$' | sort)
+    if [ -z "${folders}" ]; then
+        log_message "WARNING: Could not fetch folder list from ${wx_url}." nolog
+        return 1
+    fi
+
+    folders="${folders}"$'\n'"Other_(enter_custom_URL)"
+    IFS=$'\n' read -rd '' -a folder_array <<<"${folders}"
+
+    while true; do
+        selected_folder=$(prompt_user \
+            "Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro." \
+            "${folder_array[@]}"
+        )
+
+        if [ -z "${selected_folder}" ]; then
+            return 1
+        fi
+
+        if [[ "${selected_folder}" == "Other_(enter_custom_URL)" ]]; then
+            custom_url=$(prompt_text_input \
+                "Enter the URL for a custom wxPython wheel index. You can find pre-built wheels for many Linux distributions here:\n https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ \n\nThis option is useful if you are using a derivative or less common system, or if you know a specific wheel index URL that works for your distribution." \
+                "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/")
+            [ -z "${custom_url}" ] && return 1
+            echo "${custom_url}"
+            return 0
+        fi
+
+        python_abi=cp$(echo "${PYTHON_VERSION}" | awk -F. '{printf "%s%s", $1, $2}')
+        wheel_exists=$(curl -s "${wx_url}/${selected_folder}/" | grep -oi "wx[pP]ython-${WXPYTHON_VERSION}-.*${python_abi}.*\.whl" | head -n1)
+
+        if [ -n "${wheel_exists}" ]; then
+            echo "${wx_url}/${selected_folder}/"
+            return 0
+        else
+            response=$(prompt_user \
+                "No matching wxPython wheel was found in '${wx_url}/${selected_folder}/' for wxPython version '${WXPYTHON_VERSION}' and Python ${PYTHON_VERSION}.\nWould you like to try another folder or enter a custom URL?" \
+                "Try another folder" \
+                "Enter custom URL" \
+                "Cancel")
+            if [[ "${response}" == "Enter custom URL" ]]; then
+                custom_url=$(prompt_text_input \
+                    "Enter the URL for a custom wxPython wheel index. [default: https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/]" \
+                    "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/")
+                [ -z "${custom_url}" ] && return 1
+                echo "${custom_url}"
+                return 0
+            elif [[ "${response}" == "Cancel" ]]; then
+                return 0
+            fi
+        fi
+    done
+}
+
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
     local wxpython_versions psychopy_versions options checklist_result wx_url folders selected_folder
@@ -524,35 +608,7 @@ show_gui() {
     fi
 
     if [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
-        wx_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3"
-        folders=$(curl -s "${wx_url}/" | grep -oP '(?<=href=")[^/]+(?=/")' | grep -vE 'Parent|^$' | sort)
-        if [ -z "${folders}" ]; then
-            log_message "ERROR: Could not fetch folder list from ${wx_url}." nolog
-        fi
-
-        # Add an option for custom URL
-        folders="${folders} Other_(enter_custom_URL)"
-
-        # shellcheck disable=SC2086
-        selected_folder=$(zenity --list --title="Select wxPython Wheel Index Folder" --width=800 --height=500 \
-            --text="Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro." \
-            --column="Folder" ${folders})
-
-        if [ -n "${selected_folder}" ]; then
-            if [[ "${selected_folder}" == "Other_(enter_custom_URL)" ]]; then
-                if WXPYTHON_WHEEL_INDEX=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
-                    --text="Enter the URL for a custom wxPython wheel index.\n\nYou can find pre-built wheels for many Linux distributions here:\n    https://extras.wxpython.org/wxPython4/extras/linux/gtk3/\n\nThis option is useful if you are using a derivative or less common system, or if you know a specific wheel index URL that works for your distribution.\n\n" \
-                    --entry-text="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"); then
-                    WXPYTHON_WHEEL_INDEX=$(echo "${WXPYTHON_WHEEL_INDEX}" | xargs)
-                else
-                    exit 0
-                fi
-            else
-                WXPYTHON_WHEEL_INDEX="${wx_url}/${selected_folder}/"
-            fi
-        else
-            exit 0
-        fi
+        WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index) || exit 0
     fi
 
     # Additional pip packages
@@ -807,6 +863,15 @@ detect_os_version() {
     OS_VERSION="unknown"
     OS_VERSION_LINK="unknown"
     OS_VERSION_FULL="unknown"
+    if [ "${NON_INTERACTIVE}" = false ] && [ -z "${WXPYTHON_WHEEL_INDEX}" ]; then
+        response=$(prompt_user \
+            "Your Linux distribution could not be automatically detected, so no matching wxPython wheel can be suggested.\nWould you like to manually try a wxPython wheel from another distribution?\nThis may work if your system is similar to a supported distro, or you know a compatible wheel index.\n\nIf you select 'No', the installer will attempt to build wxPython from source, which can take a long time." \
+            "Yes, let me choose a wheel" \
+            "No, build from source") || exit 0
+        if [[ "${response}" == "Yes, let me choose a wheel" ]]; then
+            WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index) || exit 0
+        fi
+    fi
     return
 }
 
@@ -1034,28 +1099,28 @@ install_dependencies() {
         psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
         build_deps=(g++ make python3-dev pkg‑config)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
-        wxpython_deps=(freeglut3-dev g++ gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev make)
+        wxpython_deps=(freeglut3-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev)
         ;;
     yum | dnf)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
         build_deps=(gcc gcc-c++ make python3-devel pkgconf-pkg-config)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
-        wxpython_deps=(pkgconfig freeglut-devel gcc-c++ gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel make glib2-devel)
+        wxpython_deps=(freeglut-devel gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel glib2-devel)
         ;;
     pacman)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils sdl2 webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu)
-        build_deps=(gcc make python pkgconf)
+        build_deps=(gcc make python pkgconf which)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
-        wxpython_deps=(pkgconf freeglut gcc glib2 gstreamer gtk2 libjpeg libpng libsm libtiff make mesa)
+        wxpython_deps=(freeglut glib2 gstreamer gtk2 libjpeg libpng libsm libtiff glu mesa)
         ;;
     zypper)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
         build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
-        wxpython_deps=(pkgconf‑pkg‑config freeglut-devel gcc-c++ glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel make libtiff-devel)
+        wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
         ;;
     *)
         log_message "ERROR: No compatible package manager found."
@@ -1419,10 +1484,14 @@ install_wxpython() {
 
 # Attempts to install wxPython from a GitHub released wheel.
 install_wxpython_from_github() {
-    local wheel_name download_url renamed_wheel python_version_major_minor
+    local wheel_name download_url renamed_wheel python_abi
 
-    python_version_major_minor=$(echo "${PYTHON_VERSION}" | awk -F. '{printf "%s%s", $1, $2}')
-    wheel_name="wxPython-${WXPYTHON_VERSION}-cp${python_version_major_minor}-cp${python_version_major_minor}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+    if [[ "${OS_VERSION}" == "unknown" ]]; then
+        return 1
+    fi
+
+    python_abi=cp$(echo "${PYTHON_VERSION}" | awk -F. '{printf "%s%s", $1, $2}')
+    wheel_name="wxPython-${WXPYTHON_VERSION}-${python_abi}-${python_abi}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
     download_url="https://github.com/wieluk/psychopy_linux_installer/releases/download/v${SCRIPT_VERSION}/${wheel_name}"
 
     log_message "INFO: Downloading '${wheel_name}' from GitHub releases ..."
