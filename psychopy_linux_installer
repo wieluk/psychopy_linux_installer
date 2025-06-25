@@ -1464,7 +1464,7 @@ install_wxpython() {
         # Prompt for manual wheel index if all else fails and interactive
         elif [ "${NON_INTERACTIVE}" = false ]; then
             log_message "WARNING: All automatic wxPython wheel installations failed."
-            response=$(prompt_user "No suitable wxPython wheel was found. Would you like to manually select a wheel index before building from source?" \
+            response=$(prompt_user "No suitable wxPython wheel was found.\nWould you like to manually select a wheel index before building from source?" \
                 "Select wheel index" \
                 "Build from source")
             if [[ "${response}" == "Select wheel index" ]]; then
