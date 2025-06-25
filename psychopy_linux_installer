@@ -1469,6 +1469,7 @@ install_wxpython() {
                 "Build from source")
             if [[ "${response}" == "Select wheel index" ]]; then
                 WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index)
+                log_message "INFO: Installing wxPython '${WXPYTHON_VERSION}' from user-selected wheel index: '${WXPYTHON_WHEEL_INDEX}'"
                 if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
                     log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from user-selected wheel index."
                 else
