@@ -864,15 +864,6 @@ detect_os_version() {
     OS_VERSION="unknown"
     OS_VERSION_LINK="unknown"
     OS_VERSION_FULL="unknown"
-    if [ "${NON_INTERACTIVE}" = false ] && [ -z "${WXPYTHON_WHEEL_INDEX}" ]; then
-        response=$(prompt_user \
-            "Your Linux distribution could not be automatically detected, so no matching wxPython wheel can be suggested.\nWould you like to manually try a wxPython wheel from another distribution?\nThis may work if your system is similar to a supported distro, or you know a compatible wheel index.\n\nIf you select 'No', the installer will attempt to build wxPython from source, which can take a long time." \
-            "Yes, let me choose a wheel" \
-            "No, build from source") || exit 0
-        if [[ "${response}" == "Yes, let me choose a wheel" ]]; then
-            WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index) || exit 0
-        fi
-    fi
     return
 }
 
@@ -1460,19 +1451,33 @@ install_wxpython() {
         log "${UV_INSTALL_DIR}/uv" pip install git+https://github.com/wxWidgets/Phoenix
     elif [ "${BUILD_WXPYTHON}" = true ]; then
         build_wxpython
-    elif [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
-        if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
-            log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from custom wheel URL."
-        else
-            log_message "ERROR: Failed to install wxPython from custom wheel index: ${WXPYTHON_WHEEL_INDEX}."
-        fi
     else
-        if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}"; then
-            log_meessage "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from PyPI."
+        # Try all automatic wheel sources
+        if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
+            log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from custom wheel index."
+        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}"; then
+            log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from PyPI."
         elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
         elif install_wxpython_from_github; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from GitHub release."
+        # Prompt for manual wheel index if all else fails and interactive
+        elif [ "${NON_INTERACTIVE}" = false ]; then
+            log_message "WARNING: All automatic wxPython wheel installations failed."
+            response=$(prompt_user "No suitable wxPython wheel was found. Would you like to manually select a wheel index before building from source?" \
+                "Select wheel index" \
+                "Build from source")
+            if [[ "${response}" == "Select wheel index" ]]; then
+                WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index)
+                if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
+                    log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from user-selected wheel index."
+                else
+                    log_message "WARNING: Installation from selected wheel index failed. Building from source ..."
+                    build_wxpython
+                fi
+            else
+                build_wxpython
+            fi
         else
             build_wxpython
         fi
