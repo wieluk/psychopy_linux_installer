@@ -606,8 +606,9 @@ show_gui() {
             exit 0
         fi
     fi
-
     if [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
+        PYTHON_VERSION="${PYTHON_VERSION:-${DEFAULT_OPTS[PYTHON_VERSION]}}"
+        WXPYTHON_VERSION="${WXPYTHON_VERSION:-${DEFAULT_OPTS[WXPYTHON_VERSION]}}"
         WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index) || exit 0
     fi
 
