@@ -463,7 +463,7 @@ select_wxpython_wheel_index() {
 
     while true; do
         selected_folder=$(prompt_user \
-            "Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro." \
+            "Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro.\n\nWARNING: Selecting an incompatible wheel may cause the installation to fail, or PsychoPy may install but not work correctly." \
             "${folder_array[@]}"
         )
 
@@ -473,7 +473,7 @@ select_wxpython_wheel_index() {
 
         if [[ "${selected_folder}" == "Other_(enter_custom_URL)" ]]; then
             custom_url=$(prompt_text_input \
-                "Enter the URL for a custom wxPython wheel index. You can find pre-built wheels for many Linux distributions here:\n https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ \n\nThis option is useful if you are using a derivative or less common system, or if you know a specific wheel index URL that works for your distribution." \
+                "Enter the URL for a custom wxPython wheel index. You can find pre-built wheels for many Linux distributions here:\n https://extras.wxpython.org/wxPython4/extras/linux/gtk3/" \
                 "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/")
             [ -z "${custom_url}" ] && return 1
             echo "${custom_url}"
