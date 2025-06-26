@@ -1105,7 +1105,7 @@ install_dependencies() {
         ;;
     pacman)
         script_deps=(curl git jq)
-        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils sdl2 webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu)
+        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils sdl2 webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu libxcrypt-compat)
         build_deps=(gcc make python pkgconf which)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
         wxpython_deps=(freeglut glib2 gstreamer gtk2 libjpeg libpng libsm libtiff glu mesa)
