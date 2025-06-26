@@ -398,7 +398,7 @@ select_wxpython_wheel_index() {
     fi
 
     local wx_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3"
-    local folders selected_folder python_abi wheel_exists
+    local folders selected_folder python_abi wheel_exists whl_python_version whl_wxpython_version
 
     folders=$(curl -s "${wx_url}/" | grep -oP '(?<=href=")[^/]+(?=/")' | grep -vE 'Parent|^$' | sort)
     if [ -z "${folders}" ]; then
@@ -429,15 +429,17 @@ select_wxpython_wheel_index() {
             return 0
         fi
 
-        python_abi=cp$(echo "${PYTHON_VERSION}" | awk -F. '{printf "%s%s", $1, $2}')
-        wheel_exists=$(curl -s "${wx_url}/${selected_folder}/" | grep -oi "wx[pP]ython-${WXPYTHON_VERSION}-.*${python_abi}.*\.whl" | head -n1)
+        whl_python_version="${PYTHON_VERSION:-${DEFAULT_OPTS[PYTHON_VERSION]}}"
+        whl_wxpython_version="${WXPYTHON_VERSION:-${DEFAULT_OPTS[WXPYTHON_VERSION]}}"
+        python_abi=cp$(echo "${whl_python_version}" | awk -F. '{printf "%s%s", $1, $2}')
+        wheel_exists=$(curl -s "${wx_url}/${selected_folder}/" | grep -oi "wx[pP]ython-${whl_wxpython_version}-.*${python_abi}.*\.whl" | head -n1)
 
         if [ -n "${wheel_exists}" ]; then
             echo "${wx_url}/${selected_folder}/"
             return 0
         else
             response=$(prompt_user \
-                "No matching wxPython wheel was found in '${wx_url}/${selected_folder}/' for wxPython version '${WXPYTHON_VERSION}' and Python ${PYTHON_VERSION}.\nWould you like to try another folder or enter a custom URL?" \
+                "No matching wxPython wheel was found in '${wx_url}/${selected_folder}/' for wxPython version '${whl_wxpython_version}' and Python ${PYTHON_VERSION}.\nWould you like to try another folder or enter a custom URL?" \
                 "Try another folder" \
                 "Enter custom URL" \
                 "Cancel")
@@ -556,9 +558,9 @@ show_gui() {
             exit 0
         fi
     fi
+
+    # Custom wxPython wheel index
     if [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
-        PYTHON_VERSION="${PYTHON_VERSION:-${DEFAULT_OPTS[PYTHON_VERSION]}}"
-        WXPYTHON_VERSION="${WXPYTHON_VERSION:-${DEFAULT_OPTS[WXPYTHON_VERSION]}}"
         WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index) || exit 0
     fi
 
