@@ -1430,15 +1430,21 @@ setup_uv() {
         return 0
     fi
     log_message "INFO: 'uv' not found. Installing via official installer script ..."
-    if curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; then
-        if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
-            set_shared_permissions "${UV_INSTALL_DIR}" recursive
-            log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
-            return 0
+    if log curl -LsSf -o /tmp/uv-install.sh https://astral.sh/uv/install.sh; then
+        if log sh /tmp/uv-install.sh; then
+            sudo_wrapper rm -f /tmp/uv-install.sh
+            if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
+                set_shared_permissions "${UV_INSTALL_DIR}" recursive
+                log_message "INFO: 'uv' installed successfully at '${UV_INSTALL_DIR}'."
+                return 0
+            fi
+        else
+            sudo_wrapper -f /tmp/uv-install.sh
+            log_message "ERROR: install script failed."
         fi
+    else
+        log_message "ERROR: Failed to download install script."
     fi
-
-    log_message "ERROR: 'uv' installation failed."
 }
 
 # Installs wxPython using the specified method and version.
@@ -2166,7 +2172,7 @@ main() {
 
     log_message "INFO: Creating Python environment with uv ..."
 
-    if "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv" >/dev/null 2>&1; then
+    if log "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
         log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
     else
         log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
