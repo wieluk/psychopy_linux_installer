@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-06-25
+#  Last Updated:  2025-06-26
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -112,58 +112,6 @@ log() {
     fi
 }
 
-prompt_user() {
-    local message="$1"; shift
-    local opts=("$@"); local count=${#opts[@]}
-    local choice input
-
-    if [[ "${USE_GUI}" == true ]] && command -v zenity &>/dev/null; then
-        local args=(--list --radiolist --width=800 --height=500 \
-                    --text="${message}" --column "" --column "Option")
-        for i in "${!opts[@]}"; do
-            args+=( "$([ "${i}" -eq 0 ] && echo TRUE || echo FALSE)" "${opts[i]}" )
-        done
-        choice=$(zenity "${args[@]}")
-        if [[ $? -ne 0 || -z "${choice}" ]]; then
-            exit 0
-        fi
-    else
-        while true; do
-            echo -e "\n${message}" >&2
-            for i in "${!opts[@]}"; do
-                printf "  %d) %s\n" $((i+1)) "${opts[${i}]}" >&2
-            done
-            read -r -p "Enter choice [1-${count}]: " input
-            if [[ "${input}" =~ ^[1-9][0-9]*$ ]] && (( input >= 1 && input <= count )); then
-                choice="${opts[$((input-1))]}"
-                break
-            fi
-            echo "Invalid selection." >&2
-        done
-    fi
-
-    printf '%s' "${choice}"
-    return 0
-}
-
-prompt_text_input() {
-    local prompt="$1"
-    local default="$2"
-    local input
-    if [[ "${USE_GUI}" == true ]] && command -v zenity &>/dev/null; then
-        input=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
-            --text="${prompt}" --entry-text="${default}")
-        if [[ $? -ne 0 || -z "${input}" ]]; then
-            exit 0
-        fi
-    else
-        echo -e "\n${prompt}"
-        read -r -p "Custom URL [default: ${default}]: " input
-        input="${input:-${default}}"
-    fi
-    echo "${input}" | xargs
-}
-
 # Compares two version strings and returns true if the first is greater.
 is_version_greater() {
     if [[ "${1}" =~ ^[0-9]+(\.[0-9]+)*$ ]] && [[ "${2}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
@@ -232,7 +180,8 @@ sudo_wrapper() {
                 log sudo -E "${command[@]}"
                 ;;
             "Continue without sudo")
-                return 1 ;;
+                return 1
+                ;;
             "Automatically use sudo")
                 SUDO_MODE=auto
                 setup_temporary_sudo_timeout
@@ -353,9 +302,9 @@ process_arguments() {
             PYTHON_VERSION="${arg#*=}"
             if [[ "${PYTHON_VERSION}" =~ ^3\.([0-9]+)(\.[0-9]+)?$ ]]; then
                 minor="${BASH_REMATCH[1]}"
-                if (( minor < 8 )); then
+                if ((minor < 8)); then
                     log_message "ERROR: Unsupported Python version '${PYTHON_VERSION}'. Please use Python >= 3.8" nolog
-                elif (( minor > 10 )); then
+                elif ((minor > 10)); then
                     log_message "WARNING: Unsupported Python version '${PYTHON_VERSION}'. Supported major versions: '3.8', '3.9', or '3.10'." nolog
                 fi
             else
@@ -414,8 +363,7 @@ process_arguments() {
         --no-fonts)
             NO_FONTS=true
             ;;
-        --gui)
-            ;;
+        --gui) ;;
         -f | --force-overwrite)
             FORCE_OVERWRITE=true
             ;;
@@ -462,9 +410,10 @@ select_wxpython_wheel_index() {
     IFS=$'\n' read -rd '' -a folder_array <<<"${folders}"
 
     while true; do
-        selected_folder=$(prompt_user \
-            "Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro.\n\nWARNING: Selecting an incompatible wheel may cause the installation to fail, or PsychoPy may install but not work correctly." \
-            "${folder_array[@]}"
+        selected_folder=$(
+            prompt_user \
+                "Select the folder matching your Linux distribution/version, or choose 'Other' to enter a custom URL.\nThis option might be useful if you are using a derivative of an available distro.\n\nWARNING: Selecting an incompatible wheel may cause the installation to fail, or PsychoPy may install but not work correctly." \
+                "${folder_array[@]}"
         )
 
         if [ -z "${selected_folder}" ]; then
@@ -511,17 +460,18 @@ show_gui() {
     local wxpython_versions psychopy_versions options checklist_result wx_url folders selected_folder
 
     # Checkbox page
-    if  checklist_result=$(zenity --list --checklist --title="Customize Installation" --width=800 --height=500 \
-        --text="Select which options you want to customize. Unchecked options will use defaults." \
-        --column="Select" --column="Option" --column="Default" \
-        FALSE "Install directory" "${DEFAULT_OPTS[INSTALL_DIR]}" \
-        FALSE "Virtual environment name" "PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}" \
-        FALSE "PsychoPy version" "${DEFAULT_OPTS[PSYCHOPY_VERSION]}" \
-        FALSE "Python version" "${DEFAULT_OPTS[PYTHON_VERSION]}" \
-        FALSE "wxpython version" "${DEFAULT_OPTS[WXPYTHON_VERSION]}" \
-        FALSE "Custom wxPython wheel index" "None" \
-        FALSE "Additional pip packages" "None" \
-        FALSE "Use requirements.txt" "False" \
+    if checklist_result=$(
+        zenity --list --checklist --title="Customize Installation" --width=800 --height=500 \
+            --text="Select which options you want to customize. Unchecked options will use defaults." \
+            --column="Select" --column="Option" --column="Default" \
+            FALSE "Install directory" "${DEFAULT_OPTS[INSTALL_DIR]}" \
+            FALSE "Virtual environment name" "PsychoPy-{PSYCHOPY_VERSION}-Python{PYTHON_VERSION}" \
+            FALSE "PsychoPy version" "${DEFAULT_OPTS[PSYCHOPY_VERSION]}" \
+            FALSE "Python version" "${DEFAULT_OPTS[PYTHON_VERSION]}" \
+            FALSE "wxpython version" "${DEFAULT_OPTS[WXPYTHON_VERSION]}" \
+            FALSE "Custom wxPython wheel index" "None" \
+            FALSE "Additional pip packages" "None" \
+            FALSE "Use requirements.txt" "False"
     ); then
         :
     else
@@ -565,9 +515,9 @@ show_gui() {
 
     # Select Python version
     if [[ "${checklist_result}" == *"Python version"* ]]; then
-        patch_versions=$(curl -s --connect-timeout 3 "https://www.python.org/ftp/python/" \
-                        | grep -oP '(?<=href=")[^/]+(?=/")' \
-                        | grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
+        patch_versions=$(curl -s --connect-timeout 3 "https://www.python.org/ftp/python/" |
+            grep -oP '(?<=href=")[^/]+(?=/")' |
+            grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
 
         python_versions=(TRUE "3.10" FALSE "3.9" FALSE "3.8")
         if [ -n "${patch_versions}" ]; then
@@ -747,6 +697,59 @@ create_rerun_command() {
     fi
 }
 
+prompt_user() {
+    local message="$1"
+    shift
+    local opts=("$@")
+    local count=${#opts[@]}
+    local choice input
+
+    if [[ "${USE_GUI}" == true ]] && command -v zenity &>/dev/null; then
+        local args=(--list --radiolist --width=800 --height=500
+            --text="${message}" --column "" --column "Option")
+        for i in "${!opts[@]}"; do
+            args+=("$([ "${i}" -eq 0 ] && echo TRUE || echo FALSE)" "${opts[i]}")
+        done
+        choice=$(zenity "${args[@]}")
+        if [[ $? -ne 0 || -z "${choice}" ]]; then
+            exit 0
+        fi
+    else
+        while true; do
+            echo -e "\n${message}" >&2
+            for i in "${!opts[@]}"; do
+                printf "  %d) %s\n" $((i + 1)) "${opts[${i}]}" >&2
+            done
+            read -r -p "Enter choice [1-${count}]: " input
+            if [[ "${input}" =~ ^[1-9][0-9]*$ ]] && ((input >= 1 && input <= count)); then
+                choice="${opts[$((input - 1))]}"
+                break
+            fi
+            echo "Invalid selection." >&2
+        done
+    fi
+
+    printf '%s' "${choice}"
+    return 0
+}
+
+prompt_text_input() {
+    local prompt="$1"
+    local default="$2"
+    local input
+    if [[ "${USE_GUI}" == true ]] && command -v zenity &>/dev/null; then
+        input=$(zenity --entry --title="Custom wxPython Wheel Index" --width=800 --height=500 \
+            --text="${prompt}" --entry-text="${default}")
+        if [[ $? -ne 0 || -z "${input}" ]]; then
+            exit 0
+        fi
+    else
+        echo -e "\n${prompt}"
+        read -r -p "Custom URL [default: ${default}]: " input
+        input="${input:-${default}}"
+    fi
+    echo "${input}" | xargs
+}
 
 # ===============================================================================
 # ENVIRONMENT DETECTION - System information gathering
@@ -896,8 +899,8 @@ update_package_manager() {
     log_message "INFO: Updating '${PKG_MANAGER}' package manager."
     case ${PKG_MANAGER} in
     apt-get) sudo_wrapper apt-get update -qq ;;
-    yum)     sudo_wrapper yum makecache -q ;;
-    dnf)     sudo_wrapper dnf makecache -q ;;
+    yum) sudo_wrapper yum makecache -q ;;
+    dnf) sudo_wrapper dnf makecache -q ;;
     pacman)
         if [[ "${NON_INTERACTIVE}" == true ]]; then
             sudo_wrapper pacman -Syu --noconfirm
@@ -911,7 +914,7 @@ update_package_manager() {
             fi
         fi
         ;;
-    zypper)  sudo_wrapper zypper refresh ;;
+    zypper) sudo_wrapper zypper refresh ;;
     *)
         log_message "ERROR: No compatible package manager found."
         ;;
@@ -921,11 +924,11 @@ update_package_manager() {
 # Checks if the provided package is installed.
 is_package_installed() {
     case "${PKG_MANAGER}" in
-        apt-get) dpkg -s "$1" &>/dev/null ;;
-        yum|dnf) rpm -q "$1" &>/dev/null ;;
-        pacman)  pacman -Q "$1" &>/dev/null ;;
-        zypper)  rpm -q "$1" &>/dev/null ;;
-        *)       return 1 ;;
+    apt-get) dpkg -s "$1" &>/dev/null ;;
+    yum | dnf) rpm -q "$1" &>/dev/null ;;
+    pacman) pacman -Q "$1" &>/dev/null ;;
+    zypper) rpm -q "$1" &>/dev/null ;;
+    *) return 1 ;;
     esac
 }
 
@@ -984,7 +987,7 @@ save_installed_packages() {
             for pkg in ${packages_string}; do
                 echo "${pkg}"
             done
-        } | awk NF | sort -u > "${tmpfile}"
+        } | awk NF | sort -u >"${tmpfile}"
         sudo_wrapper mkdir -p "$(dirname "${UNIVERSIAL_PKG_FILE}")"
         sudo_wrapper mv "${tmpfile}" "${UNIVERSIAL_PKG_FILE}"
         set_shared_permissions "${UNIVERSIAL_PKG_FILE}"
@@ -995,7 +998,7 @@ save_installed_packages() {
 install_packages() {
     local dep_type=$1
     shift
-    local packages=( "$@" )
+    local packages=("$@")
     local available_packages
     local to_install=()
     local already_installed=()
@@ -1031,10 +1034,10 @@ install_packages() {
         if {
             case "${PKG_MANAGER}" in
             apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
-            yum)     sudo_wrapper yum install -y -q "${to_install[@]}" ;;
-            dnf)     sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
-            pacman)  sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
-            zypper)  sudo_wrapper zypper install -y "${to_install[@]}" ;;
+            yum) sudo_wrapper yum install -y -q "${to_install[@]}" ;;
+            dnf) sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
+            pacman) sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
+            zypper) sudo_wrapper zypper install -y "${to_install[@]}" ;;
             *)
                 log_message "ERROR: No compatible package manager found."
                 ;;
@@ -1046,10 +1049,10 @@ install_packages() {
             for package in "${to_install[@]}"; do
                 case ${PKG_MANAGER} in
                 apt-get) sudo_wrapper apt-get install -y -qq "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                yum)     sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                dnf)     sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                pacman)  sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                zypper)  sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                yum) sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                dnf) sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                pacman) sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                zypper) sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 *)
                     log_message "ERROR: No compatible package manager found."
                     ;;
@@ -1149,25 +1152,25 @@ remove_system_packages() {
     fi
 
     case "${PKG_MANAGER}" in
-        apt-get)
-            sudo_wrapper apt-get remove -y "${packages[@]}"
-            ;;
-        yum)
-            sudo_wrapper yum remove -y "${packages[@]}"
-            ;;
-        dnf)
-            sudo_wrapper dnf remove -y "${packages[@]}"
-            ;;
-        pacman)
-            sudo_wrapper pacman -Rs --noconfirm "${packages[@]}"
-            ;;
-        zypper)
-            sudo_wrapper zypper remove -y "${packages[@]}"
-            ;;
-        *)
-            log_message "ERROR: Unknown package manager: ${PKG_MANAGER}. Please remove packages manually."
-            return 1
-            ;;
+    apt-get)
+        sudo_wrapper apt-get remove -y "${packages[@]}"
+        ;;
+    yum)
+        sudo_wrapper yum remove -y "${packages[@]}"
+        ;;
+    dnf)
+        sudo_wrapper dnf remove -y "${packages[@]}"
+        ;;
+    pacman)
+        sudo_wrapper pacman -Rs --noconfirm "${packages[@]}"
+        ;;
+    zypper)
+        sudo_wrapper zypper remove -y "${packages[@]}"
+        ;;
+    *)
+        log_message "ERROR: Unknown package manager: ${PKG_MANAGER}. Please remove packages manually."
+        return 1
+        ;;
     esac
 }
 
@@ -1218,7 +1221,10 @@ parse_requirements_file() {
             fi
         fi
     done
-    REQUIREMENTSFILE_PACKAGES=$(IFS=','; echo "${req_packages_list[*]}")
+    REQUIREMENTSFILE_PACKAGES=$(
+        IFS=','
+        echo "${req_packages_list[*]}"
+    )
     if [ ${#skipped_packages[@]} -gt 0 ]; then
         log_message "WARNING: The following pip packages from requirements.txt are not available on Linux and were skipped: ${skipped_packages[*]}" >&2
     fi
@@ -1607,7 +1613,7 @@ setup_psychopy_group_and_limits() {
         log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
     else
         sudo_wrapper mkdir -p /etc/security/limits.d
-        if sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf' ; then
+        if sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'; then
             log_message "INFO: Limits file '${limits_file}' created."
             log_message "NOTE: A system reboot is necessary to apply the security limits."
         else
@@ -1829,187 +1835,186 @@ create_start_psychopy_wrapper() {
     local packages_installed_by_script_string remove_cmd
     packages_installed_by_script_string="${PACKAGES_INSTALLED_BY_SCRIPT[*]}"
     case "${PKG_MANAGER}" in
-        apt-get)   remove_cmd="\${SUDO} apt-get remove -y" ;;
-        yum)       remove_cmd="\${SUDO} yum remove -y" ;;
-        dnf)       remove_cmd="\${SUDO} dnf remove -y" ;;
-        pacman)    remove_cmd="\${SUDO} pacman -Rs --noconfirm" ;;
-        zypper)    remove_cmd="\${SUDO} zypper remove -y" ;;
-        *)         remove_cmd="echo \"Unknown package manager: ${PKG_MANAGER}. Please remove packages manually.\"" ;;
+    apt-get) remove_cmd="\${SUDO} apt-get remove -y" ;;
+    yum) remove_cmd="\${SUDO} yum remove -y" ;;
+    dnf) remove_cmd="\${SUDO} dnf remove -y" ;;
+    pacman) remove_cmd="\${SUDO} pacman -Rs --noconfirm" ;;
+    zypper) remove_cmd="\${SUDO} zypper remove -y" ;;
+    *) remove_cmd="echo \"Unknown package manager: ${PKG_MANAGER}. Please remove packages manually.\"" ;;
     esac
 
     local wrapper_script
-    wrapper_script=$(printf "%s\n" \
-        "#!/bin/bash" \
-        "# ================================================================================" \
-        "#  PsychoPy Start/Uninstall Wrapper" \
-        "# ================================================================================" \
-        "" \
-        "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
-        "" \
-        "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
-        "USER_DIR_ARG=\"\"" \
-        "UNINSTALL_ARG=false" \
-        "HELP_ARG=false" \
-        "NON_INTERACTIVE_ARG=\"\"" \
-        "PSYCHOPY_ARGS=()" \
-        "" \
-        "remove_optionals() {" \
-        "    local mode=\"\$1\"" \
-        "    if [ \"\${mode}\" = \"y\" ]; then" \
-        "        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
-        "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
-        "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
-        "        \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
-        "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
-        "        read -r -p \"Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: \" resp" \
-        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
-        "        read -r -p \"Remove psychopy group? [y/N]: \" resp" \
-        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
-        "        read -r -p \"Remove PsychoPy user settings (~/.psychopy3)? [y/N]: \" resp" \
-        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
-        "        read -r -p \"Remove uv with cache? (\"${UV_INSTALL_DIR}\") [y/N]: \" resp" \
-        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
-        "        read -r -p \"Remove python versions installed by this installer? (\"${PYTHON_INSTALL_DIR}\") [y/N]: \" resp" \
-        "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
-        "    fi" \
-        "}" \
-        "" \
-        "remove_packages() {" \
-        "    local mode=\"\$1\"" \
-        "    UNIVERSIAL_PKG_FILE=\"${UNIVERSIAL_PKG_FILE}\"" \
-        "    combined_pkgs=\"${packages_installed_by_script_string}\"" \
-        "    [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && universal_pkgs=\$(tr '\\n' ' ' < \"\${UNIVERSIAL_PKG_FILE}\" | xargs) && combined_pkgs=\"\${combined_pkgs} \${universal_pkgs}\"" \
-        "    all_pkgs=\$(echo \${combined_pkgs} | tr ' ' '\\n' | sort -u | tr '\\n' ' ' | xargs)" \
-        "    if [ -n \"\${all_pkgs}\" ]; then" \
-        "        if [ \"\${mode}\" = \"y\" ]; then" \
-        "            echo \"Removing the following system packages using ${PKG_MANAGER} (non-interactive):\"" \
-        "            echo \"\${all_pkgs}\"" \
-        "            if ${remove_cmd} \${all_pkgs}; then" \
-        "                [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && echo \"Removing universal package tracking file: \${UNIVERSIAL_PKG_FILE}\" && \${SUDO} rm -f \"\${UNIVERSIAL_PKG_FILE}\"" \
-        "            else" \
-        "                echo \"WARNING: Package removal failed. Not removing universal package tracking file at \${UNIVERSIAL_PKG_FILE}\"" \
-        "            fi" \
-        "        elif [ \"\${mode}\" = \"prompt\" ]; then" \
-        "            echo \"The following system packages were installed by this script (including all environments):\"" \
-        "            echo \"\${all_pkgs}\"" \
-        "            read -p \"Do you want to remove these packages using ${PKG_MANAGER}? [y/N]: \" resp" \
-        "            if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-        "                if ${remove_cmd} \${all_pkgs}; then" \
-        "                    [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && echo \"Removing universal package tracking file: \${UNIVERSIAL_PKG_FILE}\" && \${SUDO} rm -f \"\${UNIVERSIAL_PKG_FILE}\"" \
-        "                else" \
-        "                    echo \"WARNING: Package removal failed. Not removing universal package tracking file at \${UNIVERSIAL_PKG_FILE}\"" \
-        "                fi" \
-        "            else" \
-        "                echo \"Skipped removing system packages.\"" \
-        "            fi" \
-        "        else" \
-        "            echo \"Non-interactive mode: Skipping removal of system packages.\"" \
-        "        fi" \
-        "    fi" \
-        "}" \
-        "" \
-        "for arg in \"\$@\"; do" \
-        "    case \"\${arg}\" in" \
-        "        --workspace-dir=*)" \
-        "            WORKSPACE_DIR=\"\${arg#*=}\"" \
-        "            ;;" \
-        "        --user-dir=*)" \
-        "            USER_DIR_ARG=\"\${arg}\"" \
-        "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-        "            ;;" \
-        "        --uninstall)" \
-        "            UNINSTALL_ARG=true" \
-        "            ;;" \
-        "        --non-interactive=*)" \
-        "            NON_INTERACTIVE_ARG=\"\${arg#*=}\"" \
-        "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-        "            ;;" \
-        "        -h|--help)" \
-        "            HELP_ARG=true" \
-        "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-        "            ;;" \
-        "        *)" \
-        "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-        "            ;;" \
-        "    esac" \
-        "done" \
-        "" \
-        "if \${HELP_ARG}; then" \
-        "    echo '================ PsychoPy Start/Uninstall Wrapper ================='" \
-        "    echo 'Usage:'" \
-        "    echo \"  \$(basename \$0) --uninstall      # Uninstall PsychoPy and clean up files\"" \
-        "    echo \"  \$(basename \$0) --workspace-dir=DIR     # Set working directory for PsychoPy session\"" \
-        "    echo \"  \$(basename \$0) [args...]        # Forwards all arguments to PsychoPy\"" \
-        "    echo" \
-        "    echo 'If not called with --uninstall, all arguments are passed directly to PsychoPy.'" \
-        "    echo '---------------------------------------------------------------------'" \
-        "    echo 'The following help is from PsychoPy itself:'" \
-        "    echo '---------------------------------------------------------------------'" \
-        "fi" \
-        "" \
-        "if \${UNINSTALL_ARG}; then" \
-        "    # Move self to /tmp and re-exec if running from inside the install dir" \
-        "    if [[ \"\$(dirname \"\$(readlink -f \"\$0\")\")\" == \"${PSYCHOPY_DIR}\" ]]; then" \
-        "        tmp_uninstaller=\"/tmp/psychopy_uninstaller_\$\$.sh\"" \
-        "        cp \"\$0\" \"\${tmp_uninstaller}\" || { echo 'Failed to copy uninstaller to /tmp'; exit 1; }" \
-        "        chmod +x \"\${tmp_uninstaller}\" || { echo 'Failed to chmod uninstaller in /tmp'; exit 1; }" \
-        "        exec \"\${tmp_uninstaller}\" \"\$@\"" \
-        "        exit 0" \
-        "    fi" \
-        "" \
-        "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
-        "        y|n)" \
-        "            mode=\"\${NON_INTERACTIVE_ARG,,}\"" \
-        "            if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
-        "            ;;" \
-        "        *)" \
-        "            mode=\"prompt\"" \
-        "            if sudo true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
-        "            ;;" \
-        "    esac" \
-        "" \
-        "${shortcut_block}" \
-        "" \
-        "${symlink_block}" \
-        "" \
-        "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; fi" \
-        "    remove_packages \"\${mode}\"" \
-        "" \
-        "    echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
-        "    \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
-        "    if [ \$? -ne 0 ]; then" \
-        "        echo \"ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting.\"" \
-        "        exit 1" \
-        "    fi" \
-        "" \
-        "    # Check if ${INSTALL_DIR} is empty and remove if so" \
-        "    if [ -d ${INSTALL_DIR} ] && [ \"\$(ls -A ${INSTALL_DIR})\" == \"\" ]; then" \
-        "        echo \"Removing empty directory: ${INSTALL_DIR}\"" \
-        "        \${SUDO} rmdir ${INSTALL_DIR}" \
-        "    else" \
-        "        echo \"WARNING: ${INSTALL_DIR} is not empty. Not removing.\"" \
-        "    fi" \
-        "" \
-        "    echo \"Uninstallation complete.\"" \
-        "    exit 0" \
-        "fi" \
-        "" \
-        "echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
-        "if ! cd \"\${WORKSPACE_DIR}\"; then" \
-        "    echo \"[start_psychopy] WARNING: Could not change to workspace directory.\"" \
-        "fi" \
-        "" \
-        "${config_folder_block}" \
-        "" \
-        "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${CONFIG_ARG}\" \"\$@\""
+    wrapper_script=$(
+        printf "%s\n" \
+            "#!/bin/bash" \
+            "# ================================================================================" \
+            "#  PsychoPy Start/Uninstall Wrapper" \
+            "# ================================================================================" \
+            "" \
+            "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
+            "" \
+            "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
+            "USER_DIR_ARG=\"\"" \
+            "UNINSTALL_ARG=false" \
+            "HELP_ARG=false" \
+            "NON_INTERACTIVE_ARG=\"\"" \
+            "PSYCHOPY_ARGS=()" \
+            "" \
+            "remove_optionals() {" \
+            "    local mode=\"\$1\"" \
+            "    if [ \"\${mode}\" = \"y\" ]; then" \
+            "        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
+            "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
+            "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
+            "        \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
+            "        \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
+            "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
+            "        read -r -p \"Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: \" resp" \
+            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
+            "        read -r -p \"Remove psychopy group? [y/N]: \" resp" \
+            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
+            "        read -r -p \"Remove PsychoPy user settings (~/.psychopy3)? [y/N]: \" resp" \
+            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
+            "        read -r -p \"Remove uv with cache? (\"${UV_INSTALL_DIR}\") [y/N]: \" resp" \
+            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
+            "        read -r -p \"Remove python versions installed by this installer? (\"${PYTHON_INSTALL_DIR}\") [y/N]: \" resp" \
+            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
+            "    fi" \
+            "}" \
+            "" \
+            "remove_packages() {" \
+            "    local mode=\"\$1\"" \
+            "    UNIVERSIAL_PKG_FILE=\"${UNIVERSIAL_PKG_FILE}\"" \
+            "    combined_pkgs=\"${packages_installed_by_script_string}\"" \
+            "    [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && universal_pkgs=\$(tr '\\n' ' ' < \"\${UNIVERSIAL_PKG_FILE}\" | xargs) && combined_pkgs=\"\${combined_pkgs} \${universal_pkgs}\"" \
+            "    all_pkgs=\$(echo \${combined_pkgs} | tr ' ' '\\n' | sort -u | tr '\\n' ' ' | xargs)" \
+            "    if [ -n \"\${all_pkgs}\" ]; then" \
+            "        if [ \"\${mode}\" = \"y\" ]; then" \
+            "            echo \"Removing the following system packages using ${PKG_MANAGER} (non-interactive):\"" \
+            "            echo \"\${all_pkgs}\"" \
+            "            if ${remove_cmd} \${all_pkgs}; then" \
+            "                [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && echo \"Removing universal package tracking file: \${UNIVERSIAL_PKG_FILE}\" && \${SUDO} rm -f \"\${UNIVERSIAL_PKG_FILE}\"" \
+            "            else" \
+            "                echo \"WARNING: Package removal failed. Not removing universal package tracking file at \${UNIVERSIAL_PKG_FILE}\"" \
+            "            fi" \
+            "        elif [ \"\${mode}\" = \"prompt\" ]; then" \
+            "            echo \"The following system packages were installed by this script (including all environments):\"" \
+            "            echo \"\${all_pkgs}\"" \
+            "            read -p \"Do you want to remove these packages using ${PKG_MANAGER}? [y/N]: \" resp" \
+            "            if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
+            "                if ${remove_cmd} \${all_pkgs}; then" \
+            "                    [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && echo \"Removing universal package tracking file: \${UNIVERSIAL_PKG_FILE}\" && \${SUDO} rm -f \"\${UNIVERSIAL_PKG_FILE}\"" \
+            "                else" \
+            "                    echo \"WARNING: Package removal failed. Not removing universal package tracking file at \${UNIVERSIAL_PKG_FILE}\"" \
+            "                fi" \
+            "            else" \
+            "                echo \"Skipped removing system packages.\"" \
+            "            fi" \
+            "        else" \
+            "            echo \"Non-interactive mode: Skipping removal of system packages.\"" \
+            "        fi" \
+            "    fi" \
+            "}" \
+            "" \
+            "for arg in \"\$@\"; do" \
+            "    case \"\${arg}\" in" \
+            "        --workspace-dir=*)" \
+            "            WORKSPACE_DIR=\"\${arg#*=}\"" \
+            "            ;;" \
+            "        --user-dir=*)" \
+            "            USER_DIR_ARG=\"\${arg}\"" \
+            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
+            "            ;;" \
+            "        --uninstall)" \
+            "            UNINSTALL_ARG=true" \
+            "            ;;" \
+            "        --non-interactive=*)" \
+            "            NON_INTERACTIVE_ARG=\"\${arg#*=}\"" \
+            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
+            "            ;;" \
+            "        -h|--help)" \
+            "            HELP_ARG=true" \
+            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
+            "            ;;" \
+            "        *)" \
+            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
+            "            ;;" \
+            "    esac" \
+            "done" \
+            "" \
+            "if \${HELP_ARG}; then" \
+            "    echo '================ PsychoPy Start/Uninstall Wrapper ================='" \
+            "    echo 'Usage:'" \
+            "    echo \"  \$(basename \$0) --uninstall      # Uninstall PsychoPy and clean up files\"" \
+            "    echo \"  \$(basename \$0) --workspace-dir=DIR     # Set working directory for PsychoPy session\"" \
+            "    echo \"  \$(basename \$0) [args...]        # Forwards all arguments to PsychoPy\"" \
+            "    echo" \
+            "    echo 'If not called with --uninstall, all arguments are passed directly to PsychoPy.'" \
+            "    echo '---------------------------------------------------------------------'" \
+            "    echo 'The following help is from PsychoPy itself:'" \
+            "    echo '---------------------------------------------------------------------'" \
+            "fi" \
+            "" \
+            "if \${UNINSTALL_ARG}; then" \
+            "    # Move self to /tmp and re-exec if running from inside the install dir" \
+            "    if [[ \"\$(dirname \"\$(readlink -f \"\$0\")\")\" == \"${PSYCHOPY_DIR}\" ]]; then" \
+            "        tmp_uninstaller=\"/tmp/psychopy_uninstaller_\$\$.sh\"" \
+            "        cp \"\$0\" \"\${tmp_uninstaller}\" || { echo 'Failed to copy uninstaller to /tmp'; exit 1; }" \
+            "        chmod +x \"\${tmp_uninstaller}\" || { echo 'Failed to chmod uninstaller in /tmp'; exit 1; }" \
+            "        exec \"\${tmp_uninstaller}\" \"\$@\"" \
+            "        exit 0" \
+            "    fi" \
+            "" \
+            "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
+            "        y|n)" \
+            "            mode=\"\${NON_INTERACTIVE_ARG,,}\"" \
+            "            if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+            "            ;;" \
+            "        *)" \
+            "            mode=\"prompt\"" \
+            "            if sudo true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+            "            ;;" \
+            "    esac" \
+            "" \
+            "${shortcut_block}" \
+            "" \
+            "${symlink_block}" \
+            "" \
+            "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; fi" \
+            "    remove_packages \"\${mode}\"" \
+            "" \
+            "    echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
+            "    \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
+            "    if [ \$? -ne 0 ]; then" \
+            "        echo \"ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting.\"" \
+            "        exit 1" \
+            "    fi" \
+            "" \
+            "    # Check if ${INSTALL_DIR} is empty and remove if so" \
+            "    if [ -d ${INSTALL_DIR} ] && [ \"\$(ls -A ${INSTALL_DIR})\" == \"\" ]; then" \
+            "        echo \"Removing empty directory: ${INSTALL_DIR}\"" \
+            "        \${SUDO} rmdir ${INSTALL_DIR}" \
+            "    else" \
+            "        echo \"WARNING: ${INSTALL_DIR} is not empty. Not removing.\"" \
+            "    fi" \
+            "" \
+            "    echo \"Uninstallation complete.\"" \
+            "    exit 0" \
+            "fi" \
+            "" \
+            "echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
+            "if ! cd \"\${WORKSPACE_DIR}\"; then" \
+            "    echo \"[start_psychopy] WARNING: Could not change to workspace directory.\"" \
+            "fi" \
+            "" \
+            "${config_folder_block}" \
+            "" \
+            "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${CONFIG_ARG}\" \"\$@\""
     )
-    printf "%s\n" "${wrapper_script}" | sudo_wrapper tee "${wrapper_path}" > /dev/null
+    printf "%s\n" "${wrapper_script}" | sudo_wrapper tee "${wrapper_path}" >/dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
     set_shared_permissions "${wrapper_path}"
 }
-
-
 
 # ===============================================================================
 # SCRIPT ENTRY POINT
@@ -2086,7 +2091,6 @@ main() {
             eval "${key}='${DEFAULT_OPTS[${key}]}'"
         fi
     done
-
 
     if ${USE_GUI}; then
         rerun_cmd=$(create_rerun_command)
@@ -2187,7 +2191,7 @@ main() {
         log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
     fi
     # Install ffpyplayer==4.5.2 for python 3.8.x to prevent building
-    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) ]];then
+    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) ]]; then
         log_message "INFO: Installing ffpyplayer==4.5.2 to prevent building."
         log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
     fi
