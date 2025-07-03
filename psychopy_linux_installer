@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-06-26
+#  Last Updated:  2025-07-03
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -875,15 +875,15 @@ detect_os_version() {
 # Identifies the available package manager (apt-get, yum, etc.).
 detect_package_manager() {
     if command -v apt-get >/dev/null 2>&1; then
-        echo "apt-get"
+        PKG_MANAGER="apt-get"
     elif command -v yum >/dev/null 2>&1; then
-        echo "yum"
+        PKG_MANAGER="yum"
     elif command -v dnf >/dev/null 2>&1; then
-        echo "dnf"
+        PKG_MANAGER="dnf"
     elif command -v pacman >/dev/null 2>&1; then
-        echo "pacman"
+        PKG_MANAGER="pacman"
     elif command -v zypper >/dev/null 2>&1; then
-        echo "zypper"
+        PKG_MANAGER="zypper"
     else
         log_message "ERROR: No compatible package manager found."
     fi
@@ -917,9 +917,6 @@ update_package_manager() {
         fi
         ;;
     zypper) sudo_wrapper zypper refresh ;;
-    *)
-        log_message "ERROR: No compatible package manager found."
-        ;;
     esac
 }
 
@@ -1040,9 +1037,6 @@ install_packages() {
             dnf) sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
             pacman) sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
             zypper) sudo_wrapper zypper install -y "${to_install[@]}" ;;
-            *)
-                log_message "ERROR: No compatible package manager found."
-                ;;
             esac
         }; then
             :
@@ -1055,9 +1049,6 @@ install_packages() {
                 dnf) sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 pacman) sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 zypper) sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                *)
-                    log_message "ERROR: No compatible package manager found."
-                    ;;
                 esac
             done
         fi
@@ -1118,9 +1109,6 @@ install_dependencies() {
         build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
-        ;;
-    *)
-        log_message "ERROR: No compatible package manager found."
         ;;
     esac
 
@@ -2114,7 +2102,7 @@ main() {
     log_message "INFO: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
 
     # Detect package manager
-    PKG_MANAGER=$(detect_package_manager)
+    detect_package_manager
 
     # Install basic dependencies
     if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
