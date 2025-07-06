@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-03
+#  Last Updated:  2025-07-06
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -101,15 +101,48 @@ log_message() {
     fi
 }
 
-# Wrapper to control command output based on verbosity.
+# Wrapper to control command output based on verbosity and to handle spinners for long-running commands.
 log() {
     if [ "${VERBOSE}" = true ]; then
         "${@}" 2>&1 | tee -a "${LOG_FILE}"
         return "${PIPESTATUS[0]}"
-    else
-        "${@}" >>"${LOG_FILE}" 2>&1
-        return ${?}
     fi
+
+    local cmd_pid spinner_pid tmpfile chars exit_code i
+    tmpfile=$(mktemp) || return 1
+    {
+        "${@}" >>"${LOG_FILE}" 2>&1
+        printf "%d" $? >"${tmpfile}"
+    } &
+    cmd_pid=$!
+    (
+        sleep 0.5
+        if kill -0 "${cmd_pid}" 2>/dev/null; then
+            (
+                # shellcheck disable=SC1003
+                chars='|/-\'
+                i=0
+                while kill -0 "${cmd_pid}" 2>/dev/null; do
+                    printf "\r[%c] Working..." "${chars:i:1}" >&2
+                    i=$(( (i + 1) % 4 ))
+                    sleep 0.1
+                done
+                printf "\r%-20s\r" "" >&2
+            ) &
+            echo $! >"${tmpfile}.spinnerpid"
+        fi
+    ) &
+    wait "${cmd_pid}" 2>/dev/null
+    exit_code=$(<"${tmpfile}")
+    rm -f "${tmpfile}"
+    if [[ -f "${tmpfile}.spinnerpid" ]]; then
+        spinner_pid=$(<"${tmpfile}.spinnerpid")
+        kill "${spinner_pid}" 2>/dev/null || true
+        wait "${spinner_pid}" 2>/dev/null || true
+        rm -f "${tmpfile}.spinnerpid"
+    fi
+    printf "\r%-20s\r" "" >&2
+    return "${exit_code}"
 }
 
 # Compares two version strings and returns true if the first is greater.
@@ -918,6 +951,7 @@ update_package_manager() {
         ;;
     zypper) sudo_wrapper zypper refresh ;;
     esac
+    log_message "INFO: '${PKG_MANAGER}' update complete."
 }
 
 # Checks if the provided package is installed.
@@ -934,9 +968,10 @@ is_package_installed() {
 # Filters and returns a list of packages available for installation.
 filter_installable_packages() {
     local filtered_packages=()
+    local candidates=()
+    local output pkg_name
 
     for package in "${@}"; do
-        # Skip conflicting packages for specific OS versions
         case "${OS_VERSION}" in
         ubuntu-24) [[ "${package}" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
         ubuntu-20) [[ "${package}" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
@@ -947,31 +982,69 @@ filter_installable_packages() {
         linuxmint-22) [[ "${package}" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
         manjarolinux-25) [[ "${package}" == "pulseaudio-utils" || "${package}" == "pulseaudio" ]] && continue ;;
         esac
-
-        case "${PKG_MANAGER}" in
-        apt-get)
-            if apt-cache show "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        yum | dnf)
-            if ${PKG_MANAGER} info "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        pacman)
-            if pacman -Si "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        zypper)
-            if zypper search --match-exact "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        esac
+        candidates+=("${package}")
     done
-    echo "${filtered_packages[@]}"
+
+    [ ${#candidates[@]} -eq 0 ] && return
+
+    case "${PKG_MANAGER}" in
+    apt-get)
+        output=$(apt list "${candidates[@]}" 2>/dev/null | grep -v "^WARNING" | grep -v "^Listing")
+        while IFS= read -r line; do
+            if [[ "${line}" =~ ^([^/]+)/ ]]; then
+                pkg_name="${BASH_REMATCH[1]}"
+                for candidate in "${candidates[@]}"; do
+                    if [[ "${candidate}" == "${pkg_name}" ]]; then
+                        filtered_packages+=("${candidate}")
+                        break
+                    fi
+                done
+            fi
+        done <<< "${output}"
+        ;;
+    yum | dnf)
+        output=$(${PKG_MANAGER} repoquery "${candidates[@]}" 2>/dev/null | sort -u)
+        while IFS= read -r line; do
+            if [[ -n "${line}" ]]; then
+                pkg_name="${line%-*}"
+                pkg_name="${pkg_name%-*}"
+                for candidate in "${candidates[@]}"; do
+                    if [[ "${candidate}" == "${pkg_name}" ]]; then
+                        filtered_packages+=("${candidate}")
+                        break
+                    fi
+                done
+            fi
+        done <<< "${output}"
+        ;;
+    pacman)
+        output=$(pacman -Ss "${candidates[@]}" 2>/dev/null | grep -E "^[^[:space:]]" | awk '{print $1}' | cut -d'/' -f2)
+        while IFS= read -r line; do
+            if [[ -n "${line}" ]]; then
+                for candidate in "${candidates[@]}"; do
+                    if [[ "${candidate}" == "${line}" ]]; then
+                        filtered_packages+=("${candidate}")
+                        break
+                    fi
+                done
+            fi
+        done <<< "${output}"
+        ;;
+    zypper)
+        output=$(zypper search --match-exact "${candidates[@]}" 2>/dev/null | tail -n +5 | awk 'NF>=3 {print $2}' | grep -v "^$")
+        while IFS= read -r line; do
+            if [[ -n "${line}" ]]; then
+                for candidate in "${candidates[@]}"; do
+                    if [[ "${candidate}" == "${line}" ]]; then
+                        filtered_packages+=("${candidate}")
+                        break
+                    fi
+                done
+            fi
+        done <<< "${output}"
+        ;;
+    esac
+    FILTERED_PACKAGES=("${filtered_packages[@]}")
 }
 
 # Saves installed packages to a file and updates the file with new packages.
@@ -998,11 +1071,13 @@ install_packages() {
     local dep_type=$1
     shift
     local packages=("$@")
-    local available_packages
     local to_install=()
     local already_installed=()
     local packages_installed_by_function=()
-    read -r -a available_packages <<<"$(filter_installable_packages "${packages[@]}")"
+    local available_packages diff package
+
+    filter_installable_packages "${packages[@]}"
+    available_packages=("${FILTERED_PACKAGES[@]}")
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
@@ -1028,8 +1103,8 @@ install_packages() {
         else
             log_message "WARNING: Nothing to install - all requested ${PKG_MANAGER} packages unavailable or skipped."
         fi
-
     else
+        log_message "INFO: Installing '${to_install[*]}'"
         if {
             case "${PKG_MANAGER}" in
             apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
@@ -1137,29 +1212,25 @@ remove_system_packages() {
     done
 
     if [ ${#installed_packages[@]} -eq 0 ]; then
-        log log_message "INFO: No packages to remove (none are currently installed)."
+        log log_message "INFO: No packages to remove."
         return 0
     fi
 
     case "${PKG_MANAGER}" in
     apt-get)
-        sudo_wrapper apt-get remove -y "${packages[@]}"
+        sudo_wrapper apt-get remove -y "${installed_packages[@]}"
         ;;
     yum)
-        sudo_wrapper yum remove -y "${packages[@]}"
+        sudo_wrapper yum remove -y "${installed_packages[@]}"
         ;;
     dnf)
-        sudo_wrapper dnf remove -y "${packages[@]}"
+        sudo_wrapper dnf remove -y "${installed_packages[@]}"
         ;;
     pacman)
-        sudo_wrapper pacman -Rs --noconfirm "${packages[@]}"
+        sudo_wrapper pacman -Rs --noconfirm "${installed_packages[@]}"
         ;;
     zypper)
-        sudo_wrapper zypper remove -y "${packages[@]}"
-        ;;
-    *)
-        log_message "ERROR: Unknown package manager: ${PKG_MANAGER}. Please remove packages manually."
-        return 1
+        sudo_wrapper zypper remove -y "${installed_packages[@]}"
         ;;
     esac
 }
