@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-03
+#  Last Updated:  2025-07-06
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -918,6 +918,7 @@ update_package_manager() {
         ;;
     zypper) sudo_wrapper zypper refresh ;;
     esac
+    log_message "INFO: '${PKG_MANAGER}' package manager updated successfully."
 }
 
 # Checks if the provided package is installed.
@@ -1137,29 +1138,25 @@ remove_system_packages() {
     done
 
     if [ ${#installed_packages[@]} -eq 0 ]; then
-        log log_message "INFO: No packages to remove (none are currently installed)."
+        log log_message "INFO: No packages to remove)."
         return 0
     fi
 
     case "${PKG_MANAGER}" in
     apt-get)
-        sudo_wrapper apt-get remove -y "${packages[@]}"
+        sudo_wrapper apt-get remove -y "${installed_packages[@]}"
         ;;
     yum)
-        sudo_wrapper yum remove -y "${packages[@]}"
+        sudo_wrapper yum remove -y "${installed_packages[@]}"
         ;;
     dnf)
-        sudo_wrapper dnf remove -y "${packages[@]}"
+        sudo_wrapper dnf remove -y "${installed_packages[@]}"
         ;;
     pacman)
-        sudo_wrapper pacman -Rs --noconfirm "${packages[@]}"
+        sudo_wrapper pacman -Rs --noconfirm "${installed_packages[@]}"
         ;;
     zypper)
-        sudo_wrapper zypper remove -y "${packages[@]}"
-        ;;
-    *)
-        log_message "ERROR: Unknown package manager: ${PKG_MANAGER}. Please remove packages manually."
-        return 1
+        sudo_wrapper zypper remove -y "${installed_packages[@]}"
         ;;
     esac
 }
