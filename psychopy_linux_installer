@@ -106,43 +106,46 @@ log() {
     if [ "${VERBOSE}" = true ]; then
         "${@}" 2>&1 | tee -a "${LOG_FILE}"
         return "${PIPESTATUS[0]}"
-    fi
-
-    local cmd_pid spinner_pid tmpfile chars exit_code i
-    tmpfile=$(mktemp) || return 1
-    {
+    elif [[ ! -t 2 ]]; then
         "${@}" >>"${LOG_FILE}" 2>&1
-        printf "%d" $? >"${tmpfile}"
-    } &
-    cmd_pid=$!
-    (
-        sleep 0.5
-        if kill -0 "${cmd_pid}" 2>/dev/null; then
-            (
-                # shellcheck disable=SC1003
-                chars='|/-\'
-                i=0
-                while kill -0 "${cmd_pid}" 2>/dev/null; do
-                    printf "\r[%c] Working..." "${chars:i:1}" >&2
-                    i=$(( (i + 1) % 4 ))
-                    sleep 0.1
-                done
-                printf "\r%-20s\r" "" >&2
-            ) &
-            echo $! >"${tmpfile}.spinnerpid"
+        return ${?}
+    else
+        local cmd_pid spinner_pid tmpfile chars exit_code i
+        tmpfile=$(mktemp) || return 1
+        {
+            "${@}" >>"${LOG_FILE}" 2>&1
+            printf "%d" $? >"${tmpfile}"
+        } &
+        cmd_pid=$!
+        (
+            sleep 0.5
+            if kill -0 "${cmd_pid}" 2>/dev/null; then
+                (
+                    # shellcheck disable=SC1003
+                    chars='|/-\'
+                    i=0
+                    while kill -0 "${cmd_pid}" 2>/dev/null; do
+                        printf "\r[%c] Working..." "${chars:i:1}" >&2
+                        i=$(( (i + 1) % 4 ))
+                        sleep 0.1
+                    done
+                    printf "\r%-20s\r" "" >&2
+                ) &
+                echo $! >"${tmpfile}.spinnerpid"
+            fi
+        ) &
+        wait "${cmd_pid}" 2>/dev/null
+        exit_code=$(<"${tmpfile}")
+        rm -f "${tmpfile}"
+        if [[ -f "${tmpfile}.spinnerpid" ]]; then
+            spinner_pid=$(<"${tmpfile}.spinnerpid")
+            kill "${spinner_pid}" 2>/dev/null || true
+            wait "${spinner_pid}" 2>/dev/null || true
+            rm -f "${tmpfile}.spinnerpid"
         fi
-    ) &
-    wait "${cmd_pid}" 2>/dev/null
-    exit_code=$(<"${tmpfile}")
-    rm -f "${tmpfile}"
-    if [[ -f "${tmpfile}.spinnerpid" ]]; then
-        spinner_pid=$(<"${tmpfile}.spinnerpid")
-        kill "${spinner_pid}" 2>/dev/null || true
-        wait "${spinner_pid}" 2>/dev/null || true
-        rm -f "${tmpfile}.spinnerpid"
+        printf "\r%-20s\r" "" >&2
+        return "${exit_code}"
     fi
-    printf "\r%-20s\r" "" >&2
-    return "${exit_code}"
 }
 
 # Compares two version strings and returns true if the first is greater.
