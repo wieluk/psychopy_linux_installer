@@ -6,7 +6,6 @@
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
 #  Last Updated:  2025-07-07
-#  Last Updated:  2025-07-06
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -959,7 +958,7 @@ update_package_manager() {
         ;;
     zypper) sudo_wrapper zypper refresh ;;
     esac
-    log_message "INFO: '${PKG_MANAGER}' package manager updated successfully."
+    log_message "INFO: '${PKG_MANAGER}' update complete."
 }
 
 # Checks if the provided package is installed.
@@ -999,7 +998,7 @@ filter_installable_packages() {
     apt-get)
         output=$(apt-cache search --names-only . 2>/dev/null | awk '{print $1}' | sort)
         for candidate in "${candidates[@]}"; do
-            if echo "${output}" | grep -q "^${candidate}$"; then
+            if grep -qx "${candidate}" <<< "${output}"; then
                 filtered_packages+=("${candidate}")
             fi
         done
@@ -1020,7 +1019,7 @@ filter_installable_packages() {
     pacman)
         output=$(pacman -Slq 2>/dev/null | sort)
         for candidate in "${candidates[@]}"; do
-            if echo "${output}" | grep -q "^${candidate}$"; then
+            if grep -qx "${candidate}" <<< "${output}"; then
                 filtered_packages+=("${candidate}")
             fi
         done
