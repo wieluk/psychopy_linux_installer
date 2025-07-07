@@ -912,14 +912,13 @@ detect_os_version() {
     return
 }
 
-# Identifies the available package manager (apt-get, yum, etc.).
 detect_package_manager() {
     if command -v apt-get >/dev/null 2>&1; then
         PKG_MANAGER="apt-get"
-    elif command -v yum >/dev/null 2>&1; then
-        PKG_MANAGER="yum"
     elif command -v dnf >/dev/null 2>&1; then
         PKG_MANAGER="dnf"
+    elif command -v yum >/dev/null 2>&1; then
+        PKG_MANAGER="yum"
     elif command -v pacman >/dev/null 2>&1; then
         PKG_MANAGER="pacman"
     elif command -v zypper >/dev/null 2>&1; then
@@ -928,7 +927,6 @@ detect_package_manager() {
         log_message "ERROR: No compatible package manager found."
     fi
 }
-
 
 # ===============================================================================
 # PACKAGE MANAGEMENT - System packages handling
@@ -941,8 +939,7 @@ update_package_manager() {
     log_message "INFO: Updating '${PKG_MANAGER}' package manager."
     case ${PKG_MANAGER} in
     apt-get) sudo_wrapper apt-get update -qq ;;
-    yum) sudo_wrapper yum makecache -q ;;
-    dnf) sudo_wrapper dnf makecache -q ;;
+    yum  |dnf) sudo_wrapper "${PKG_MANAGER}" makecache -q ;;
     pacman)
         if [[ "${NON_INTERACTIVE}" == true ]]; then
             sudo_wrapper pacman -Syu --noconfirm
@@ -1003,7 +1000,11 @@ filter_installable_packages() {
             fi
         done
         ;;
-    yum | dnf)
+    yum|dnf)
+        if ! command -v repoquery >/dev/null; then
+            sudo_wrapper "${PKG_MANAGER}" install -y dnf-plugins-core || sudo_wrapper "${PKG_MANAGER}" install -y yum-utils
+        fi
+
         output=$(${PKG_MANAGER} repoquery --queryformat='%{name}' "${candidates[@]}" 2>/dev/null | sort -u)
         while IFS= read -r line; do
             if [[ -n "${line}" ]]; then
