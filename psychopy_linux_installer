@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-06
+#  Last Updated:  2025-07-07
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -213,6 +213,7 @@ sudo_wrapper() {
                     PKG_MANAGER_PERMISSION=true
                 fi
                 log_message "INFO: Retrying command '${command[*]}' with sudo ..."
+                sudo -v
                 log sudo -E "${command[@]}"
                 ;;
             "Continue without sudo")
@@ -220,6 +221,7 @@ sudo_wrapper() {
                 ;;
             "Automatically use sudo")
                 SUDO_MODE=auto
+                sudo -v
                 setup_temporary_sudo_timeout
                 log_message "INFO: Retrying command '${command[*]}' with sudo (sudo-mode set to auto) ..."
                 log sudo -E "${command[@]}"
@@ -235,6 +237,7 @@ sudo_wrapper() {
             esac
             ;;
         auto)
+            sudo -v
             setup_temporary_sudo_timeout
             if ${is_pkg_manager_command}; then
                 PKG_MANAGER_PERMISSION=true
@@ -256,6 +259,7 @@ sudo_wrapper() {
     is_pkg_manager_command=$([ "${1}" == "${PKG_MANAGER}" ] && echo true || echo false)
 
     if [[ "${SUDO_MODE}" == "force" || ("${is_pkg_manager_command}" == true && "${PKG_MANAGER_PERMISSION}" == true) ]]; then
+        sudo -v
         log sudo -E "${command[@]}"
         return
     fi
@@ -992,27 +996,19 @@ filter_installable_packages() {
 
     case "${PKG_MANAGER}" in
     apt-get)
-        output=$(apt list "${candidates[@]}" 2>/dev/null | grep -v "^WARNING" | grep -v "^Listing")
-        while IFS= read -r line; do
-            if [[ "${line}" =~ ^([^/]+)/ ]]; then
-                pkg_name="${BASH_REMATCH[1]}"
-                for candidate in "${candidates[@]}"; do
-                    if [[ "${candidate}" == "${pkg_name}" ]]; then
-                        filtered_packages+=("${candidate}")
-                        break
-                    fi
-                done
+        output=$(apt-cache search --names-only . 2>/dev/null | awk '{print $1}' | sort)
+        for candidate in "${candidates[@]}"; do
+            if echo "${output}" | grep -q "^${candidate}$"; then
+                filtered_packages+=("${candidate}")
             fi
-        done <<< "${output}"
+        done
         ;;
     yum | dnf)
-        output=$(${PKG_MANAGER} repoquery "${candidates[@]}" 2>/dev/null | sort -u)
+        output=$(${PKG_MANAGER} repoquery --queryformat='%{name}' "${candidates[@]}" 2>/dev/null | sort -u)
         while IFS= read -r line; do
             if [[ -n "${line}" ]]; then
-                pkg_name="${line%-*}"
-                pkg_name="${pkg_name%-*}"
                 for candidate in "${candidates[@]}"; do
-                    if [[ "${candidate}" == "${pkg_name}" ]]; then
+                    if [[ "${candidate}" == "${line}" ]]; then
                         filtered_packages+=("${candidate}")
                         break
                     fi
@@ -1021,30 +1017,27 @@ filter_installable_packages() {
         done <<< "${output}"
         ;;
     pacman)
-        output=$(pacman -Ss "${candidates[@]}" 2>/dev/null | grep -E "^[^[:space:]]" | awk '{print $1}' | cut -d'/' -f2)
-        while IFS= read -r line; do
-            if [[ -n "${line}" ]]; then
-                for candidate in "${candidates[@]}"; do
-                    if [[ "${candidate}" == "${line}" ]]; then
-                        filtered_packages+=("${candidate}")
-                        break
-                    fi
-                done
+        output=$(pacman -Slq 2>/dev/null | sort)
+        for candidate in "${candidates[@]}"; do
+            if echo "${output}" | grep -q "^${candidate}$"; then
+                filtered_packages+=("${candidate}")
             fi
-        done <<< "${output}"
+        done
         ;;
     zypper)
-        output=$(zypper search --match-exact "${candidates[@]}" 2>/dev/null | tail -n +5 | awk 'NF>=3 {print $2}' | grep -v "^$")
-        while IFS= read -r line; do
-            if [[ -n "${line}" ]]; then
-                for candidate in "${candidates[@]}"; do
-                    if [[ "${candidate}" == "${line}" ]]; then
-                        filtered_packages+=("${candidate}")
-                        break
-                    fi
-                done
-            fi
-        done <<< "${output}"
+        if output=$(zypper search --match-exact "${candidates[@]}" 2>/dev/null); then
+            while IFS= read -r line; do
+                if [[ "${line}" =~ ^[iv][[:space:]]+\|[[:space:]]*([^[:space:]]+) ]]; then
+                    pkg_name="${BASH_REMATCH[1]}"
+                    for candidate in "${candidates[@]}"; do
+                        if [[ "${candidate}" == "${pkg_name}" ]]; then
+                            filtered_packages+=("${candidate}")
+                            break
+                        fi
+                    done
+                fi
+            done <<< "${output}"
+        fi
         ;;
     esac
     FILTERED_PACKAGES=("${filtered_packages[@]}")
