@@ -971,6 +971,7 @@ is_package_installed() {
 
 # Filters and returns a list of packages available for installation.
 filter_installable_packages() {
+    FILTERED_PACKAGES=()
     local filtered_packages=()
     local candidates=()
     local output pkg_name
@@ -1041,6 +1042,35 @@ filter_installable_packages() {
         fi
         ;;
     esac
+
+    # Fallback: if bulk scan found nothing, do per-package checks
+    if [ ${#filtered_packages[@]} -eq 0 ]; then
+        log log_message "WARNING: No packages found in bulk scan, checking each package individually."
+        for pkg in "${candidates[@]}"; do
+            case "${PKG_MANAGER}" in
+            apt-get)
+                if apt-cache show "${pkg}" &>/dev/null; then
+                    filtered_packages+=("${pkg}")
+                fi
+                ;;
+            yum|dnf)
+                if ${PKG_MANAGER} info "${pkg}" &>/dev/null; then
+                    filtered_packages+=("${pkg}")
+                fi
+                ;;
+            pacman)
+                if pacman -Si "${pkg}" &>/dev/null; then
+                    filtered_packages+=("${pkg}")
+                fi
+                ;;
+            zypper)
+                if zypper search --match-exact "${pkg}" &>/dev/null; then
+                    filtered_packages+=("${pkg}")
+                fi
+                ;;
+            esac
+        done
+    fi
     FILTERED_PACKAGES=("${filtered_packages[@]}")
 }
 
