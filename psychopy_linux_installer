@@ -6,6 +6,7 @@
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
 #  Last Updated:  2025-07-07
+#  Last Updated:  2025-07-06
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -958,7 +959,7 @@ update_package_manager() {
         ;;
     zypper) sudo_wrapper zypper refresh ;;
     esac
-    log_message "INFO: '${PKG_MANAGER}' update complete."
+    log_message "INFO: '${PKG_MANAGER}' package manager updated successfully."
 }
 
 # Checks if the provided package is installed.
