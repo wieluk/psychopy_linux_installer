@@ -264,9 +264,10 @@ sudo_wrapper() {
         return
     fi
 
-    error_output=$("${command[@]}" 2>&1)
-    exit_code=${?}
-
+    if ! log "${command[@]}"; then
+        error_output=$("${command[@]}" 2>&1 >/dev/null)
+    fi
+    exit_code=$?
     if needs_sudo "${exit_code}" "${error_output}"; then
         handle_sudo_request "${command[@]}"
     fi
@@ -557,7 +558,7 @@ show_gui() {
 
     # Select Python version
     if [[ "${checklist_result}" == *"Python version"* ]]; then
-        patch_versions=$(curl -s --connect-timeout 3 "https://www.python.org/ftp/python/" |
+        patch_versions=$(curl -s "https://www.python.org/ftp/python/" |
             grep -oP '(?<=href=")[^/]+(?=/")' |
             grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
 
@@ -1002,10 +1003,6 @@ filter_installable_packages() {
         done
         ;;
     yum|dnf)
-        if ! command -v repoquery >/dev/null; then
-            sudo_wrapper "${PKG_MANAGER}" install -y dnf-plugins-core || sudo_wrapper "${PKG_MANAGER}" install -y yum-utils
-        fi
-
         output=$(${PKG_MANAGER} repoquery --queryformat='%{name}' "${candidates[@]}" 2>/dev/null | sort -u)
         while IFS= read -r line; do
             if [[ -n "${line}" ]]; then
@@ -1029,14 +1026,19 @@ filter_installable_packages() {
     zypper)
         if output=$(zypper search --match-exact "${candidates[@]}" 2>/dev/null); then
             while IFS= read -r line; do
-                if [[ "${line}" =~ ^[iv][[:space:]]+\|[[:space:]]*([^[:space:]]+) ]]; then
+                if [[ "${line}" =~ ^(Loading|Reading|S[[:space:]]*\||---) ]]; then
+                    continue
+                fi
+                if [[ "${line}" =~ \|[[:space:]]*([^[:space:]|]+)[[:space:]]*\| ]]; then
                     pkg_name="${BASH_REMATCH[1]}"
-                    for candidate in "${candidates[@]}"; do
-                        if [[ "${candidate}" == "${pkg_name}" ]]; then
-                            filtered_packages+=("${candidate}")
-                            break
-                        fi
-                    done
+                    if [[ "${line}" =~ \|[[:space:]]*package[[:space:]]*$ ]]; then
+                        for candidate in "${candidates[@]}"; do
+                            if [[ "${candidate}" == "${pkg_name}" ]]; then
+                                filtered_packages+=("${candidate}")
+                                break
+                            fi
+                        done
+                    fi
                 fi
             done <<< "${output}"
         fi
@@ -1208,7 +1210,7 @@ install_dependencies() {
     zypper)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
-        build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config)
+        build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config tar)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
         ;;
@@ -1726,15 +1728,18 @@ setup_psychopy_group_and_limits() {
     fi
 
     # Check if user is in group, add if not
-    if id -nG "${USER}" | grep -qw psychopy; then
-        log_message "INFO: User '${USER}' is already in the 'psychopy' group."
-    else
-        if sudo_wrapper usermod -a -G psychopy "${USER}"; then
-            log_message "INFO: User '${USER}' added to 'psychopy' group."
+    if [[ "${USER}" ]]; then
+        if id -nG "${USER}" | grep -qw psychopy; then
+            log_message "INFO: User '${USER}' is already in the 'psychopy' group."
         else
-            log_message "WARNING: Failed to add user '${USER}' to 'psychopy' group. Add manually."
+            if sudo_wrapper usermod -a -G psychopy "${USER}"; then
+                log_message "INFO: User '${USER}' added to 'psychopy' group."
+            else
+                log_message "WARNING: Failed to add user '${USER}' to 'psychopy' group. Add manually."
+            fi
         fi
-
+    else
+        log_message "WARNING: USER variable is empty. Cannot add user to 'psychopy' group."
     fi
 }
 
