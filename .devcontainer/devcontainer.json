@@ -10,7 +10,9 @@
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
     "features": {
-        "ghcr.io/lukewiwa/features/shellcheck:0": {}
+        "ghcr.io/lukewiwa/features/shellcheck:0": {},
+        "ghcr.io/devcontainers/features/python:1": {"version": "3.11"},
+        "ghcr.io/devcontainers/features/github-cli:1": {}
     },
     "remoteUser": "vscode",
     "customizations": {
@@ -24,9 +26,11 @@
                 "vscode-icons-team.vscode-icons",
                 "github.vscode-github-actions",
                 "github.vscode-pull-request-github",
-                "donjayamanne.githistory"
+                "donjayamanne.githistory",
+                "ms-python.python",
+                "ms-python.pylint"
             ]
         }
     },
-    "postCreateCommand": "sudo chmod +x test/*.sh && sudo chmod +x .devcontainer/.pre_commit.sh && sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.pre_commit.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer"
+    "postCreateCommand": "sudo chmod +x test/*.sh && sudo chmod +x .devcontainer/.pre_commit.sh && sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.pre_commit.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer && pip install -r test/performance_data/requirements.txt"
 }
