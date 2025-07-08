@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-06
+#  Last Updated:  2025-07-08
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -101,14 +101,50 @@ log_message() {
     fi
 }
 
-# Wrapper to control command output based on verbosity.
+# Wrapper to control command output based on verbosity and to handle spinners for long-running commands.
 log() {
     if [ "${VERBOSE}" = true ]; then
         "${@}" 2>&1 | tee -a "${LOG_FILE}"
         return "${PIPESTATUS[0]}"
-    else
+    elif [[ ! -t 2 ]]; then
         "${@}" >>"${LOG_FILE}" 2>&1
         return ${?}
+    else
+        local cmd_pid spinner_pid tmpfile chars exit_code i
+        tmpfile=$(mktemp) || return 1
+        {
+            "${@}" >>"${LOG_FILE}" 2>&1
+            printf "%d" $? >"${tmpfile}"
+        } &
+        cmd_pid=$!
+        (
+            sleep 0.5
+            if kill -0 "${cmd_pid}" 2>/dev/null; then
+                (
+                    # shellcheck disable=SC1003
+                    chars='|/-\'
+                    i=0
+                    while kill -0 "${cmd_pid}" 2>/dev/null; do
+                        printf "\r[%c] Working..." "${chars:i:1}" >&2
+                        i=$(( (i + 1) % 4 ))
+                        sleep 0.1
+                    done
+                    printf "\r%-20s\r" "" >&2
+                ) &
+                echo $! >"${tmpfile}.spinnerpid"
+            fi
+        ) &
+        wait "${cmd_pid}" 2>/dev/null
+        exit_code=$(<"${tmpfile}")
+        rm -f "${tmpfile}"
+        if [[ -f "${tmpfile}.spinnerpid" ]]; then
+            spinner_pid=$(<"${tmpfile}.spinnerpid")
+            kill "${spinner_pid}" 2>/dev/null || true
+            wait "${spinner_pid}" 2>/dev/null || true
+            rm -f "${tmpfile}.spinnerpid"
+        fi
+        printf "\r%-20s\r" "" >&2
+        return "${exit_code}"
     fi
 }
 
@@ -177,6 +213,7 @@ sudo_wrapper() {
                     PKG_MANAGER_PERMISSION=true
                 fi
                 log_message "INFO: Retrying command '${command[*]}' with sudo ..."
+                sudo -v
                 log sudo -E "${command[@]}"
                 ;;
             "Continue without sudo")
@@ -184,6 +221,7 @@ sudo_wrapper() {
                 ;;
             "Automatically use sudo")
                 SUDO_MODE=auto
+                sudo -v
                 setup_temporary_sudo_timeout
                 log_message "INFO: Retrying command '${command[*]}' with sudo (sudo-mode set to auto) ..."
                 log sudo -E "${command[@]}"
@@ -199,6 +237,7 @@ sudo_wrapper() {
             esac
             ;;
         auto)
+            sudo -v
             setup_temporary_sudo_timeout
             if ${is_pkg_manager_command}; then
                 PKG_MANAGER_PERMISSION=true
@@ -220,13 +259,15 @@ sudo_wrapper() {
     is_pkg_manager_command=$([ "${1}" == "${PKG_MANAGER}" ] && echo true || echo false)
 
     if [[ "${SUDO_MODE}" == "force" || ("${is_pkg_manager_command}" == true && "${PKG_MANAGER_PERMISSION}" == true) ]]; then
+        sudo -v
         log sudo -E "${command[@]}"
         return
     fi
 
-    error_output=$("${command[@]}" 2>&1)
-    exit_code=${?}
-
+    if ! log "${command[@]}"; then
+        error_output=$("${command[@]}" 2>&1 >/dev/null)
+    fi
+    exit_code=$?
     if needs_sudo "${exit_code}" "${error_output}"; then
         handle_sudo_request "${command[@]}"
     fi
@@ -517,7 +558,7 @@ show_gui() {
 
     # Select Python version
     if [[ "${checklist_result}" == *"Python version"* ]]; then
-        patch_versions=$(curl -s --connect-timeout 3 "https://www.python.org/ftp/python/" |
+        patch_versions=$(curl -s "https://www.python.org/ftp/python/" |
             grep -oP '(?<=href=")[^/]+(?=/")' |
             grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
 
@@ -872,14 +913,13 @@ detect_os_version() {
     return
 }
 
-# Identifies the available package manager (apt-get, yum, etc.).
 detect_package_manager() {
     if command -v apt-get >/dev/null 2>&1; then
         PKG_MANAGER="apt-get"
-    elif command -v yum >/dev/null 2>&1; then
-        PKG_MANAGER="yum"
     elif command -v dnf >/dev/null 2>&1; then
         PKG_MANAGER="dnf"
+    elif command -v yum >/dev/null 2>&1; then
+        PKG_MANAGER="yum"
     elif command -v pacman >/dev/null 2>&1; then
         PKG_MANAGER="pacman"
     elif command -v zypper >/dev/null 2>&1; then
@@ -888,7 +928,6 @@ detect_package_manager() {
         log_message "ERROR: No compatible package manager found."
     fi
 }
-
 
 # ===============================================================================
 # PACKAGE MANAGEMENT - System packages handling
@@ -901,8 +940,7 @@ update_package_manager() {
     log_message "INFO: Updating '${PKG_MANAGER}' package manager."
     case ${PKG_MANAGER} in
     apt-get) sudo_wrapper apt-get update -qq ;;
-    yum) sudo_wrapper yum makecache -q ;;
-    dnf) sudo_wrapper dnf makecache -q ;;
+    yum  |dnf) sudo_wrapper "${PKG_MANAGER}" makecache -q ;;
     pacman)
         if [[ "${NON_INTERACTIVE}" == true ]]; then
             sudo_wrapper pacman -Syu --noconfirm
@@ -918,7 +956,7 @@ update_package_manager() {
         ;;
     zypper) sudo_wrapper zypper refresh ;;
     esac
-    log_message "INFO: '${PKG_MANAGER}' package manager updated successfully."
+    log_message "INFO: '${PKG_MANAGER}' update complete."
 }
 
 # Checks if the provided package is installed.
@@ -934,10 +972,13 @@ is_package_installed() {
 
 # Filters and returns a list of packages available for installation.
 filter_installable_packages() {
-    local filtered_packages=()
+    local -n result_array=$1
+    shift
+    result_array=()
+    local candidates=()
+    local output pkg_name
 
     for package in "${@}"; do
-        # Skip conflicting packages for specific OS versions
         case "${OS_VERSION}" in
         ubuntu-24) [[ "${package}" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
         ubuntu-20) [[ "${package}" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
@@ -948,31 +989,91 @@ filter_installable_packages() {
         linuxmint-22) [[ "${package}" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
         manjarolinux-25) [[ "${package}" == "pulseaudio-utils" || "${package}" == "pulseaudio" ]] && continue ;;
         esac
-
-        case "${PKG_MANAGER}" in
-        apt-get)
-            if apt-cache show "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        yum | dnf)
-            if ${PKG_MANAGER} info "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        pacman)
-            if pacman -Si "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        zypper)
-            if zypper search --match-exact "${package}" &>/dev/null; then
-                filtered_packages+=("${package}")
-            fi
-            ;;
-        esac
+        candidates+=("${package}")
     done
-    echo "${filtered_packages[@]}"
+
+    [ ${#candidates[@]} -eq 0 ] && return
+
+    case "${PKG_MANAGER}" in
+    apt-get)
+        output=$(apt-cache search --names-only . 2>/dev/null | awk '{print $1}' | sort)
+        for candidate in "${candidates[@]}"; do
+            if grep -qx "${candidate}" <<< "${output}"; then
+                result_array+=("${candidate}")
+            fi
+        done
+        ;;
+    yum|dnf)
+        output=$(${PKG_MANAGER} repoquery --queryformat='%{name}' "${candidates[@]}" 2>/dev/null | sort -u)
+        while IFS= read -r line; do
+            if [[ -n "${line}" ]]; then
+                for candidate in "${candidates[@]}"; do
+                    if [[ "${candidate}" == "${line}" ]]; then
+                        result_array+=("${candidate}")
+                        break
+                    fi
+                done
+            fi
+        done <<< "${output}"
+        ;;
+    pacman)
+        output=$(pacman -Slq 2>/dev/null | sort)
+        for candidate in "${candidates[@]}"; do
+            if grep -qx "${candidate}" <<< "${output}"; then
+                result_array+=("${candidate}")
+            fi
+        done
+        ;;
+    zypper)
+        if output=$(zypper search --match-exact "${candidates[@]}" 2>/dev/null); then
+            while IFS= read -r line; do
+                if [[ "${line}" =~ ^(Loading|Reading|S[[:space:]]*\||---) ]]; then
+                    continue
+                fi
+                if [[ "${line}" =~ \|[[:space:]]*([^[:space:]|]+)[[:space:]]*\| ]]; then
+                    pkg_name="${BASH_REMATCH[1]}"
+                    if [[ "${line}" =~ \|[[:space:]]*package[[:space:]]*$ ]]; then
+                        for candidate in "${candidates[@]}"; do
+                            if [[ "${candidate}" == "${pkg_name}" ]]; then
+                                result_array+=("${candidate}")
+                                break
+                            fi
+                        done
+                    fi
+                fi
+            done <<< "${output}"
+        fi
+        ;;
+    esac
+
+    # Fallback: if bulk scan found nothing, do per-package checks
+    if [ ${#result_array[@]} -eq 0 ]; then
+        log log_message "WARNING: No packages found in bulk scan, checking each package individually."
+        for pkg in "${candidates[@]}"; do
+            case "${PKG_MANAGER}" in
+            apt-get)
+                if apt-cache show "${pkg}" &>/dev/null; then
+                    result_array+=("${pkg}")
+                fi
+                ;;
+            yum|dnf)
+                if ${PKG_MANAGER} info "${pkg}" &>/dev/null; then
+                    result_array+=("${pkg}")
+                fi
+                ;;
+            pacman)
+                if pacman -Si "${pkg}" &>/dev/null; then
+                    result_array+=("${pkg}")
+                fi
+                ;;
+            zypper)
+                if zypper search --match-exact "${pkg}" &>/dev/null; then
+                    result_array+=("${pkg}")
+                fi
+                ;;
+            esac
+        done
+    fi
 }
 
 # Saves installed packages to a file and updates the file with new packages.
@@ -999,11 +1100,12 @@ install_packages() {
     local dep_type=$1
     shift
     local packages=("$@")
-    local available_packages
     local to_install=()
     local already_installed=()
     local packages_installed_by_function=()
-    read -r -a available_packages <<<"$(filter_installable_packages "${packages[@]}")"
+    local available_packages diff package
+
+    filter_installable_packages available_packages "${packages[@]}"
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
@@ -1029,8 +1131,8 @@ install_packages() {
         else
             log_message "WARNING: Nothing to install - all requested ${PKG_MANAGER} packages unavailable or skipped."
         fi
-
     else
+        log_message "INFO: Installing '${to_install[*]}'"
         if {
             case "${PKG_MANAGER}" in
             apt-get) sudo_wrapper apt-get install -y -qq "${to_install[@]}" ;;
@@ -1107,7 +1209,7 @@ install_dependencies() {
     zypper)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
-        build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config)
+        build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config tar)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
         ;;
@@ -1138,7 +1240,7 @@ remove_system_packages() {
     done
 
     if [ ${#installed_packages[@]} -eq 0 ]; then
-        log log_message "INFO: No packages to remove)."
+        log log_message "INFO: No packages to remove."
         return 0
     fi
 
@@ -1625,15 +1727,18 @@ setup_psychopy_group_and_limits() {
     fi
 
     # Check if user is in group, add if not
-    if id -nG "${USER}" | grep -qw psychopy; then
-        log_message "INFO: User '${USER}' is already in the 'psychopy' group."
-    else
-        if sudo_wrapper usermod -a -G psychopy "${USER}"; then
-            log_message "INFO: User '${USER}' added to 'psychopy' group."
+    if [[ "${USER}" ]]; then
+        if id -nG "${USER}" | grep -qw psychopy; then
+            log_message "INFO: User '${USER}' is already in the 'psychopy' group."
         else
-            log_message "WARNING: Failed to add user '${USER}' to 'psychopy' group. Add manually."
+            if sudo_wrapper usermod -a -G psychopy "${USER}"; then
+                log_message "INFO: User '${USER}' added to 'psychopy' group."
+            else
+                log_message "WARNING: Failed to add user '${USER}' to 'psychopy' group. Add manually."
+            fi
         fi
-
+    else
+        log_message "WARNING: USER variable is empty. Cannot add user to 'psychopy' group."
     fi
 }
 
