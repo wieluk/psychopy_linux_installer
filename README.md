@@ -20,6 +20,7 @@ This script automates the installation of [PsychoPy](https://www.psychopy.org/) 
 7. [Uninstalling PsychoPy](#uninstalling-psychopy)
 8. [Troubleshooting](#troubleshooting)
 9. [Contributing & Support](#contributing--support)
+10. [Performance Data](test/performance_data/README.md)
 
 ## Supported and Tested Distributions
 
