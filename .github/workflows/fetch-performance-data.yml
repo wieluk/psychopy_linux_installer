@@ -1,0 +1,97 @@
+name: Fetch Installation Performance Data
+
+on:
+  schedule:
+    - cron: '30 10 * * THU'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fetch-performance-data.yml'
+      - 'test/performance_data/update_data.py'
+      - 'test/performance_data/create_plots.py'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: fetch-performance-data
+  cancel-in-progress: false
+
+jobs:
+  fetch-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Pull latest changes
+      run: |
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action"
+        git pull origin main || echo "No changes to pull"
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r test/performance_data/requirements.txt
+        sudo apt-get update
+        sudo apt-get install -y jq
+    
+    - name: Install GitHub CLI
+      run: |
+        curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+        sudo apt update
+        sudo apt install gh
+    
+    - name: Authenticate GitHub CLI
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+    
+    - name: Fetch new performance data
+      id: fetch_data
+      run: |
+        # Run script with real-time output and capture exit code
+        echo "Running update_data.py..."
+        python -u ./test/performance_data/update_data.py || exit_code=$?
+        
+        # Handle exit codes
+        if [ -z "$exit_code" ]; then
+          # Script succeeded (exit_code is unset)
+          echo "Script completed successfully"
+          echo "new_data=true" >> $GITHUB_OUTPUT
+        elif [ "$exit_code" -eq 1 ]; then
+          echo "Script exited with code 1 (no new data)"
+          echo "new_data=false" >> $GITHUB_OUTPUT
+          echo "No new data found, skipping remaining steps"
+        else
+          echo "Script failed with exit code $exit_code"
+          exit $exit_code
+        fi
+    
+    - name: Generate plots
+      if: steps.fetch_data.outputs.new_data == 'true'
+      run: python ./test/performance_data/create_plots.py
+
+    - name: Commit and push changes
+      if: steps.fetch_data.outputs.new_data == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        
+        # Check if there are any changes
+        if [[ -n $(git status --porcelain) ]]; then
+          git add test/performance_data/data test/performance_data/duration_plots test/performance_data/README.md
+          git commit -m "Update performance data - $(date +'%Y-%m-%d')"
+          git push
+        else
+          echo "No new data to commit"
+        fi
