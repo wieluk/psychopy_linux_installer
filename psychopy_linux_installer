@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-07
+#  Last Updated:  2025-07-08
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -972,8 +972,9 @@ is_package_installed() {
 
 # Filters and returns a list of packages available for installation.
 filter_installable_packages() {
-    FILTERED_PACKAGES=()
-    local filtered_packages=()
+    local -n result_array=$1
+    shift
+    result_array=()
     local candidates=()
     local output pkg_name
 
@@ -998,7 +999,7 @@ filter_installable_packages() {
         output=$(apt-cache search --names-only . 2>/dev/null | awk '{print $1}' | sort)
         for candidate in "${candidates[@]}"; do
             if grep -qx "${candidate}" <<< "${output}"; then
-                filtered_packages+=("${candidate}")
+                result_array+=("${candidate}")
             fi
         done
         ;;
@@ -1008,7 +1009,7 @@ filter_installable_packages() {
             if [[ -n "${line}" ]]; then
                 for candidate in "${candidates[@]}"; do
                     if [[ "${candidate}" == "${line}" ]]; then
-                        filtered_packages+=("${candidate}")
+                        result_array+=("${candidate}")
                         break
                     fi
                 done
@@ -1019,7 +1020,7 @@ filter_installable_packages() {
         output=$(pacman -Slq 2>/dev/null | sort)
         for candidate in "${candidates[@]}"; do
             if grep -qx "${candidate}" <<< "${output}"; then
-                filtered_packages+=("${candidate}")
+                result_array+=("${candidate}")
             fi
         done
         ;;
@@ -1034,7 +1035,7 @@ filter_installable_packages() {
                     if [[ "${line}" =~ \|[[:space:]]*package[[:space:]]*$ ]]; then
                         for candidate in "${candidates[@]}"; do
                             if [[ "${candidate}" == "${pkg_name}" ]]; then
-                                filtered_packages+=("${candidate}")
+                                result_array+=("${candidate}")
                                 break
                             fi
                         done
@@ -1046,34 +1047,33 @@ filter_installable_packages() {
     esac
 
     # Fallback: if bulk scan found nothing, do per-package checks
-    if [ ${#filtered_packages[@]} -eq 0 ]; then
+    if [ ${#result_array[@]} -eq 0 ]; then
         log log_message "WARNING: No packages found in bulk scan, checking each package individually."
         for pkg in "${candidates[@]}"; do
             case "${PKG_MANAGER}" in
             apt-get)
                 if apt-cache show "${pkg}" &>/dev/null; then
-                    filtered_packages+=("${pkg}")
+                    result_array+=("${pkg}")
                 fi
                 ;;
             yum|dnf)
                 if ${PKG_MANAGER} info "${pkg}" &>/dev/null; then
-                    filtered_packages+=("${pkg}")
+                    result_array+=("${pkg}")
                 fi
                 ;;
             pacman)
                 if pacman -Si "${pkg}" &>/dev/null; then
-                    filtered_packages+=("${pkg}")
+                    result_array+=("${pkg}")
                 fi
                 ;;
             zypper)
                 if zypper search --match-exact "${pkg}" &>/dev/null; then
-                    filtered_packages+=("${pkg}")
+                    result_array+=("${pkg}")
                 fi
                 ;;
             esac
         done
     fi
-    FILTERED_PACKAGES=("${filtered_packages[@]}")
 }
 
 # Saves installed packages to a file and updates the file with new packages.
@@ -1105,8 +1105,7 @@ install_packages() {
     local packages_installed_by_function=()
     local available_packages diff package
 
-    filter_installable_packages "${packages[@]}"
-    available_packages=("${FILTERED_PACKAGES[@]}")
+    filter_installable_packages available_packages "${packages[@]}"
 
     # Using grep to compute the difference between packages and available_packages
     diff=$(printf "%s\n" "${packages[@]}" | grep -vxFf <(printf "%s\n" "${available_packages[@]}") | paste -sd, -)
