@@ -3,3 +3,4 @@ __pycache__
 .pytest_cache
 .github/psychopy_tests/test_program/data
 .vscode
+test/distro_test_logs
