@@ -1,14 +1,18 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
-    "name": "psychopy_linux_installer environment",
+    "name": "Ubuntu 24 with psychopy_linux_installer environment",
     "build": {
-        "dockerfile": "Dockerfile.ubuntu",
-        //"dockerfile": "Dockerfile.arch",
-        //"dockerfile": "Dockerfile.fedora", 
-        //"dockerfile": "Dockerfile.opensuse",
+        "dockerfile": "Dockerfile",
         "context": ".."
     },
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "features": {
+        "ghcr.io/lukewiwa/features/shellcheck:0": {}
+    },
+    "remoteUser": "vscode",
     "customizations": {
         "vscode": {
             "extensions": [
