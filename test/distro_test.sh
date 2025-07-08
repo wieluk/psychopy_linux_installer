@@ -4,16 +4,20 @@ set -e
 # Configuration
 declare -A DISTROS=(
     ["1"]="ubuntu:24.04"
-    ["2"]="fedora:latest"
+    ["2"]="fedora:41"
     ["3"]="archlinux:latest"
-    ["4"]="opensuse/leap:latest"
+    ["4"]="opensuse/leap:15"
+    ["5"]="debian:bookworm"
+    ["7"]="rockylinux:9"
 )
 
 declare -A DISTRO_ARGS=(
     ["ubuntu:24.04"]="-f --non-interactive"
-    ["fedora:latest"]="-f --non-interactive"
+    ["fedora:41"]="-f --non-interactive"
     ["archlinux:latest"]="-f --non-interactive --wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
-    ["opensuse/leap:latest"]="-f --non-interactive"
+    ["opensuse/leap:15"]="-f --non-interactive"
+    ["debian:bookworm"]="-f --non-interactive"
+    ["rockylinux:9"]="-f --non-interactive"
 )
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -41,6 +45,12 @@ run_single_distro() {
     sudo docker run -d --name "$container_name" "$distro" sleep infinity
     sudo docker cp "$INSTALLER_PATH" "$container_name:/psychopy_linux_installer"
     sudo docker exec "$container_name" chmod +x /psychopy_linux_installer
+    
+    # Handle Rocky Linux curl conflict
+    if [[ "$distro" == *"rockylinux"* ]]; then
+        echo -e "${YELLOW}Pre-fixing Rocky Linux curl conflict...${NC}"
+        sudo docker exec "$container_name" bash -c "dnf install -y curl --allowerasing"
+    fi
     
     if [ "$interactive" = "true" ]; then
         echo -e "${GREEN}Starting interactive session...${NC}"
@@ -123,16 +133,20 @@ run_all_distros() {
 }
 
 echo -e "${GREEN}Choose a distribution to test PsychoPy installer:${NC}"
-echo "1) Ubuntu 24.04"
-echo "2) Fedora Latest"
-echo "3) Arch Linux"
-echo "4) openSUSE Leap"
-echo "5) Run on ALL distros (non-interactive, with logging)"
-echo -n "Enter choice [1-5]: "
 
+for key in $(printf '%s\n' "${!DISTROS[@]}" | sort -n); do
+    distro="${DISTROS[$key]}"
+    display_name=$(echo "$distro" | sed 's/:/ /' | sed 's/\b\w/\U&/g' | sed 's/linux/Linux/g')
+    echo "$key) $display_name"
+done
+
+all_choice=$(($(printf '%s\n' "${!DISTROS[@]}" | sort -n | tail -1) + 1))
+echo "$all_choice) Run on ALL distros (non-interactive, with logging)"
+echo -n "Enter choice [1-$all_choice]: "
 read -r choice
+all_choice=$(($(printf '%s\n' "${!DISTROS[@]}" | sort -n | tail -1) + 1))
 
-if [[ ! "${DISTROS[$choice]}" && "$choice" != "5" ]]; then
+if [[ ! "${DISTROS[$choice]}" && "$choice" != "$all_choice" ]]; then
     echo "Invalid choice"
     exit 1
 fi
@@ -149,7 +163,7 @@ if [ ! -f "$INSTALLER_PATH" ]; then
     exit 1
 fi
 
-if [ "$choice" = "5" ]; then
+if [ "$choice" = "$all_choice" ]; then
     run_all_distros
 else
     distro="${DISTROS[$choice]}"
