@@ -18,7 +18,7 @@ declare -A DISTRO_ARGS=(
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_DIR="$(dirname "$0")/$(basename "$0" .sh)_logs"
-INSTALLER_PATH="/workspaces/psychopy_linux_installer/psychopy_linux_installer"
+INSTALLER_PATH="$(git rev-parse --show-toplevel)/psychopy_linux_installer"
 
 # Colors
 GREEN='\033[0;32m'
