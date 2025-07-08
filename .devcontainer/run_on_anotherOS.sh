@@ -54,18 +54,18 @@ fi
 
 # Start container in background
 echo -e "${BLUE}Starting container in background...${NC}"
-docker run -d --name "$container_name" "$distro" sleep infinity
+sudo docker run -d --name "$container_name" "$distro" sleep infinity
 
 # Copy installer to container
 echo -e "${BLUE}Copying installer to container...${NC}"
-docker cp "/workspaces/psychopy_linux_installer/psychopy_linux_installer" "$container_name:/psychopy_linux_installer"
+sudo docker cp "/workspaces/psychopy_linux_installer/psychopy_linux_installer" "$container_name:/psychopy_linux_installer"
 
 # Make it executable
-docker exec "$container_name" chmod +x /psychopy_linux_installer
+sudo docker exec "$container_name" chmod +x /psychopy_linux_installer
 
 # Start interactive session
 echo -e "${GREEN}Starting interactive session...${NC}"
-docker exec -it "$container_name" bash -c "
+sudo docker exec -it "$container_name" bash -c "
     echo 'Distribution: $distro'
     echo 'Container: $container_name'
     echo 'Installer copied to: /psychopy_linux_installer'
@@ -81,7 +81,7 @@ docker exec -it "$container_name" bash -c "
 
 # Cleanup
 echo -e "${BLUE}Cleaning up container...${NC}"
-docker stop "$container_name" >/dev/null 2>&1
-docker rm "$container_name" >/dev/null 2>&1
+sudo docker stop "$container_name" >/dev/null 2>&1
+sudo docker rm "$container_name" >/dev/null 2>&1
 
 echo -e "${GREEN}Session complete.${NC}"
