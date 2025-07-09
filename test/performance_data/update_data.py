@@ -200,10 +200,10 @@ def process_new_data(raw_data):
     df["duration_m"] = ((df["completed"] - df["started"])
                         .dt.total_seconds() / 60)
     df['variant'] = df['job'].str.findall(r'\(([^()]+)\)').str[-1]
-    variant_parts = df['variant'].str.split(',', n=2, expand=True)
-    df['os'] = variant_parts[0].str.strip()
-    df['python_version'] = variant_parts[1].str.strip()
-    df['psychopy_version'] = variant_parts[2].str.strip()
+    df[['os', 'python_version', 'psychopy_version']] = df['variant'].str.split(',', expand=True)
+    df['os'] = df['os'].str.strip()
+    df['python_version'] = df['python_version'].str.strip()
+    df['psychopy_version'] = df['psychopy_version'].str.strip()
 
     print(f"ℹ️  Processed {len(df)} new data points")
     return df

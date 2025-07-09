@@ -8,6 +8,11 @@ on:
       - completed
     branches:
       - main
+  push:
+    paths:
+      - '.github/workflows/fetch-performance-data.yml'
+      - 'test/performance_data/update_data.py'
+      - 'test/performance_data/create_plots.py'
 
 permissions:
   contents: write

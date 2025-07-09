@@ -5,7 +5,8 @@ on:
     branches: [main]
     paths:
       - psychopy_linux_installer
-      - .github/workflows/**
+      - .github/workflows/main_push_workflow.yaml
+      - .github/workflows/reusable_*.yaml
       - .github/PsychoPy_tests/**
   workflow_dispatch:
 
