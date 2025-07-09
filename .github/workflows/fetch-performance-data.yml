@@ -1,14 +1,13 @@
 name: Fetch Installation Performance Data
 
 on:
-  schedule:
-    - cron: '30 10 * * THU'
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/fetch-performance-data.yml'
-      - 'test/performance_data/update_data.py'
-      - 'test/performance_data/create_plots.py'
+  workflow_run:
+    workflows: ["reusable test workflow"]
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -21,6 +20,7 @@ concurrency:
 jobs:
   fetch-data:
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.inputs.test-mode == 'quick')
     
     steps:
     - name: Checkout repository
