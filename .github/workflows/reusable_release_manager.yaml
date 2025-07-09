@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Extract Installer Version
         id: extract
         run: |
@@ -39,10 +41,12 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Check if release exists and detect version bump type
         id: release-checker
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
         run: |
@@ -95,9 +99,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Create release if not exists
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
         run: |
@@ -156,9 +162,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Update release from pre-release to full release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INSTALLER_VERSION: ${{ needs.extract-version.outputs.installer-version }}
         run: |
