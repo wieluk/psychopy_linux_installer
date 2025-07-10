@@ -49,7 +49,7 @@ run_single_distro() {
     # Handle Rocky Linux curl conflict
     if [[ "$distro" == *"rockylinux"* ]]; then
         echo -e "${YELLOW}Pre-fixing Rocky Linux curl conflict...${NC}"
-        sudo docker exec "$container_name" bash -c "dnf install -y curl --allowerasing"
+        sudo docker exec "$container_name" bash -c "dnf install -y curl sudo --allowerasing"
     fi
     
     if [ "$interactive" = "true" ]; then
