@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-09
+#  Last Updated:  2025-07-11
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -954,7 +954,7 @@ update_package_manager() {
             fi
         fi
         ;;
-    zypper) sudo_wrapper zypper refresh ;;
+    zypper) sudo_wrapper zypper -n refresh ;;
     esac
     log_message "INFO: '${PKG_MANAGER}' update complete."
 }
@@ -1139,7 +1139,7 @@ install_packages() {
             yum) sudo_wrapper yum install -y -q "${to_install[@]}" ;;
             dnf) sudo_wrapper dnf install -y -q "${to_install[@]}" ;;
             pacman) sudo_wrapper pacman -S --needed --noconfirm "${to_install[@]}" ;;
-            zypper) sudo_wrapper zypper install -y "${to_install[@]}" ;;
+            zypper) sudo_wrapper zypper -n install --no-confirm --force-resolution "${to_install[@]}" ;;
             esac
         }; then
             :
@@ -1151,7 +1151,7 @@ install_packages() {
                 yum) sudo_wrapper yum install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 dnf) sudo_wrapper dnf install -y -q "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 pacman) sudo_wrapper pacman -S --needed --noconfirm "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
-                zypper) sudo_wrapper zypper install -y "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
+                zypper) sudo_wrapper zypper -n install --no-confirm --force-resolution "${package}" || log log_message "WARNING: Package '${package}' not found, skipping." ;;
                 esac
             done
         fi
@@ -1188,28 +1188,28 @@ install_dependencies() {
     apt-get)
         script_deps=(curl git jq)
         psychopy_deps=(libasound2-dev libegl1-mesa-dev libglib2.0-dev libgtk-3-dev libnotify4 libusb-1.0-0-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libxcb-cursor0 libxcb-xinerama0 libxkbcommon-x11-0 libsdl2-dev libglu1-mesa-dev portaudio19-dev pulseaudio pulseaudio-utils)
-        build_deps=(g++ make python3-dev pkg‑config)
+        build_deps=(build-essential python3-dev pkg-config tar file gnu-which)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
         wxpython_deps=(freeglut3-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev)
         ;;
     yum | dnf)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
-        build_deps=(gcc gcc-c++ make python3-devel pkgconf-pkg-config)
+        build_deps=(gcc gcc-c++ make python3-devel pkgconf-pkg-config tar file which)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
         wxpython_deps=(freeglut-devel gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel glib2-devel)
         ;;
     pacman)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils sdl2 webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu libxcrypt-compat)
-        build_deps=(gcc make python pkgconf which)
+        build_deps=(gcc make base-devel python pkgconf tar file which)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
         wxpython_deps=(freeglut glib2 gstreamer gtk2 libjpeg libpng libsm libtiff glu mesa)
         ;;
     zypper)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-devel gtk3-devel libnotify4 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
-        build_deps=(gcc gcc-c++ make python3-devel pkgconf‑pkg‑config tar)
+        build_deps=(gcc gcc-c++ make python3-devel pkg-config tar file which)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
         ;;
@@ -1258,7 +1258,7 @@ remove_system_packages() {
         sudo_wrapper pacman -Rs --noconfirm "${installed_packages[@]}"
         ;;
     zypper)
-        sudo_wrapper zypper remove -y "${installed_packages[@]}"
+        sudo_wrapper zypper -n remove -y "${installed_packages[@]}"
         ;;
     esac
 }
