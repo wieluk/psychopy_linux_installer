@@ -8,7 +8,7 @@ declare -A DISTROS=(
     ["3"]="archlinux:latest"
     ["4"]="opensuse/leap:15"
     ["5"]="debian:bookworm"
-    ["7"]="rockylinux:9"
+    ["6"]="rockylinux:9"
 )
 
 declare -A DISTRO_ARGS=(
@@ -31,6 +31,38 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Cleanup function to remove all containers created by this script
+CONTAINER_TRACKING_FILE=$(mktemp)
+cleanup_containers() {
+    if [ -n "$CLEANUP_ALREADY_RUN" ]; then
+        return
+    fi
+    CLEANUP_ALREADY_RUN=1
+
+    if [ ! -f "$CONTAINER_TRACKING_FILE" ] || [ ! -s "$CONTAINER_TRACKING_FILE" ]; then
+        echo -e "${BLUE}No containers to clean up.${NC}"
+        rm -f "$CONTAINER_TRACKING_FILE"
+        return
+    fi
+    
+    # Collect all container names into a single variable
+    mapfile -t container_names < "$CONTAINER_TRACKING_FILE"
+    all_names="${container_names[*]}"
+    
+    if [ -z "$all_names" ]; then
+        rm -f "$CONTAINER_TRACKING_FILE"
+        return
+    fi
+    
+    echo -e "${YELLOW}Cleaning up containers created by this script...${NC}"
+    sudo docker rm --force $all_names >/dev/null 2>&1 || true
+    
+    rm -f "$CONTAINER_TRACKING_FILE"
+    echo -e "${GREEN}Container cleanup completed.${NC}"
+    exit 0
+}
+trap cleanup_containers EXIT INT TERM
+
 # Function to run installer on a single distro
 run_single_distro() {
     local distro="$1"
@@ -43,6 +75,8 @@ run_single_distro() {
     echo -e "${BLUE}Starting container for $distro...${NC}"
 
     sudo docker run -d --name "$container_name" "$distro" sleep infinity
+    echo "$container_name" >> "$CONTAINER_TRACKING_FILE"
+    
     sudo docker cp "$INSTALLER_PATH" "$container_name:/psychopy_linux_installer"
     sudo docker exec "$container_name" chmod +x /psychopy_linux_installer
     
@@ -50,6 +84,9 @@ run_single_distro() {
     if [[ "$distro" == *"rockylinux"* ]]; then
         echo -e "${YELLOW}Pre-fixing Rocky Linux curl conflict...${NC}"
         sudo docker exec "$container_name" bash -c "dnf install -y curl sudo --allowerasing"
+    elif [[ "$distro" == *"opensuse"* ]]; then
+        echo -e "${YELLOW}Pre-fixing OpenSUSE sudo missing ...${NC}"
+        sudo docker exec "$container_name" bash -c "zypper install -y sudo"
     fi
     
     if [ "$interactive" = "true" ]; then
@@ -100,9 +137,6 @@ run_single_distro() {
         
         echo -e "${GREEN}Completed $distro - log saved to $log_file${NC}"
     fi
-    
-    sudo docker stop "$container_name" >/dev/null 2>&1
-    sudo docker rm "$container_name" >/dev/null 2>&1
 }
 
 # Function to run on all distros in parallel
