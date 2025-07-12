@@ -16,22 +16,6 @@ jobs:
           sudo apt-get install -y shellcheck python3-pip
           sudo pip3 install bashate codespell
 
-      - name: Run Bash Syntax Check
+      - name: Run Syntax Check
         run: |
-          bash -n $GITHUB_WORKSPACE/psychopy_linux_installer
-
-      - name: Run ShellCheck
-        run: |
-          shellcheck -x $GITHUB_WORKSPACE/psychopy_linux_installer
-
-      - name: Run bashate
-        run: |
-          bashate $GITHUB_WORKSPACE/psychopy_linux_installer --ignore E006
-
-      - name: Spell check README.md
-        run: |
-          codespell README.md
-
-      - name: Spell check psychopy_linux_installer
-        run: |
-          codespell psychopy_linux_installer
+          $GITHUB_WORKSPACE/test/syntax_check.sh
