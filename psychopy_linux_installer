@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-11
+#  Last Updated:  2025-07-12
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -185,7 +185,7 @@ sudo_wrapper() {
         register_cleanup "${TEMP_SUDOERS}"
         TEMPORARY_SUDO_SETUP_DONE=true
         log_message "INFO: Temporary sudo timeout set to 300 minutes (configured in '${TEMP_SUDOERS}')."
-        sudo_wrapper sh -c "echo 'Defaults        timestamp_timeout=300' > ${TEMP_SUDOERS}"
+        sudo_wrapper sh -c "printf '%s\n' 'Defaults timestamp_timeout=300' > ${TEMP_SUDOERS}"
         sudo_wrapper chmod 440 ${TEMP_SUDOERS}
     }
 
@@ -1708,7 +1708,7 @@ setup_psychopy_group_and_limits() {
         log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
     else
         sudo_wrapper mkdir -p /etc/security/limits.d
-        if sudo_wrapper sh -c 'echo "@psychopy - nice -20\n@psychopy - rtprio 50\n@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'; then
+        if sudo_wrapper sh -c 'printf "%s\n" "@psychopy - nice -20" "@psychopy - rtprio 50" "@psychopy - memlock unlimited" > /etc/security/limits.d/99-psychopylimits.conf'; then
             log_message "INFO: Limits file '${limits_file}' created."
             log_message "NOTE: A system reboot is necessary to apply the security limits."
         else
@@ -1841,7 +1841,7 @@ create_desktop_shortcut() {
             "StartupNotify=true" \
             "StartupWMClass=psychopy")
 
-        sudo_wrapper sh -c "echo '${desktop_content}' > '${desktop_file}'"
+        sudo_wrapper sh -c "printf '%s\n' \"\$1\" > '${desktop_file}'" _ "${desktop_content}"
         sudo_wrapper chmod +x "${desktop_file}"
         sudo_wrapper chown "${USER}" "${desktop_file}"
         sudo_wrapper ln -sf "${desktop_file}" "${desktop_dir}/${pretty_name}.desktop"
@@ -2109,7 +2109,7 @@ create_start_psychopy_wrapper() {
             "" \
             "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${CONFIG_ARG}\" \"\$@\""
     )
-    printf "%s\n" "${wrapper_script}" | sudo_wrapper tee "${wrapper_path}" >/dev/null
+    printf "%s\n" "${wrapper_script}" | tee "${wrapper_path}" >/dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
     set_shared_permissions "${wrapper_path}"
 }
