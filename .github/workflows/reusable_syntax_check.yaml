@@ -18,4 +18,4 @@ jobs:
 
       - name: Run Syntax Check
         run: |
-          $GITHUB_WORKSPACE/test/syntax_check.sh
+          $GITHUB_WORKSPACE/test/syntax_checks.sh
