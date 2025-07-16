@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-12
+#  Last Updated:  2025-07-16
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -169,7 +169,7 @@ sudo_wrapper() {
 
         case ${exit_code} in
         0) return 1 ;;
-        1 | 2 | 5 | 10 | 13 | 77 | 100 | 126 | 127) return 0 ;;
+        1 | 2 | 5 | 10 | 13 | 32 | 77 | 100 | 126 | 127) return 0 ;;
         *)
             log_message "WARNING: Unhandled exit code '${exit_code}'. Error output: '${error_output}'. Attempting to continue ..."
             return 1
@@ -1570,11 +1570,16 @@ install_wxpython() {
                 "Build from source")
             if [[ "${response}" == "Select wheel index" ]]; then
                 WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index)
-                log_message "INFO: Installing wxPython '${WXPYTHON_VERSION}' from user-selected wheel index: '${WXPYTHON_WHEEL_INDEX}'"
-                if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
-                    log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from user-selected wheel index."
+                if [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
+                    log_message "INFO: Installing wxPython '${WXPYTHON_VERSION}' from user-selected wheel index: '${WXPYTHON_WHEEL_INDEX}'"
+                    if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
+                        log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from user-selected wheel index."
+                    else
+                        log_message "WARNING: Installation from selected wheel index failed. Building from source ..."
+                        build_wxpython
+                    fi
                 else
-                    log_message "WARNING: Installation from selected wheel index failed. Building from source ..."
+                    log_message "WARNING: No wheel index selected. Building wxPython from source ..."
                     build_wxpython
                 fi
             else
@@ -1631,14 +1636,41 @@ install_wxpython_from_github() {
 
 # Builds wxPython from source with the necessary build dependencies.
 build_wxpython() {
-    local tmp_size_gb
+    local tmp_size_gb tmp_size_new
 
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
-    # Check /tmp size and warn if ≤4GB
+    # Check /tmp size and prompt to increase if <4GB
     tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
-    [ "${tmp_size_gb}" -le 4 ] && log_message "WARNING: /tmp is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' size."
+    if [ "${tmp_size_gb}" -lt 4 ]; then
+        if [ "${NON_INTERACTIVE}" = false ]; then
+            response=$(prompt_user "Your /tmp partition is only ${tmp_size_gb}GB. wxPython build may fail. Do you want to temporarily increase /tmp size until next reboot?" \
+                "Increase to 4GB" \
+                "Increase to 8GB" \
+                "No, continue")
+            case "${response}" in
+                "Increase to 4GB")
+                    tmp_size_new=4
+                    ;;
+                "Increase to 8GB")
+                    tmp_size_new=8
+                    ;;
+                *)
+                    tmp_size_new=""
+                    ;;
+            esac
+            if [ -n "${tmp_size_new}" ]; then
+                if sudo_wrapper mount -o remount,size=${tmp_size_new}G /tmp; then
+                    log_message "INFO: /tmp size increased to ${tmp_size_new}GB until next reboot."
+                else
+                    log_message "WARNING: Failed to increase /tmp size. Continuing with current size."
+                fi
+            fi
+        else
+            log_message "WARNING: '/tmp' is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' with 'sudo mount -o remount,size=8G /tmp' if build fails."
+        fi
+    fi
 
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
     if log "${UV_INSTALL_DIR}/uv" pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
