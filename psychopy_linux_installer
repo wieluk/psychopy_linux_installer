@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-16
+#  Last Updated:  2025-07-17
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -112,6 +112,9 @@ log() {
     else
         local cmd_pid spinner_pid tmpfile chars exit_code i
         tmpfile=$(mktemp) || return 1
+
+        trap 'kill 0; exit 130' INT
+
         {
             "${@}" >>"${LOG_FILE}" 2>&1
             printf "%d" $? >"${tmpfile}"
@@ -120,30 +123,26 @@ log() {
         (
             sleep 0.5
             if kill -0 "${cmd_pid}" 2>/dev/null; then
-                (
-                    # shellcheck disable=SC1003
-                    chars='|/-\'
-                    i=0
-                    while kill -0 "${cmd_pid}" 2>/dev/null; do
-                        printf "\r[%c] Working..." "${chars:i:1}" >&2
-                        i=$(( (i + 1) % 4 ))
-                        sleep 0.1
-                    done
-                    printf "\r%-20s\r" "" >&2
-                ) &
-                echo $! >"${tmpfile}.spinnerpid"
+                # shellcheck disable=SC1003
+                chars='|/-\'
+                i=0
+                while kill -0 "${cmd_pid}" 2>/dev/null; do
+                    printf "\r[%c] Working..." "${chars:i:1}" >&2
+                    i=$(( (i + 1) % 4 ))
+                    sleep 0.1
+                done
+                printf "\r%-20s\r" "" >&2
             fi
         ) &
-        wait "${cmd_pid}" 2>/dev/null
+        spinner_pid=$!
+
+        wait "${cmd_pid}"
         exit_code=$(<"${tmpfile}")
         rm -f "${tmpfile}"
-        if [[ -f "${tmpfile}.spinnerpid" ]]; then
-            spinner_pid=$(<"${tmpfile}.spinnerpid")
-            kill "${spinner_pid}" 2>/dev/null || true
-            wait "${spinner_pid}" 2>/dev/null || true
-            rm -f "${tmpfile}.spinnerpid"
-        fi
+        kill "${spinner_pid}" 2>/dev/null || true
+        wait "${spinner_pid}" 2>/dev/null || true
         printf "\r%-20s\r" "" >&2
+        trap - INT
         return "${exit_code}"
     fi
 }
