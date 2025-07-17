@@ -41,6 +41,7 @@ declare -A DEFAULT_OPTS=(
 declare -a TEMP_PATHS=()
 register_cleanup() { TEMP_PATHS+=("$@"); }
 cleanup() {
+    log_message "INFO: Cleaning up temporary paths and removing build dependencies …"
     for p in "${TEMP_PATHS[@]}"; do
         if [[ -e ${p} ]]; then
             sudo_wrapper rm -rf "${p}"
@@ -97,6 +98,8 @@ log_message() {
     if [[ "${1}" == ERROR:* ]]; then
         if [[ "${nolog_option}" != "nolog" ]]; then
             printf "%bPlease check the log file at %s for more details.%b\n" "${red}" "${LOG_FILE}" "${reset}"
+        else
+            trap - EXIT
         fi
         printf "%bExiting.%b\n" "${red}" "${reset}"
         exit 1
@@ -413,10 +416,12 @@ process_arguments() {
             VERBOSE=true
             ;;
         --version)
+            trap - EXIT
             echo "${SCRIPT_VERSION}"
             exit 0
             ;;
         -h | --help)
+            trap - EXIT
             show_help
             exit 0
             ;;
