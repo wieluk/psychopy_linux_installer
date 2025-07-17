@@ -47,6 +47,15 @@ cleanup() {
             sudo_wrapper rm -rf "${p}"
         fi
     done
+
+    if [ "${#BUILD_DEPS_INSTALLED[@]}" -gt 0 ]; then
+        log log_message "INFO: Removing build dependencies on exit: ${BUILD_DEPS_INSTALLED[*]}"
+        remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
+    fi
+    if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
+        log log_message "INFO: Removing wxPython build dependencies on exit : ${WXPYTHON_DEPS_INSTALLED[*]}"
+        remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
+    fi
 }
 trap cleanup EXIT
 
@@ -1677,15 +1686,11 @@ build_wxpython() {
     else
         log_message "ERROR: Building wxPython from source failed."
     fi
-    if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
-        log_message "INFO: Removing wxPython build dependencies. : ${WXPYTHON_DEPS_INSTALLED[*]}"
-        remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
-    fi
 }
 
 
 # ===============================================================================
-# PSYCHOPY CONFIGURATION - Setup and configuration after installation
+# PSYCHOPY CONFIGURATION - Setup and configuration
 # ===============================================================================
 
 # Prepares the PsychoPy installation directory, handling overwrites and permissions.
@@ -1770,35 +1775,6 @@ setup_psychopy_group_and_limits() {
         fi
     else
         log_message "WARNING: USER variable is empty. Cannot add user to 'psychopy' group."
-    fi
-}
-
-# Removes the PsychoPy user settings directory (~/.psychopy3) if requested.
-remove_psychopy_settings() {
-    local response
-
-    if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
-        if [ -d "${HOME}/.psychopy3" ]; then
-            log_message "INFO: Removing existing '.psychopy3' directory."
-            sudo_wrapper rm -rf "${HOME}/.psychopy3"
-            if [ -d "${HOME}/.psychopy3" ]; then
-                log_message "WARNING: Failed to delete '${HOME}/.psychopy3'. Check permissions or remove manually."
-            fi
-        fi
-    elif [ "${NON_INTERACTIVE}" = false ]; then
-        if [ -d "${HOME}/.psychopy3" ]; then
-            response=$(prompt_user "Do you want to remove the PsychoPy settings folder at '${HOME}/.psychopy3'?\nKeeping it may cause conflicts with plugins or user-installed pip packages." "Remove settings folder" "Keep settings folder")
-
-            if [[ "${response}" == "Remove settings folder" ]]; then
-                log_message "INFO: Removing existing '.psychopy3' directory."
-                sudo_wrapper rm -rf "${HOME}/.psychopy3"
-                if [ -d "${HOME}/.psychopy3" ]; then
-                    log_message "WARNING: Failed to delete '${HOME}/.psychopy3'. Check permissions or remove manually."
-                fi
-            else
-                log_message "INFO: Skipped removing '.psychopy3' directory."
-            fi
-        fi
     fi
 }
 
@@ -2352,10 +2328,6 @@ main() {
 
     deactivate
 
-    if [ "${#BUILD_DEPS_INSTALLED[@]}" -gt 0 ]; then
-        log_message "INFO: Removing build dependencies: ${BUILD_DEPS_INSTALLED[*]}"
-        remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
-    fi
 
     # Install some basic fonts for PsychoPy
     if [ "${NO_FONTS}" = false ]; then
@@ -2363,8 +2335,11 @@ main() {
         install_dependencies fonts
     fi
 
-    # Prompt to remove .psychopy3
-    remove_psychopy_settings
+    # remove .psychopy3 if flag set
+    if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ] && [ -d "${HOME}/.psychopy3" ]; then
+        log_message "INFO: Removing existing '.psychopy3' directory."
+        sudo_wrapper rm -rf "${HOME}/.psychopy3"
+    fi
 
     # Create desktop shortcut
     if [ "${DISABLE_SHORTCUT}" = false ]; then
