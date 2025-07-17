@@ -41,21 +41,15 @@ declare -A DEFAULT_OPTS=(
 declare -a TEMP_PATHS=()
 register_cleanup() { TEMP_PATHS+=("$@"); }
 cleanup() {
+    log_message "INFO: Cleaning up temporary paths and removing build dependencies …"
     for p in "${TEMP_PATHS[@]}"; do
         if [[ -e ${p} ]]; then
-            log log_message "INFO: removing temporary path '${p}' …"
             sudo_wrapper rm -rf "${p}"
         fi
     done
 
-    if [ "${#BUILD_DEPS_INSTALLED[@]}" -gt 0 ]; then
-        log log_message "INFO: Removing build dependencies on exit: ${BUILD_DEPS_INSTALLED[*]}"
-        remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
-    fi
-    if [ "${#WXPYTHON_DEPS_INSTALLED[@]}" -gt 0 ]; then
-        log log_message "INFO: Removing wxPython build dependencies on exit : ${WXPYTHON_DEPS_INSTALLED[*]}"
-        remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
-    fi
+    remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
+    remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
 }
 trap cleanup EXIT
 
@@ -434,10 +428,8 @@ process_arguments() {
         esac
     done
 
-    if [ -n "${WXPYTHON_WHEEL_INDEX}" ]; then
-        if [ "${BUILD_WXPYTHON}" = true ]; then
-            log_message "ERROR: --wxpython-wheel-index cannot be used together with --build-wxpython." nolog
-        fi
+    if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && [ "${BUILD_WXPYTHON}" = true ]; then
+        log_message "ERROR: --wxpython-wheel-index cannot be used together with --build-wxpython." nolog
     fi
 }
 
@@ -1863,7 +1855,7 @@ add_psychopy_to_path() {
     local src syspath localbin existing_path
     src="${PSYCHOPY_DIR}/start_psychopy"
     syspath="/usr/local/bin/${VENV_NAME}"
-    localbin="${HOME}/.local/bin/${VENV_NAME}"
+    PSYCHOPY_LAUNCHER_LINK=()
 
     try_link() {
         local target="$1"
@@ -1871,7 +1863,7 @@ add_psychopy_to_path() {
         if [ -z "${existing_path}" ] || [ "${existing_path}" = "${target}" ]; then
             if [ -L "${target}" ] || [ ! -e "${target}" ]; then
                 if sudo_wrapper ln -sf "${src}" "${target}"; then
-                    PSYCHOPY_LAUNCHER_LINK="${target}"
+                    PSYCHOPY_LAUNCHER_LINK+=("${target}")
                     log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (${target})."
                     return 0
                 else
@@ -1920,20 +1912,21 @@ create_start_psychopy_wrapper() {
     fi
 
     local shortcut_block=""
-    local quoted_files
-    printf -v quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
+    local shortcut_quoted_files
+    printf -v shortcut_quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
     if [ "${DISABLE_SHORTCUT}" = false ]; then
         shortcut_block=$(printf "%s\n" \
-            "    echo \"Removing desktop shortcuts: ${quoted_files}\"" \
-            "    \${SUDO} rm -f ${quoted_files}" \
+            "    echo \"Removing desktop shortcuts: ${shortcut_quoted_files}\"" \
+            "    \${SUDO} rm -f ${shortcut_quoted_files}" \
             "")
     fi
 
     local symlink_block=""
+    printf -v symlink_quoted_files '"%s" ' "${PSYCHOPY_LAUNCHER_LINK[@]}"
     if [ "${DISABLE_PATH}" = false ]; then
         symlink_block=$(printf "%s\n" \
-            "    echo \"Removing symlink: ${PSYCHOPY_LAUNCHER_LINK}\"" \
-            "    \${SUDO} rm -f \"${PSYCHOPY_LAUNCHER_LINK}\"" \
+            "    echo \"Removing symlink: ${symlink_quoted_files}\"" \
+            "    \${SUDO} rm -f ${symlink_quoted_files}" \
             "")
     fi
 
