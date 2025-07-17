@@ -41,7 +41,6 @@ declare -A DEFAULT_OPTS=(
 declare -a TEMP_PATHS=()
 register_cleanup() { TEMP_PATHS+=("$@"); }
 cleanup() {
-    log_message "INFO: Cleaning up temporary paths and removing build dependencies …"
     for p in "${TEMP_PATHS[@]}"; do
         if [[ -e ${p} ]]; then
             sudo_wrapper rm -rf "${p}"
