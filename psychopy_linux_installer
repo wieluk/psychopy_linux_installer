@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-17
+#  Last Updated:  2025-07-18
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -19,7 +19,7 @@ declare -A DEFAULT_OPTS=(
     [WXPYTHON_WHEEL_INDEX]=""
     [BUILD_WXPYTHON]=false
     [INSTALL_DIR]="/opt/psychopy"
-    [USER_INSTALL]=false
+    [USERS_TO_INSTALL_FOR]="${USER:-$(whoami)}"
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
@@ -312,7 +312,7 @@ show_help() {
             "  --build-wxpython                             Build wxPython from source" \
             "  --wxpython-wheel-index=URL                   Custom wxPython wheel index" \
             "  --install-dir=DIR                            Install directory (default: ${DEFAULT_OPTS[INSTALL_DIR]})" \
-            "  --user-install                               Install for the current user; changes install-dir to ${HOME}/psychopy if not set" \
+            "  --users-to-install-for=USER1,USER2,...|*     Comma-separated users to install for, or '*' for all real users (default: ${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]})" \
             "  --venv-name=NAME                             Virtual environment name" \
             "  --additional-packages=PKG,PKG,...            Extra pip packages; Format: package1==version,package2." \
             "  --requirements-file=FILE                     Install pip packages from requirements.txt" \
@@ -368,10 +368,16 @@ process_arguments() {
         --install-dir=*)
             INSTALL_DIR="${arg#*=}"
             ;;
-        --user-install)
-            USER_INSTALL=true
-            if [[ -z "${INSTALL_DIR}" ]]; then
-                INSTALL_DIR="${HOME}/psychopy"
+        --users-to-install-for=*)
+            USERS_TO_INSTALL_FOR="${arg#*=}"
+            if [[ "${USERS_TO_INSTALL_FOR}" == "*" ]]; then
+                mapfile -t USERS_TO_INSTALL_FOR < <(get_real_users)
+                log_message "INFO: Installing for following users: ${USERS_TO_INSTALL_FOR[*]}"
+            else
+                IFS=',' read -r -a USERS_TO_INSTALL_FOR <<< "${USERS_TO_INSTALL_FOR[*]}"
+            fi
+            if ! validate_user_list "${USERS_TO_INSTALL_FOR[@]}"; then
+                log_message "ERROR: One or more specified users in --users-to-install-for are not valid users." nolog
             fi
             ;;
         --venv-name=*)
@@ -437,6 +443,22 @@ process_arguments() {
     fi
 }
 
+# Returns a list of all 'real' users (UID >= 1000, not nologin, not system users)
+get_real_users() {
+    awk -F: '($3 >= 1000 && $1 != "nobody" && $7 !~ /(nologin|false)/) {print $1}' /etc/passwd
+}
+
+# Checks if all users in an array are valid
+validate_user_list() {
+    for username in "$@"; do
+        if ! getent passwd "${username}" >/dev/null; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+# Prompts the user to select an option from a list of wxPython wheel folders.
 select_wxpython_wheel_index() {
     if ! command -v curl >/dev/null 2>&1; then
         return 1
@@ -504,7 +526,7 @@ select_wxpython_wheel_index() {
 
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
-    local wxpython_versions psychopy_versions options checklist_result wx_url folders selected_folder
+    local wxpython_versions psychopy_versions options checklist_result wx_url folders selected_folder checklist_items all_users selected_users
 
     # Checkbox page
     if checklist_result=$(
@@ -518,7 +540,8 @@ show_gui() {
             FALSE "wxpython version" "${DEFAULT_OPTS[WXPYTHON_VERSION]}" \
             FALSE "Custom wxPython wheel index" "None" \
             FALSE "Additional pip packages" "None" \
-            FALSE "Use requirements.txt" "False"
+            FALSE "Use requirements.txt" "False" \
+            FALSE "Users to install for" "${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]}"
     ); then
         :
     else
@@ -629,11 +652,36 @@ show_gui() {
         fi
     fi
 
+    # Prompt for which users to install PsychoPy
+    if [[ "${checklist_result}" == *"Users to install for"* ]]; then
+        mapfile -t all_users < <(get_real_users)
+        checklist_items=()
+        for username in "${all_users[@]}"; do
+            if [[ "${username}" == "${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]}" ]]; then
+                checklist_items+=(TRUE  "${username}")
+            else
+                checklist_items+=(FALSE "${username}")
+            fi
+        done
+
+        selected_users=$(zenity --list --checklist \
+            --title="Select Users for Installation" \
+            --width=800 --height=500 \
+            --text="Select one or more users to install PsychoPy for:" \
+            --column="Select" --column="User" \
+            "${checklist_items[@]}")
+
+        if [[ -n "${selected_users}" ]]; then
+            IFS='|' read -ra USERS_TO_INSTALL_FOR <<< "${selected_users}"
+        else
+            exit 0
+        fi
+    fi
+
     # Additional options
     options_array=(
         TRUE "Add PsychoPy to system PATH"
         TRUE "Create desktop shortcuts"
-        FALSE "Install only for current user (PATH/shortcut/install-dir)"
         FALSE "Run in non-interactive mode"
         FALSE "Force overwrite of existing directory"
         FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
@@ -660,15 +708,6 @@ show_gui() {
 
     if [[ ${options} != *"Create desktop shortcuts"* ]]; then
         DISABLE_SHORTCUT=true
-    fi
-
-    if [[ ${options} == *"Install only for current user (PATH/shortcut/install-dir)"* ]]; then
-        USER_INSTALL=true
-        if [[ -z "${INSTALL_DIR}" ]]; then
-            INSTALL_DIR="${HOME}/psychopy"
-        fi
-    else
-        USER_INSTALL=false
     fi
 
     if [[ ${options} == *"Run in non-interactive mode"* ]]; then
@@ -1172,7 +1211,11 @@ install_packages() {
                 fi
             fi
         done
-        save_installed_packages "${packages_installed_by_function[@]}"
+        if (( ${#packages_installed_by_function[@]} > 0 )); then
+            save_installed_packages "${packages_installed_by_function[@]}"
+        else
+            log_message "WARNING: None of the requested packages could be installed."
+        fi
     fi
 }
 
@@ -1727,7 +1770,7 @@ prepare_psychopy_directory() {
     fi
 
     if ! [ -w "${PSYCHOPY_DIR}" ] || ! cd "${PSYCHOPY_DIR}"; then
-        log_message "ERROR: Cannot access or cd into '${PSYCHOPY_DIR}'."
+        log_message "ERROR: Cannot access or cd into '${PSYCHOPY_DIR}'. Choose a different installation directory with --install-dir or fix permissions."
         return 1
     fi
 }
@@ -1736,6 +1779,7 @@ prepare_psychopy_directory() {
 setup_psychopy_group_and_limits() {
     # Check if limits file exists before writing
     local limits_file="/etc/security/limits.d/99-psychopylimits.conf"
+    local user
     if [ -f "${limits_file}" ]; then
         log_message "INFO: Limits file '${limits_file}' already exists. Skipping overwrite."
     else
@@ -1758,138 +1802,173 @@ setup_psychopy_group_and_limits() {
         return
     fi
 
-    # Check if user is in group, add if not
-    if [[ "${USER}" ]]; then
-        if id -nG "${USER}" | grep -qw psychopy; then
-            log_message "INFO: User '${USER}' is already in the 'psychopy' group."
+
+    if (( ${#USERS_TO_INSTALL_FOR[@]} == 0 )); then
+        log_message "WARNING: No users specified in USERS_TO_INSTALL_FOR; nothing to do."
+        return
+    fi
+
+    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+        if id -nG "${user}" | grep -qw psychopy; then
+            log_message "INFO: User '${user}' is already in the 'psychopy' group."
         else
-            if sudo_wrapper usermod -a -G psychopy "${USER}"; then
-                log_message "INFO: User '${USER}' added to 'psychopy' group."
+            if sudo_wrapper usermod -a -G psychopy "${user}"; then
+            log_message "INFO: User '${user}' added to 'psychopy' group."
             else
-                log_message "WARNING: Failed to add user '${USER}' to 'psychopy' group. Add manually."
+            log_message "WARNING: Failed to add user '${user}' to 'psychopy' group. Please add manually."
             fi
         fi
-    else
-        log_message "WARNING: USER variable is empty. Cannot add user to 'psychopy' group."
-    fi
+    done
 }
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local applications_dir desktop_dir psychopy_exec resources_dir desktop_content
-    psychopy_exec="${PSYCHOPY_DIR}/start_psychopy"
-    resources_dir="${PSYCHOPY_DIR}/Resources"
-    local shortcuts=(
-        "--no-splash" "$(basename "${PSYCHOPY_DIR}")" "psychopy.png"
-        "--builder --no-splash" "Builder $(basename "${PSYCHOPY_DIR}")" "builder.png"
-        "--coder --no-splash" "Coder $(basename "${PSYCHOPY_DIR}")" "coder.png"
+    local launcher_executable="${PSYCHOPY_DIR}/start_psychopy"
+    local resources_dir="${PSYCHOPY_DIR}/Resources"
+    local system_applications_dir="/usr/share/applications"
+    local install_globally=true
+    local -a shortcut_specs=(
+        "--no-splash|$(basename "${PSYCHOPY_DIR}")|psychopy.png"
+        "--builder --no-splash|Builder $(basename "${PSYCHOPY_DIR}")|builder.png"
+        "--coder --no-splash|Coder $(basename "${PSYCHOPY_DIR}")|coder.png"
     )
+    local opts name icon_file user spec home_dir desktop_dir apps_dir src dst
+    DESKTOP_FILES=()
 
-    if ! desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null)"; then
-        log_message "WARNING: xdg-user-dir not found. Desktop shortcut creation failed."
-        DISABLE_SHORTCUT=true
-        return
-    fi
-    if [ ! -d "${desktop_dir}" ]; then
-        sudo_wrapper mkdir -p "${desktop_dir}"
-    fi
+    log_message "INFO: Creating desktop shortcuts for users: ${USERS_TO_INSTALL_FOR[*]}"
 
-    if [ "${USER_INSTALL}" = true ]; then
-        applications_dir="${HOME}/.local/share/applications"
-    else
-        if sudo_wrapper test -d "/usr/share/applications" && sudo_wrapper test -w "/usr/share/applications"; then
-            applications_dir="/usr/share/applications"
-        else
-            log_message "WARNING: cannot write to /usr/share or /usr/local/share; falling back to user applications directory."
-            applications_dir="${HOME}/.local/share/applications"
-        fi
-    fi
+    write_application_entry() {
+        local file_path=$1 options=$2 name=$3 icon_path=$4
+        sudo_wrapper mkdir -p "$(dirname "${file_path}")"
+        {
+            printf "[Desktop Entry]\n"
+            printf "Version=1.0\n"
+            printf "Type=Application\n"
+            printf "Name=%s\n" "$name"
+            printf "GenericName=PsychoPy Experiment Builder\n"
+            printf "Comment=Run PsychoPy %s on Python%s %s\n" \
+                   "${PSYCHOPY_VERSION}" "${PYTHON_VERSION}" "${options}"
+            printf "Exec=%s %s\n" "${launcher_executable}" "${options}"
+            [[ -f "${icon_path}" ]] && printf "Icon=%s\n" "${icon_path}"
+            printf "Terminal=false\n"
+            printf "Categories=Education;Science;Development;\n"
+            printf "MimeType=application/x-psyexp;\n"
+            printf "Keywords=psychopy;experiment;builder;psyexp;design;\n"
+            printf "TryExec=%s\n" "${launcher_executable}"
+            printf "StartupNotify=true\n"
+            printf "StartupWMClass=psychopy\n"
+        } | sudo_wrapper tee "${file_path}" >/dev/null
+        sudo_wrapper chmod +x "${file_path}"
+    }
+
     sudo_wrapper mkdir -p "${resources_dir}"
+    if ! sudo_wrapper test -w "${system_applications_dir}"; then
+        install_globally=false
+    fi
 
-    for ((i = 0; i < ${#shortcuts[@]}; i += 3)); do
-        local exec_args="${shortcuts[i]}"
-        local pretty_name="${shortcuts[i + 1]}"
-        local icon_file="${shortcuts[i + 2]}"
-        local icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}"
-        local desktop_file="${applications_dir}/${pretty_name}.desktop"
-        local icon_path="${resources_dir}/${icon_file}"
+    for spec in "${shortcut_specs[@]}"; do
+        IFS='|' read -r _ _ icon_file <<<"${spec}"
+        sudo_wrapper curl -sf -o "${resources_dir}/${icon_file}" \
+            "https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}" \
+            || log_message "WARNING: unable to fetch icon ${icon_file}"
+    done
 
-        if curl --output /dev/null --silent --head --fail "${icon_url}"; then
-            if sudo_wrapper curl -s -o "${icon_path}" "${icon_url}"; then
-                :
-            else
-                log_message "WARNING: Failed to download icon '${icon_url}', skipping."
-            fi
-        else
-            log_message "WARNING: Icon '${icon_url}' not found, skipping."
+    if ${install_globally}; then
+        for spec in "${shortcut_specs[@]}"; do
+            IFS='|' read -r opts name icon_file <<<"${spec}"
+            local desktop_file="${system_applications_dir}/${name}.desktop"
+            write_application_entry "${desktop_file}" "${opts}" "${name}" "${resources_dir}/${icon_file}"
+            DESKTOP_FILES+=("${desktop_file}")
+        done
+    fi
+
+    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+        home_dir=$(getent passwd "${user}" | cut -d: -f6) || {
+            log_message "WARNING: user '${user}' has no home; skipping"
+            continue
+        }
+        desktop_dir=$(sudo_wrapper runuser -l "${user}" -c 'xdg-user-dir DESKTOP' 2>/dev/null)
+        if [[ -z "${desktop_dir}" || ! -d "${desktop_dir}" ]]; then
+            log_message "WARNING: desktop directory not found for '${user}'; skipping"
+            continue
         fi
 
-        local icon_line=""
-        [ -f "${icon_path}" ] && icon_line="Icon=${icon_path}"
+        if ! ${install_globally}; then
+            apps_dir="${home_dir}/.local/share/applications"
+            if [[ ! -d "${apps_dir}" ]]; then
+                log_message "WARNING: applications directory not found for '${user}'; skipping"
+                continue
+            fi
+        fi
 
-        desktop_content=$(printf "%s\n" \
-            "[Desktop Entry]" \
-            "Version=1.0" \
-            "Type=Application" \
-            "Name=${pretty_name}" \
-            "GenericName=PsychoPy Experiment Builder" \
-            "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${exec_args}" \
-            "Exec=${psychopy_exec} ${exec_args}" \
-            "${icon_line}" \
-            "Terminal=false" \
-            "Categories=Education;Science;Development;" \
-            "MimeType=application/x-psyexp;" \
-            "Keywords=psychopy;experiment;builder;psyexp;design;" \
-            "TryExec=${psychopy_exec}" \
-            "StartupNotify=true" \
-            "StartupWMClass=psychopy")
-
-        sudo_wrapper sh -c "printf '%s\n' \"\$1\" > '${desktop_file}'" _ "${desktop_content}"
-        sudo_wrapper chmod +x "${desktop_file}"
-        sudo_wrapper chown "${USER}" "${desktop_file}"
-        sudo_wrapper ln -sf "${desktop_file}" "${desktop_dir}/${pretty_name}.desktop"
-        command -v gio >/dev/null 2>&1 && log gio set "${desktop_dir}/${pretty_name}.desktop" metadata::trusted true
-        DESKTOP_FILES+=("${desktop_file}" "${desktop_dir}/${pretty_name}.desktop")
+        for spec in "${shortcut_specs[@]}"; do
+            IFS='|' read -r opts name icon_file <<<"${spec}"
+            if ${install_globally}; then
+                src="${system_applications_dir}/${name}.desktop"
+            else
+                src="${apps_dir}/${name}.desktop"
+                write_application_entry "${src}" "${opts}" "${name}" "${resources_dir}/${icon_file}"
+                sudo_wrapper chown "${user}:${user}" "${src}"
+                DESKTOP_FILES+=("${src}")
+            fi
+            dst="${desktop_dir}/${name}.desktop"
+            sudo_wrapper ln -sf "${src}" "${dst}"
+            sudo_wrapper chown "${user}:${user}" "${dst}"
+            sudo_wrapper runuser -l "${user}" -c \
+                "command -v gio &>/dev/null && gio set '${dst}' metadata::trusted true"
+            DESKTOP_FILES+=("${dst}")
+        done
     done
-    log_message "INFO: Desktop shortcuts created successfully."
 }
 
 # Adds the PsychoPy installation's bin directory to the PATH and records link location.
 add_psychopy_to_path() {
-    local src syspath localbin existing_path
-    src="${PSYCHOPY_DIR}/start_psychopy"
-    syspath="/usr/local/bin/${VENV_NAME}"
+    local launcher_source="${PSYCHOPY_DIR}/start_psychopy"
+    local global_link="/usr/local/bin/${VENV_NAME}"
+    local user per_bin per_link home_dir
     PSYCHOPY_LAUNCHER_LINK=()
+    log_message "INFO: Adding PsychoPy to PATH for users: ${USERS_TO_INSTALL_FOR[*]}"
 
-    try_link() {
-        local target="$1"
-        existing_path=$(command -v "${VENV_NAME}" 2>/dev/null || true)
-        if [ -z "${existing_path}" ] || [ "${existing_path}" = "${target}" ]; then
-            if [ -L "${target}" ] || [ ! -e "${target}" ]; then
-                if sudo_wrapper ln -sf "${src}" "${target}"; then
-                    PSYCHOPY_LAUNCHER_LINK+=("${target}")
-                    log_message "INFO: PsychoPy added to PATH as '${VENV_NAME}' (${target})."
-                    return 0
-                else
-                    log_message "WARNING: Failed to create symlink in ${target}."
-                fi
-            fi
-        else
-            log_message "WARNING: '${VENV_NAME}' already exists in PATH at '${existing_path}', not '${target}'. Skipping ${target} symlink."
-        fi
-        return 1
-    }
-
-    if [ "${USER_INSTALL}" = true ]; then
-        try_link "${localbin}" && return 0
+    if sudo_wrapper ln -sf "${launcher_source}" "${global_link}"; then
+        PSYCHOPY_LAUNCHER_LINK+=("${global_link}")
+        log_message "INFO: PsychoPy added globally at ${global_link}."
+        return 0
     else
-        try_link "${syspath}" && return 0
-        try_link "${localbin}" && return 0
+        log_message "WARNING: Global path link failed, falling back to per‐user."
     fi
 
-    log_message "WARNING: Could not add PsychoPy to PATH as '${VENV_NAME}'. Name may already exist in PATH or permissions are insufficient."
-    DISABLE_PATH=true
-    return 1
+    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+        local home_dir per_bin per_link
+        home_dir=$(getent passwd "${user}" | cut -d: -f6) || continue
+        per_bin="${home_dir}/.local/bin"
+        per_link="${per_bin}/${VENV_NAME}"
+
+        if [[ "${user}" == "${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]}" ]]; then
+            mkdir -p "${per_bin}"
+            if ln -sf "${launcher_source}" "${per_link}"; then
+                PSYCHOPY_LAUNCHER_LINK+=("${per_link}")
+                log_message "INFO: PsychoPy added to path for ${user} at ${per_link}."
+            else
+                log_message "WARNING: Failed to link for ${user} at ${per_link}."
+            fi
+        else
+            sudo_wrapper runuser -l "${user}" -c "mkdir -p '${per_bin}'"
+            if sudo_wrapper runuser -l "${user}" -c "ln -sf '${launcher_source}' '${per_link}'"; then
+                PSYCHOPY_LAUNCHER_LINK+=("${per_link}")
+                log_message "INFO: PsychoPy added for ${user} at ${per_link}."
+            else
+                log_message "WARNING: Failed to link for ${user} at ${per_link}."
+            fi
+        fi
+    done
+
+    if (( ${#PSYCHOPY_LAUNCHER_LINK[@]} == 0 )); then
+        log_message "WARNING: No per‐user links created; PsychoPy not added to PATH."
+        DISABLE_PATH=true
+        return 1
+    fi
+
+    return 0
 }
 
 # Creates a wrapper script to start PsychoPy or uninstall it.
