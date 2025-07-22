@@ -1876,7 +1876,6 @@ create_desktop_shortcut() {
 
         sudo_wrapper sh -c "printf '%s\n' \"\$1\" > \"${desktop_path}\"" _ "${desktop_content}"
         sudo_wrapper chmod +x "${desktop_path}"
-        set_shared_permissions "${desktop_path}"
     }
 
     system_app_dir="/usr/share/applications"
@@ -1944,7 +1943,11 @@ create_desktop_shortcut() {
             link_dst="${desktop_dir}/${label}.desktop"
 
             sudo_wrapper ln -sf "${link_src}" "${link_dst}"
-            sudo_wrapper runuser -l "${user}" -c "command -v gio &>/dev/null && gio set '${link_dst}' metadata::trusted true"
+            if [[ "${user}" == "${CURRENT_USER}" ]]; then
+                command -v gio &>/dev/null && sudo_wrapper gio set "${link_dst}" metadata::trusted true
+            else
+                sudo_wrapper runuser -l "${user}" -c "command -v gio &>/dev/null && gio set '${link_dst}' metadata::trusted true"
+            fi
             DESKTOP_FILES+=("${link_dst}")
         done
     done
