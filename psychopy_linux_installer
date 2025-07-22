@@ -2195,7 +2195,17 @@ create_start_psychopy_wrapper() {
             "            ;;" \
             "        *)" \
             "            mode=\"prompt\"" \
-            "            if sudo true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
+            "            if sudo true 2>/dev/null; then" \
+            "                SUDO=\"sudo\"" \
+            "            else" \
+            "                SUDO=\"\"" \
+            "                echo \"WARNING: You do not have sudo rights. Uninstalling without sudo may result in a partially uninstalled app.\"" \
+            "                read -r -p \"Do you want to continue without sudo? [y/N]: \" resp" \
+            "                if [[ ! \"\${resp}\" =~ ^[Yy]$ ]]; then" \
+            "                    echo \"Aborting uninstallation.\"" \
+            "                    exit 1" \
+            "                fi" \
+            "            fi" \
             "            ;;" \
             "    esac" \
             "" \
