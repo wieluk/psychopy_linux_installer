@@ -761,9 +761,19 @@ show_gui() {
 create_rerun_command() {
     local cmd lowercase_key curr def args
     for key in "${!DEFAULT_OPTS[@]}"; do
-        curr="${!key}"
-        def="${DEFAULT_OPTS[${key}]}"
         lowercase_key=$(echo "${key}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+        if [[ "$(declare -p "${key}" 2>/dev/null)" =~ "declare -a" ]]; then
+            eval "local arr=(\"\${${key}[@]}\")"
+            # shellcheck disable=SC2154
+            if (( ${#arr[@]} > 1 )); then
+                curr=$(IFS=','; echo "${arr[*]}")
+            else
+                curr="${arr[0]}"
+            fi
+        else
+            curr="${!key}"
+        fi
+        def="${DEFAULT_OPTS[${key}]}"
         if [[ "${curr}" != "${def}" ]]; then
             if [[ "${curr}" == "true" && "${def}" == "false" ]]; then
                 args+=" --${lowercase_key}"
