@@ -1917,17 +1917,13 @@ create_desktop_shortcut() {
             case "${SUDO_MODE}" in
                 ask)
                     if ! prompt_user "Need sudo to create shortcuts for ${user}. Proceed?" Yes No | grep -q Yes; then
-                        log_message "INFO: skipping Desktop for '${user}'."
+                        log_message "WARNING: skipping Desktop for shortcut creation for '${user}'."
                         continue
                     fi
                     ;;
-                continue)
-                    log_message "INFO: SUDO_MODE=continue; skipping ${user}."
+                continue | exit)
+                    log_message "WARNING: skipping Desktop for shortcut creation for ${user}. Because sudo mode is '${SUDO_MODE}'."
                     continue
-                    ;;
-                exit)
-                    log_message "INFO: SUDO_MODE=exit; aborting."
-                    return 0
                     ;;
             esac
             desktop_dir="$(sudo runuser -l "${user}" -c 'xdg-user-dir DESKTOP' 2>/dev/null || :)"
