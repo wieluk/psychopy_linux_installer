@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-07-18
+#  Last Updated:  2025-07-22
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -1823,100 +1823,169 @@ setup_psychopy_group_and_limits() {
 
 # Creates desktop shortcuts for PsychoPy applications.
 create_desktop_shortcut() {
-    local launcher_executable="${PSYCHOPY_DIR}/start_psychopy"
+    local current_user num_targets is_single_user
+    current_user=$(id -un)
+    num_targets=${#USERS_TO_INSTALL_FOR[@]}
+    if [[ ${num_targets} -eq 1 && ${USERS_TO_INSTALL_FOR[0]} == "${current_user}" ]]; then
+        is_single_user=true
+    else
+        is_single_user=false
+    fi
+
+    if [[ ${SUDO_MODE} == "ask" && ${is_single_user} == false ]]; then
+        if ! prompt_user \
+            "Need sudo to create PsychoPy desktop shortcuts. Proceed?" Yes No \
+            | grep -q Yes; then
+            log_message "INFO: Skipping desktop shortcut creation."
+            return 0
+        fi
+    fi
+
+    DESKTOP_FILES=()
+
     local resources_dir="${PSYCHOPY_DIR}/Resources"
-    local system_applications_dir="/usr/share/applications"
-    local install_globally=true
-    local -a shortcut_specs=(
+    sudo_wrapper mkdir -p "${resources_dir}"
+
+    local -a shortcuts=(
         "--no-splash|$(basename "${PSYCHOPY_DIR}")|psychopy.png"
         "--builder --no-splash|Builder $(basename "${PSYCHOPY_DIR}")|builder.png"
         "--coder --no-splash|Coder $(basename "${PSYCHOPY_DIR}")|coder.png"
     )
-    local opts name icon_file user spec home_dir desktop_dir apps_dir src dst
-    DESKTOP_FILES=()
 
-    log_message "INFO: Creating desktop shortcuts for users: ${USERS_TO_INSTALL_FOR[*]}"
-
-    write_application_entry() {
-        local file_path=$1 options=$2 name=$3 icon_path=$4
-        sudo_wrapper mkdir -p "$(dirname "${file_path}")"
-        {
-            printf "[Desktop Entry]\n"
-            printf "Version=1.0\n"
-            printf "Type=Application\n"
-            printf "Name=%s\n" "$name"
-            printf "GenericName=PsychoPy Experiment Builder\n"
-            printf "Comment=Run PsychoPy %s on Python%s %s\n" \
-                   "${PSYCHOPY_VERSION}" "${PYTHON_VERSION}" "${options}"
-            printf "Exec=%s %s\n" "${launcher_executable}" "${options}"
-            [[ -f "${icon_path}" ]] && printf "Icon=%s\n" "${icon_path}"
-            printf "Terminal=false\n"
-            printf "Categories=Education;Science;Development;\n"
-            printf "MimeType=application/x-psyexp;\n"
-            printf "Keywords=psychopy;experiment;builder;psyexp;design;\n"
-            printf "TryExec=%s\n" "${launcher_executable}"
-            printf "StartupNotify=true\n"
-            printf "StartupWMClass=psychopy\n"
-        } | sudo_wrapper tee "${file_path}" >/dev/null
-        sudo_wrapper chmod +x "${file_path}"
-    }
-
-    sudo_wrapper mkdir -p "${resources_dir}"
-    if ! sudo_wrapper test -w "${system_applications_dir}"; then
-        install_globally=false
-    fi
-
-    for spec in "${shortcut_specs[@]}"; do
-        IFS='|' read -r _ _ icon_file <<<"${spec}"
-        sudo_wrapper curl -sf -o "${resources_dir}/${icon_file}" \
-            "https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon_file}" \
-            || log_message "WARNING: unable to fetch icon ${icon_file}"
+    local shortcut_spec shortcut_args shortcut_label shortcut_icon icon_url
+    for shortcut_spec in "${shortcuts[@]}"; do
+        IFS="|" read -r shortcut_args shortcut_label shortcut_icon <<<"${shortcut_spec}"
+        icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${shortcut_icon}"
+        if log curl -sIf "${icon_url}"; then
+            sudo_wrapper curl -s -o "${resources_dir}/${shortcut_icon}" "${icon_url}" \
+                || log_message "WARNING: Failed to download ${icon_url}"
+        else
+            log_message "WARNING: Icon not found at ${icon_url}"
+        fi
     done
 
-    if ${install_globally}; then
-        for spec in "${shortcut_specs[@]}"; do
-            IFS='|' read -r opts name icon_file <<<"${spec}"
-            local desktop_file="${system_applications_dir}/${name}.desktop"
-            write_application_entry "${desktop_file}" "${opts}" "${name}" "${resources_dir}/${icon_file}"
-            DESKTOP_FILES+=("${desktop_file}")
+    local system_app_dir="/usr/share/applications"
+    local global_app_dir=""
+    if sudo_wrapper test -w "${system_app_dir}"; then
+        global_app_dir="${system_app_dir}"
+    fi
+
+    local desktop_path icon_path desktop_content icon_line
+    if [[ -n ${global_app_dir} ]]; then
+        for shortcut_spec in "${shortcuts[@]}"; do
+            IFS="|" read -r shortcut_args shortcut_label shortcut_icon <<<"${shortcut_spec}"
+            desktop_path="${global_app_dir}/${shortcut_label}.desktop"
+            icon_path="${resources_dir}/${shortcut_icon}"
+
+            if [[ -f "${icon_path}" ]]; then
+                icon_line="Icon=${icon_path}"
+            else
+                icon_line=""
+            fi
+
+            desktop_content=$(printf "%s\n" \
+                "[Desktop Entry]" \
+                "Version=1.0" \
+                "Type=Application" \
+                "Name=${shortcut_label}" \
+                "GenericName=PsychoPy Experiment Builder" \
+                "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${shortcut_args}" \
+                "Exec=${PSYCHOPY_DIR}/start_psychopy ${shortcut_args}" \
+                "${icon_line}" \
+                "Terminal=false" \
+                "Categories=Education;Science;Development;" \
+                "MimeType=application/x-psyexp;" \
+                "Keywords=psychopy;experiment;builder;psyexp;design;" \
+                "TryExec=${PSYCHOPY_DIR}/start_psychopy" \
+                "StartupNotify=true" \
+                "StartupWMClass=psychopy"
+            )
+
+            sudo_wrapper sh -c "printf '%s\n' \"\$1\" > \"${desktop_path}\"" _ "${desktop_content}"
+            sudo_wrapper chmod +x "${desktop_path}"
+            DESKTOP_FILES+=( "${desktop_path}" )
         done
     fi
 
+    local user passwd_entry user_home user_applications_dir
     for user in "${USERS_TO_INSTALL_FOR[@]}"; do
-        home_dir=$(getent passwd "${user}" | cut -d: -f6) || {
-            log_message "WARNING: user '${user}' has no home; skipping"
+        passwd_entry=$(getent passwd "${user}") || {
+            log_message "WARNING: user '${user}' not found; skipping."
             continue
         }
-        desktop_dir=$(sudo_wrapper runuser -l "${user}" -c 'xdg-user-dir DESKTOP' 2>/dev/null)
-        if [[ -z "${desktop_dir}" || ! -d "${desktop_dir}" ]]; then
-            log_message "WARNING: desktop directory not found for '${user}'; skipping"
+        user_home=${passwd_entry#*:*:*:*:}; user_home=${user_home%%:*}
+
+        if [[ -n ${global_app_dir} ]]; then
+            user_applications_dir="${global_app_dir}"
+        else
+            user_applications_dir="${user_home}/.local/share/applications"
+            sudo_wrapper mkdir -p "${user_applications_dir}"
+            sudo_wrapper chown "${user}:${user}" "${user_applications_dir}"
+        fi
+
+        for shortcut_spec in "${shortcuts[@]}"; do
+            IFS="|" read -r shortcut_args shortcut_label shortcut_icon <<<"${shortcut_spec}"
+            desktop_path="${user_applications_dir}/${shortcut_label}.desktop"
+            icon_path="${resources_dir}/${shortcut_icon}"
+
+            if [[ -f "${icon_path}" ]]; then
+                icon_line="Icon=${icon_path}"
+            else
+                icon_line=""
+            fi
+
+            desktop_content=$(printf "%s\n" \
+                "[Desktop Entry]" \
+                "Version=1.0" \
+                "Type=Application" \
+                "Name=${shortcut_label}" \
+                "GenericName=PsychoPy Experiment Builder" \
+                "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${shortcut_args}" \
+                "Exec=${PSYCHOPY_DIR}/start_psychopy ${shortcut_args}" \
+                "${icon_line}" \
+                "Terminal=false" \
+                "Categories=Education;Science;Development;" \
+                "MimeType=application/x-psyexp;" \
+                "Keywords=psychopy;experiment;builder;psyexp;design;" \
+                "TryExec=${PSYCHOPY_DIR}/start_psychopy" \
+                "StartupNotify=true" \
+                "StartupWMClass=psychopy"
+            )
+
+            sudo_wrapper sh -c "printf '%s\n' \"\$1\" > \"${desktop_path}\"" _ "${desktop_content}"
+            sudo_wrapper chmod +x "${desktop_path}"
+            sudo_wrapper chown "${user}:${user}" "${desktop_path}"
+            DESKTOP_FILES+=( "${desktop_path}" )
+        done
+    done
+
+    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+        local desktop_dir
+        if [[ ${is_single_user} == true && ${user} == "${current_user}" ]]; then
+            desktop_dir=$(xdg-user-dir DESKTOP 2>/dev/null || :)
+        else
+            desktop_dir=$(sudo runuser -l "${user}" -c 'xdg-user-dir DESKTOP' 2>/dev/null || :)
+        fi
+
+        if [[ -z ${desktop_dir} ]]; then
+            log_message "WARNING: could not find DESKTOP dir for '${user}'; skipping symlinks."
             continue
         fi
 
-        if ! ${install_globally}; then
-            apps_dir="${home_dir}/.local/share/applications"
-            if [[ ! -d "${apps_dir}" ]]; then
-                log_message "WARNING: applications directory not found for '${user}'; skipping"
-                continue
-            fi
-        fi
+        sudo_wrapper mkdir -p "${desktop_dir}"
+        sudo_wrapper chown "${user}:${user}" "${desktop_dir}"
 
-        for spec in "${shortcut_specs[@]}"; do
-            IFS='|' read -r opts name icon_file <<<"${spec}"
-            if ${install_globally}; then
-                src="${system_applications_dir}/${name}.desktop"
-            else
-                src="${apps_dir}/${name}.desktop"
-                write_application_entry "${src}" "${opts}" "${name}" "${resources_dir}/${icon_file}"
-                sudo_wrapper chown "${user}:${user}" "${src}"
-                DESKTOP_FILES+=("${src}")
-            fi
-            dst="${desktop_dir}/${name}.desktop"
-            sudo_wrapper ln -sf "${src}" "${dst}"
-            sudo_wrapper chown "${user}:${user}" "${dst}"
+        for shortcut_spec in "${shortcuts[@]}"; do
+            IFS="|" read -r _ shortcut_label _ <<<"${shortcut_spec}"
+            local link_src link_dst
+            link_src="${user_applications_dir}/${shortcut_label}.desktop"
+            link_dst="${desktop_dir}/${shortcut_label}.desktop"
+
+            sudo_wrapper ln -sf "${link_src}" "${link_dst}"
+            sudo_wrapper chown "${user}:${user}" "${link_dst}"
             sudo_wrapper runuser -l "${user}" -c \
-                "command -v gio &>/dev/null && gio set '${dst}' metadata::trusted true"
-            DESKTOP_FILES+=("${dst}")
+                "command -v gio &>/dev/null && gio set '${link_dst}' metadata::trusted true"
+            DESKTOP_FILES+=( "${link_dst}" )
         done
     done
 }
