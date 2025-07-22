@@ -1907,13 +1907,13 @@ create_desktop_shortcut() {
         done
     fi
 
-    local user passwd_entry user_home user_applications_dir
+    local user user_home user_applications_dir
     for user in "${USERS_TO_INSTALL_FOR[@]}"; do
-        passwd_entry=$(getent passwd "${user}") || {
+        user_home=$(getent passwd "${user}" | cut -d: -f6)
+        if [[ -z "${user_home}" ]]; then
             log_message "WARNING: user '${user}' not found; skipping."
             continue
-        }
-        user_home=${passwd_entry#*:*:*:*:}; user_home=${user_home%%:*}
+        fi
 
         if [[ -n ${global_app_dir} ]]; then
             user_applications_dir="${global_app_dir}"
