@@ -20,7 +20,7 @@ declare -A DEFAULT_OPTS=(
     [WXPYTHON_WHEEL_INDEX]=""
     [BUILD_WXPYTHON]=false
     [INSTALL_DIR]="/opt/psychopy"
-    [USERS_TO_INSTALL_FOR]="${CURRENT_USER}"
+    [TARGET_USERS]="${CURRENT_USER}"
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
@@ -314,7 +314,7 @@ show_help() {
             "  --build-wxpython                             Build wxPython from source" \
             "  --wxpython-wheel-index=URL                   Custom wxPython wheel index" \
             "  --install-dir=DIR                            Install directory (default: ${DEFAULT_OPTS[INSTALL_DIR]})" \
-            "  --users-to-install-for=USER1,USER2,...|*     Comma-separated users to install for, or '*' for all real users (default: ${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]})" \
+            "  --target-users=USER1,USER2,...|*             Users to install for, or '*' for all users (default: ${DEFAULT_OPTS[TARGET_USERS]})" \
             "  --venv-name=NAME                             Virtual environment name" \
             "  --additional-packages=PKG,PKG,...            Extra pip packages; Format: package1==version,package2." \
             "  --requirements-file=FILE                     Install pip packages from requirements.txt" \
@@ -370,16 +370,16 @@ process_arguments() {
         --install-dir=*)
             INSTALL_DIR="${arg#*=}"
             ;;
-        --users-to-install-for=*)
-            USERS_TO_INSTALL_FOR="${arg#*=}"
-            if [[ "${USERS_TO_INSTALL_FOR}" == "*" ]]; then
-                mapfile -t USERS_TO_INSTALL_FOR < <(get_real_users)
-                log_message "INFO: Installing for following users: ${USERS_TO_INSTALL_FOR[*]}"
+        --target-users=*)
+            TARGET_USERS="${arg#*=}"
+            if [[ "${TARGET_USERS}" == "*" ]]; then
+                mapfile -t TARGET_USERS < <(get_real_users)
+                log_message "INFO: Installing for following users: ${TARGET_USERS[*]}"
             else
-                IFS=',' read -r -a USERS_TO_INSTALL_FOR <<< "${USERS_TO_INSTALL_FOR[*]}"
+                IFS=',' read -r -a TARGET_USERS <<< "${TARGET_USERS[*]}"
             fi
-            if ! validate_user_list "${USERS_TO_INSTALL_FOR[@]}"; then
-                log_message "ERROR: One or more specified users in --users-to-install-for are not valid users." nolog
+            if ! validate_user_list "${TARGET_USERS[@]}"; then
+                log_message "ERROR: One or more specified users in --target-users are not valid users." nolog
             fi
             ;;
         --venv-name=*)
@@ -543,7 +543,7 @@ show_gui() {
             FALSE "Custom wxPython wheel index" "None" \
             FALSE "Additional pip packages" "None" \
             FALSE "Use requirements.txt" "False" \
-            FALSE "Users to install for" "${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]}"
+            FALSE "Users to install for" "${DEFAULT_OPTS[TARGET_USERS]}"
     ); then
         :
     else
@@ -659,7 +659,7 @@ show_gui() {
         mapfile -t all_users < <(get_real_users)
         checklist_items=()
         for username in "${all_users[@]}"; do
-            if [[ "${username}" == "${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]}" ]]; then
+            if [[ "${username}" == "${DEFAULT_OPTS[TARGET_USERS]}" ]]; then
                 checklist_items+=(TRUE  "${username}")
             else
                 checklist_items+=(FALSE "${username}")
@@ -674,7 +674,7 @@ show_gui() {
             "${checklist_items[@]}")
 
         if [[ -n "${selected_users}" ]]; then
-            IFS='|' read -ra USERS_TO_INSTALL_FOR <<< "${selected_users}"
+            IFS='|' read -ra TARGET_USERS <<< "${selected_users}"
         else
             exit 0
         fi
@@ -1815,12 +1815,12 @@ setup_psychopy_group_and_limits() {
     fi
 
 
-    if (( ${#USERS_TO_INSTALL_FOR[@]} == 0 )); then
-        log_message "WARNING: No users specified in USERS_TO_INSTALL_FOR; nothing to do."
+    if (( ${#TARGET_USERS[@]} == 0 )); then
+        log_message "WARNING: No users specified in TARGET_USERS; nothing to do."
         return
     fi
 
-    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+    for user in "${TARGET_USERS[@]}"; do
         if id -nG "${user}" | grep -qw psychopy; then
             log_message "INFO: User '${user}' is already in the 'psychopy' group."
         else
@@ -1900,7 +1900,7 @@ create_desktop_shortcut() {
         global_app_dir=""
     fi
 
-    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+    for user in "${TARGET_USERS[@]}"; do
         user_home="$(getent passwd "${user}" | cut -d: -f6 || :)"
         if [[ -z "${user_home}" ]]; then
             log_message "WARNING: user '${user}' not found; skipping."
@@ -1969,7 +1969,7 @@ add_psychopy_to_path() {
     local global_link="/usr/local/bin/${VENV_NAME}"
     local user per_bin per_link home_dir
     PSYCHOPY_LAUNCHER_LINK=()
-    log_message "INFO: Adding PsychoPy to PATH for users: ${USERS_TO_INSTALL_FOR[*]}"
+    log_message "INFO: Adding PsychoPy to PATH for users: ${TARGET_USERS[*]}"
 
     if sudo_wrapper ln -sf "${launcher_source}" "${global_link}"; then
         PSYCHOPY_LAUNCHER_LINK+=("${global_link}")
@@ -1979,13 +1979,13 @@ add_psychopy_to_path() {
         log_message "WARNING: Global path link failed, falling back to per‐user."
     fi
 
-    for user in "${USERS_TO_INSTALL_FOR[@]}"; do
+    for user in "${TARGET_USERS[@]}"; do
         local home_dir per_bin per_link
         home_dir=$(getent passwd "${user}" | cut -d: -f6) || continue
         per_bin="${home_dir}/.local/bin"
         per_link="${per_bin}/${VENV_NAME}"
 
-        if [[ "${user}" == "${DEFAULT_OPTS[USERS_TO_INSTALL_FOR]}" ]]; then
+        if [[ "${user}" == "${DEFAULT_OPTS[TARGET_USERS]}" ]]; then
             mkdir -p "${per_bin}"
             if ln -sf "${launcher_source}" "${per_link}"; then
                 PSYCHOPY_LAUNCHER_LINK+=("${per_link}")

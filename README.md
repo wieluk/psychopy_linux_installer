@@ -96,7 +96,7 @@ Run the installer directly without saving it to disk:
 | `--build-wxpython` | Force building wxPython from source instead of downloading prebuilt wheels, even if wheels are available. | *false* |
 | `--wxpython-wheel-index=URL` | Provide a custom URL for wxPython wheels. Useful for rolling distributions (e.g., Arch) or distributions that can use wheels built for another compatible system (e.g., Ubuntu-based). Example: `--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
 | `--install-dir=DIR` | Set the installation directory for PsychoPy. | `/opt/psychopy` |
-| `--user-install` | Install for the current user only; uses user-specific paths. Defaults to `${HOME}/psychopy` if `--install-dir` is not set. | *false* |
+| `--target-users=USER1,USER2,...\|*` | Comma-separated users to install for, or '*' for all real users. Adds users to psychopy group and creates symlink/shortcuts | *current user* |
 | `--venv-name=NAME` | Set a custom name for the virtual environment folder. | *PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}* |
 | `--additional-packages=PKG,PKG,…` | List extra pip packages to install (comma-separated, supports `package==version`). Example: `--additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2` | *(none)* |
 | `--requirements-file=FILE` | Install all pip packages listed in the given requirements file into the PsychoPy environment. | (none) |
@@ -114,7 +114,7 @@ Run the installer directly without saving it to disk:
 
 **Note:**
 
-- Non-Admin Installation: The `--sudo-mode=continue --user-install` option enables non-admin users to upgrade or reinstall if the packages are already installed. This option assumes an administrator has previously run the installation.
+- Non-Admin Installation: The `--sudo-mode=continue --install-dir=~/psychopy` option enables non-admin users to upgrade or reinstall if the packages are already installed. This option assumes an administrator has previously run the installation.
 - Version Selection: The `--psychopy-version` and `--wxpython-version` options accept specific versions from [PyPI](https://pypi.org), as well as `latest` or `git`. Note that `git` versions may be unstable and are generally not recommended.
 
 ## Examples
