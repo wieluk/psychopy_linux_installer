@@ -1825,9 +1825,9 @@ setup_psychopy_group_and_limits() {
             log_message "INFO: User '${user}' is already in the 'psychopy' group."
         else
             if sudo_wrapper usermod -a -G psychopy "${user}"; then
-            log_message "INFO: User '${user}' added to 'psychopy' group."
+                log_message "INFO: User '${user}' added to 'psychopy' group."
             else
-            log_message "WARNING: Failed to add user '${user}' to 'psychopy' group. Please add manually."
+                log_message "WARNING: Failed to add user '${user}' to 'psychopy' group. Please add manually."
             fi
         fi
     done
@@ -1980,7 +1980,6 @@ add_psychopy_to_path() {
     fi
 
     for user in "${TARGET_USERS[@]}"; do
-        local home_dir per_bin per_link
         home_dir=$(getent passwd "${user}" | cut -d: -f6) || continue
         per_bin="${home_dir}/.local/bin"
         per_link="${per_bin}/${VENV_NAME}"
