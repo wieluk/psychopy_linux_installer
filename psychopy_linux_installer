@@ -659,7 +659,7 @@ show_gui() {
         mapfile -t all_users < <(get_real_users)
         checklist_items=()
         for username in "${all_users[@]}"; do
-            if [[ "${username}" == "${DEFAULT_OPTS[TARGET_USERS]}" ]]; then
+            if [[ "${username}" == "${CURRENT_USER}" ]]; then
                 checklist_items+=(TRUE  "${username}")
             else
                 checklist_items+=(FALSE "${username}")
@@ -1984,7 +1984,7 @@ add_psychopy_to_path() {
         per_bin="${home_dir}/.local/bin"
         per_link="${per_bin}/${VENV_NAME}"
 
-        if [[ "${user}" == "${DEFAULT_OPTS[TARGET_USERS]}" ]]; then
+        if [[ "${user}" == "${CURRENT_USER}" ]]; then
             mkdir -p "${per_bin}"
             if ln -sf "${launcher_source}" "${per_link}"; then
                 PSYCHOPY_LAUNCHER_LINK+=("${per_link}")

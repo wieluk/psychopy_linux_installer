@@ -97,7 +97,7 @@ Run the installer directly without saving it to disk:
 | `--wxpython-wheel-index=URL` | Provide a custom URL for wxPython wheels. Useful for rolling distributions (e.g., Arch) or distributions that can use wheels built for another compatible system (e.g., Ubuntu-based). Example: `--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
 | `--install-dir=DIR` | Set the installation directory for PsychoPy. | `/opt/psychopy` |
 | `--target-users=USER1,USER2,...\|*` | Comma-separated users to install for, or '*' for all real users. Adds users to psychopy group and creates symlink/shortcuts | *current user* |
-| `--venv-name=NAME` | Set a custom name for the virtual environment folder. | *PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}* |
+| `--venv-name=NAME` | Set a custom name for the virtual environment folder. | `PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` |
 | `--additional-packages=PKG,PKG,…` | List extra pip packages to install (comma-separated, supports `package==version`). Example: `--additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2` | *(none)* |
 | `--requirements-file=FILE` | Install all pip packages listed in the given requirements file into the PsychoPy environment. | (none) |
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control how `sudo` is used for system commands:<br>**ask**: Prompt each time sudo is needed.<br>**auto**: Use sudo automatically when required.<br>**error**: Exit if sudo is needed.<br>**continue**: Skip commands needing sudo.<br>**force**: Always use sudo, even if not strictly necessary. | `ask` |
@@ -135,7 +135,7 @@ bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/la
 - Sets up the PsychoPy installation directory at `${INSTALL_DIR}/PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` (default: `/opt/psychopy`). You can customize this with `--install-dir` and `--venv-name`.
 - Creates a virtual environment and installs wxPython (downloads prebuilt wheels, tries GitHub releases, or builds from source if needed).
 - Upgrades pip and required Python packages, then installs the specified PsychoPy version.
-- Adds the current user to a `psychopy` group and sets security limits.
+- Adds user to `psychopy` group and sets security limits.
 - Generates a startup wrapper script (`start_psychopy`) with uninstaller (--unistall).
 - Optionally creates a desktop shortcut and a symbolic link in `/usr/local/bin/` or `~/local/bin`.
 - Logs all actions to a file (initially in `/tmp`, then moved to the install directory). Use `--verbose` for detailed terminal output.
@@ -196,7 +196,7 @@ If you have other PsychoPy environments installed on your system, it is recommen
 ## Troubleshooting
 
 - Ensure your package manager is working and not locked by another process.
-- If prebuilt wheels fail, use `--build=wxpython` to build from source.
+- If prebuilt wheels fail, use `--build-wxpython` to build from source.
 - Make sure `/tmp` has enough space when building wxPython.
 - Review the log file (path shown in the terminal) for details on errors.
 - Before opening a new issue, search [existing GitHub issues](https://github.com/wieluk/psychopy_linux_installer/issues?q=is%3Aissue) to see if your problem is already reported or resolved.
