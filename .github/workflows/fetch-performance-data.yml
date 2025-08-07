@@ -99,6 +99,9 @@ jobs:
           git add test/performance_data/data test/performance_data/duration_plots test/performance_data/README.md
           git commit -m "Update performance data - $(date +'%Y-%m-%d')"
           
+          # Pull latest changes before pushing
+          git pull origin main --rebase
+          
           # Set the remote URL with authentication
           git remote set-url --push origin https://github-actions:${GITHUB_TOKEN}@github.com/wieluk/psychopy_linux_installer
           git push
