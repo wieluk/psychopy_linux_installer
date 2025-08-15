@@ -1695,7 +1695,7 @@ install_wxpython_from_github() {
 
 # Builds wxPython from source with the necessary build dependencies.
 build_wxpython() {
-    local tmp_size_gb tmp_size_new
+    local tmp_size_gb tmp_size_new install_args
 
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
@@ -1731,8 +1731,15 @@ build_wxpython() {
         fi
     fi
 
+    # Set install arguments based on BUILD_WXPYTHON flag
+    if [ "${BUILD_WXPYTHON}" = true ]; then
+        install_args=(--no-binary=wxpython --no-cache-dir --force-reinstall)
+    else
+        install_args=(--no-binary=wxpython)
+    fi
+
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
-    if log "${UV_INSTALL_DIR}/uv" pip install --no-binary=wxpython --no-cache-dir --force-reinstall "wxpython==${WXPYTHON_VERSION}"; then
+    if log "${UV_INSTALL_DIR}/uv" pip install "${install_args[@]}" "wxpython==${WXPYTHON_VERSION}"; then
         log_message "INFO: Successfully built wxPython from source."
     else
         log_message "ERROR: Building wxPython from source failed."
