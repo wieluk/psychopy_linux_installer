@@ -43,7 +43,7 @@ jobs:
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Show installation logs
-        if: always()
+        if !cancelled()
         run: |
           LOG_FILE=$(find /tmp /tmp_dir -name 'psychopy_linux_installer_*.log' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n1)
           if [ -n "$LOG_FILE" ]; then
@@ -99,13 +99,13 @@ jobs:
           echo "PsychoPy program completed"
 
       - name: Uninstall PsychoPy
-        if: always()
+        if !cancelled()
         run: |
           /tmp_dir/psychopy/start_psychopy --uninstall --non-interactive=y
           sleep 60
 
       - name: Cleanup
-        if: always()
+        if !cancelled()
         run: |
           # Remove PsychoPy test user and all related files
           if id "testpsychopyuser" &>/dev/null; then
@@ -144,7 +144,7 @@ jobs:
           $GITHUB_WORKSPACE/psychopy_linux_installer $ARGS
 
       - name: Show installation logs
-        if: always()
+        if !cancelled()
         run: |
           LOG_FILE=$(find /tmp /tmp_dir -name 'psychopy_linux_installer_*.log' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n1)
           if [ -n "$LOG_FILE" ]; then
@@ -226,12 +226,12 @@ jobs:
           echo "PsychoPy program completed"
 
       - name: Uninstall PsychoPy
-        if: always()
+        if !cancelled()
         run: |
           /tmp_dir/psychopy/start_psychopy --uninstall --non-interactive=y
           sleep 60
 
       - name: Cleanup
-        if: always()
+        if !cancelled()
         run: |
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
