@@ -1506,9 +1506,14 @@ verify_installed_pip_versions() {
     local mismatches=()
     local pkg req_version installed_version name version inst req
     declare -A installed_versions
+
+    normalize_name() {
+        echo "${1,,}" | tr '-' '_'
+    }
+
     while read -r line; do
         if [[ "${line}" =~ ^([A-Za-z0-9._-]+)==(.+)$ ]]; then
-            name="${BASH_REMATCH[1],,}"
+            name=$(normalize_name "${BASH_REMATCH[1]}")
             version="${BASH_REMATCH[2]}"
             installed_versions["${name}"]="${version}"
         fi
@@ -1517,7 +1522,7 @@ verify_installed_pip_versions() {
     IFS=',' read -ra PKG_LIST <<<"${pip_extra_packages}"
     for pkg_spec in "${PKG_LIST[@]}"; do
         if [[ "${pkg_spec}" =~ ^([A-Za-z0-9._-]+)==([0-9][A-Za-z0-9._-]*) ]]; then
-            pkg="${BASH_REMATCH[1],,}"
+            pkg=$(normalize_name "${BASH_REMATCH[1]}")
             req_version="${BASH_REMATCH[2]}"
             installed_version="${installed_versions[${pkg}]}"
             if [ -z "${installed_version}" ]; then
@@ -1957,7 +1962,7 @@ create_desktop_shortcut() {
         fi
 
         if [[ -z "${desktop_dir}" ]]; then
-            log_message "WARNING: no DESKTOP dir for '${user}'; skipping links."
+            log_message "WARNING: no DESKTOP dir for '${user}'; skipping Desktop shortcut creation."
             continue
         fi
 
@@ -1988,12 +1993,16 @@ add_psychopy_to_path() {
     PSYCHOPY_LAUNCHER_LINK=()
     log_message "INFO: Adding PsychoPy to PATH for users: ${TARGET_USERS[*]}"
 
-    if sudo_wrapper ln -sf "${launcher_source}" "${global_link}"; then
-        PSYCHOPY_LAUNCHER_LINK+=("${global_link}")
-        log_message "INFO: PsychoPy added globally at ${global_link}."
-        return 0
+    if [[ ":$PATH:" == *":/usr/local/bin:"* ]]; then
+        if sudo_wrapper ln -sf "${launcher_source}" "${global_link}"; then
+            PSYCHOPY_LAUNCHER_LINK+=("${global_link}")
+            log_message "INFO: PsychoPy added to path globally at ${global_link}."
+            return 0
+        else
+            log_message "WARNING: Global path link failed, falling back to per‐user."
+        fi
     else
-        log_message "WARNING: Global path link failed, falling back to per‐user."
+        log_message "WARNING: /usr/local/bin not in PATH, falling back to per‐user symlink."
     fi
 
     for user in "${TARGET_USERS[@]}"; do
@@ -2006,6 +2015,10 @@ add_psychopy_to_path() {
             if ln -sf "${launcher_source}" "${per_link}"; then
                 PSYCHOPY_LAUNCHER_LINK+=("${per_link}")
                 log_message "INFO: PsychoPy added to path for ${user} at ${per_link}."
+
+                if [[ ":$PATH:" != *":${per_bin}:"* ]]; then
+                    log_message "WARNING: ${per_bin} is not in PATH for ${user}."
+                fi
             else
                 log_message "WARNING: Failed to link for ${user} at ${per_link}."
             fi
@@ -2014,6 +2027,7 @@ add_psychopy_to_path() {
             if sudo_wrapper runuser -l "${user}" -c "ln -sf '${launcher_source}' '${per_link}'"; then
                 PSYCHOPY_LAUNCHER_LINK+=("${per_link}")
                 log_message "INFO: PsychoPy added for ${user} at ${per_link}."
+                log_message "NOTE: User ${user} should verify that '${per_bin}' is in their PATH."
             else
                 log_message "WARNING: Failed to link for ${user} at ${per_link}."
             fi
