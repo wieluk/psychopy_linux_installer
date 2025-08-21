@@ -88,6 +88,10 @@ run_single_distro() {
         echo -e "${YELLOW}Pre-fixing OpenSUSE sudo missing ...${NC}"
         sudo docker exec "$container_name" bash -c "zypper install -y sudo"
     fi
+    elif [[ "$distro" == *"debian"* ]]; then
+        echo -e "${YELLOW}Pre-fixing Debian sudo missing ...${NC}"
+        sudo docker exec "$container_name" bash -c "apt-get install -y sudo"
+    fi
     
     if [ "$interactive" = "true" ]; then
         echo -e "${GREEN}Starting interactive session...${NC}"
