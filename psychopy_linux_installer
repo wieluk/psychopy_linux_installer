@@ -9,7 +9,7 @@
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="2.1.2"
+SCRIPT_VERSION="2.2.0"
 
 # Define default values
 CURRENT_USER="$(id -un)"
