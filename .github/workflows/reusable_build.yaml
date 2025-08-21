@@ -399,6 +399,6 @@ jobs:
           "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
 
       - name: Cleanup
-        if !cancelled()
+        if: ${{ !cancelled() }}
         run: |
           sudo rm -rf /tmp_dir
