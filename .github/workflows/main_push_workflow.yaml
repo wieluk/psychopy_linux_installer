@@ -10,9 +10,9 @@ on:
       - .github/PsychoPy_tests/**
   workflow_dispatch:
 
-concurrency:
-  group: main_push_workflow
-  cancel-in-progress: false
+#concurrency:
+#  group: main_push_workflow
+#  cancel-in-progress: false
 
 jobs:
   syntax-check:
