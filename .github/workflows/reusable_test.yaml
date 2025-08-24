@@ -107,16 +107,7 @@ jobs:
       - name: Cleanup
         if: ${{ !cancelled() }}
         run: |
-          # Remove PsychoPy test user and all related files
-          if id "testpsychopyuser" &>/dev/null; then
-            sudo pkill -u testpsychopyuser || true
-            sudo userdel -r testpsychopyuser || true
-            sudo rm -rf /home/testpsychopyuser
-          fi
-          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
-          if [ -f ~/.bashrc ]; then
-            grep -v 'psychopy' ~/.bashrc > ~/.bashrc.tmp && mv ~/.bashrc.tmp ~/.bashrc
-          fi
+          sudo rm -rf /tmp_dir
 
   run-installer-with-requirements-txt:
     name: Run installer with requirements file
@@ -234,4 +225,4 @@ jobs:
       - name: Cleanup
         if: ${{ !cancelled() }}
         run: |
-          sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
+          sudo rm -rf /tmp_dir
