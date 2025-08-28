@@ -28,7 +28,7 @@ The installer has been tested and confirmed to work on the following Linux distr
 
 - **Ubuntu:** 24.04, 22.04, 20.04
 - **Pop!_OS:** 22.04
-- **Debian:** 12, 11
+- **Debian:** 13, 12, 11
 - **Fedora:** 41, 40, 39
 - **Rocky Linux:** 9
 - **CentOS:** 9
