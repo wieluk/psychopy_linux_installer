@@ -67,18 +67,17 @@ jobs:
       release-method: create-release
 
   # For full release
-  # test-installation-build:
-  #   name: Test Installation (Build)
-  #   needs: check-if-release
-  #   if: needs.check-if-release.outputs.result == 'release'
-  #   uses: ./.github/workflows/reusable_test.yaml
-  #   with:
-  #     test-mode: "build"
+  test-installation-build:
+    name: Test Installation (Build)
+    needs: check-if-release
+    if: needs.check-if-release.outputs.result == 'release'
+    uses: ./.github/workflows/reusable_test.yaml
+    with:
+      test-mode: "build"
 
   create-pre-release:
     name: Create pre-release
-    needs: check-if-release
-    #needs: test-installation-build
+    needs: test-installation-build
     if: needs.check-if-release.outputs.result == 'release'
     uses: ./.github/workflows/reusable_release_manager.yaml
     with:
