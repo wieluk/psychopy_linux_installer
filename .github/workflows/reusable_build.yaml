@@ -345,27 +345,51 @@ jobs:
                   ;;
           esac
 
-
       - name: Build wxPython
         if: env.SKIP_WXPYTHON_PROCESS == 'false'
         continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
         id: build-wxpython
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh
-          hash -r
-          uv venv --python "python${PYTHON_VERSION}" "/tmp_dir/psychopy_venv"
+          # Set up uv environment in /tmp
+          UV_INSTALL_DIR="/tmp/.uv"
+          PYTHON_INSTALL_DIR="/tmp/.python"
+          export UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}"
+          export UV_CACHE_DIR="${UV_INSTALL_DIR}/cache"
+          export UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}"
+          export UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin"
+          export UV_PYTHON_CACHE_DIR="${PYTHON_INSTALL_DIR}/cache"
+          export UV_TOOL_DIR="${UV_INSTALL_DIR}/tools"
+          export UV_TOOL_BIN_DIR="${UV_INSTALL_DIR}/tools/bin"
+
+          mkdir -p "${UV_INSTALL_DIR}"
+          mkdir -p "${PYTHON_INSTALL_DIR}"
+
+          # Check if 'uv' is already installed
+          if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
+              echo "INFO: 'uv' is already installed."
+          else
+              echo "INFO: 'uv' not found. Installing via official installer script ..."
+              curl -LsSf -o /tmp/uv-install.sh https://astral.sh/uv/install.sh
+              sh /tmp/uv-install.sh
+              rm -f /tmp/uv-install.sh
+          fi
+
+          # Use the installed uv
+          UV_BIN="${UV_INSTALL_DIR}/uv"
+          
+          $UV_BIN venv --python "python${PYTHON_VERSION}" "/tmp_dir/psychopy_venv"
           source /tmp_dir/psychopy_venv/bin/activate
 
-          uv pip install -U pip distro sip six psychtoolbox setuptools wheel
+          pip install -U pip distro sip six psychtoolbox setuptools wheel
 
           if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
-              uv pip install attrdict
+              pip install attrdict
           elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
-              uv pip install attrdict3
+              pip install attrdict3
           fi
 
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
-          uv pip download wxPython==$WXPYTHON_VERSION
+          pip download wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
@@ -397,6 +421,21 @@ jobs:
           -H "Content-Type: application/octet-stream" \
           --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
           "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
+
+      - name: Report build status
+        if: ${{ !cancelled() }}
+        run: |
+          if [[ "${{ steps.build-wxpython.outcome }}" == "failure" ]]; then
+            if [[ "${{ env.ALLOW_FAILURE }}" == "true" ]]; then
+              echo "::warning title=Build Failed (Allowed)::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed (allowed)"
+            else
+              echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
+            fi
+          elif [[ "${{ env.SKIP_WXPYTHON_PROCESS }}" == "true" ]]; then
+            echo "::notice title=Skipped::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
+          else
+            echo "::notice title=Success::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython built successfully"
+          fi
 
       - name: Cleanup
         if: always()
