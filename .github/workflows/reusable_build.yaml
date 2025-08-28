@@ -378,6 +378,8 @@ jobs:
           UV_BIN="${UV_INSTALL_DIR}/uv"
           
           $UV_BIN venv --python "python${PYTHON_VERSION}" --seed "/tmp_dir/psychopy_venv"
+          
+          source /tmp_dir/psychopy_venv/bin/activate
           pip install -U pip distro sip six psychtoolbox setuptools wheel
 
           if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
