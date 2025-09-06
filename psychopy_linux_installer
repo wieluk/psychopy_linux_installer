@@ -288,11 +288,11 @@ set_shared_permissions() {
 
     group=$(getent group psychopy >/dev/null 2>&1 && echo ":psychopy")
     if [ -f "${path}" ] || [ -L "${path}" ]; then
-        sudo_wrapper chmod a+rw "${path}"
+        sudo_wrapper chmod 770 "${path}"
         sudo_wrapper chown "${CURRENT_USER}${group}" "${path}"
     else
         # shellcheck disable=SC2086
-        sudo_wrapper chmod ${rec_flag} a+rx "${path}"
+        sudo_wrapper chmod ${rec_flag} 770 "${path}"
         # shellcheck disable=SC2086
         sudo_wrapper chown ${rec_flag} "${CURRENT_USER}${group}" "${path}"
     fi
