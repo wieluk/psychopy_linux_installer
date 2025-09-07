@@ -288,11 +288,11 @@ set_shared_permissions() {
 
     group=$(getent group psychopy >/dev/null 2>&1 && echo ":psychopy")
     if [ -f "${path}" ] || [ -L "${path}" ]; then
-        sudo_wrapper chmod a+rw "${path}"
+        sudo_wrapper chmod 770 "${path}"
         sudo_wrapper chown "${CURRENT_USER}${group}" "${path}"
     else
         # shellcheck disable=SC2086
-        sudo_wrapper chmod ${rec_flag} a+rx "${path}"
+        sudo_wrapper chmod ${rec_flag} 770 "${path}"
         # shellcheck disable=SC2086
         sudo_wrapper chown ${rec_flag} "${CURRENT_USER}${group}" "${path}"
     fi
@@ -2048,24 +2048,6 @@ create_start_psychopy_wrapper() {
     local wrapper_path="${PSYCHOPY_DIR}/start_psychopy"
     sudo_wrapper mkdir -p "${PSYCHOPY_DIR}/workspace"
 
-    local config_folder_block=""
-    if is_version_greater "${PSYCHOPY_VERSION}" "2025.1.1" || [ "${PSYCHOPY_VERSION}" = "git" ]; then
-        config_folder_block=$(printf "%s\n" \
-            "if [ -z \"\${USER_DIR_ARG}\" ]; then" \
-            "    CONFIG_DIR=\"\${SCRIPT_DIR}\"" \
-            "    if [ -d \"\${CONFIG_DIR}\" ]; then" \
-            "        echo \"[start_psychopy] PsychoPy config folder: \${CONFIG_DIR}/.psychopy3\"" \
-            "        CONFIG_ARG=\"--user-dir=\${CONFIG_DIR}\"" \
-            "    else" \
-            "        echo \"[start_psychopy] WARNING: Config directory '\${CONFIG_DIR}' does not exist. Using default PsychoPy config location.\"" \
-            "        CONFIG_ARG=\"\"" \
-            "    fi" \
-            "else" \
-            "    CONFIG_ARG=\"\"" \
-            "fi" \
-            "")
-    fi
-
     local shortcut_block=""
     local shortcut_quoted_files
     printf -v shortcut_quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
@@ -2106,8 +2088,7 @@ create_start_psychopy_wrapper() {
             "" \
             "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
             "" \
-            "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
-            "USER_DIR_ARG=\"\"" \
+            "WORKSPACE_DIR=\${HOME}" \
             "UNINSTALL_ARG=false" \
             "HELP_ARG=false" \
             "NON_INTERACTIVE_ARG=\"\"" \
@@ -2118,7 +2099,16 @@ create_start_psychopy_wrapper() {
             "    if [ \"\${mode}\" = \"y\" ]; then" \
             "        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
             "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
-            "        \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
+            "        for user in ${TARGET_USERS[*]}; do" \
+            "            user_home=\$(getent passwd \"\${user}\" | cut -d: -f6 2>/dev/null || echo \"\")" \
+            "            if [ -z \"\${user_home}\" ]; then" \
+            "                echo \"WARNING: Could not determine home directory for user: \${user}\"" \
+            "                continue" \
+            "            elif [ -d \"\${user_home}/.psychopy3\" ]; then" \
+            "                \${SUDO} rm -rf \"\${user_home}/.psychopy3\"" \
+            "                echo \"Removed .psychopy3 for user: \${user}\"" \
+            "            fi" \
+            "        done" \
             "        \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
             "        \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
             "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
@@ -2126,8 +2116,19 @@ create_start_psychopy_wrapper() {
             "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
             "        read -r -p \"Remove psychopy group? [y/N]: \" resp" \
             "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
-            "        read -r -p \"Remove PsychoPy user settings (~/.psychopy3)? [y/N]: \" resp" \
-            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"\${HOME}/.psychopy3\"" \
+            "        read -r -p \"Remove PsychoPy user settings (.psychopy3) for all target users (${TARGET_USERS[*]})? [y/N]: \" resp" \
+            "        if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
+            "            for user in ${TARGET_USERS[*]}; do" \
+            "                user_home=\$(getent passwd \"\${user}\" | cut -d: -f6 2>/dev/null || echo \"\")" \
+            "                if [ -z \"\${user_home}\" ]; then" \
+            "                    echo \"WARNING: Could not determine home directory for user: \${user}\"" \
+            "                    continue" \
+            "                elif [ -d \"\${user_home}/.psychopy3\" ]; then" \
+            "                    \${SUDO} rm -rf \"\${user_home}/.psychopy3\"" \
+            "                    echo \"Removed .psychopy3 for user: \${user}\"" \
+            "                fi" \
+            "            done" \
+            "        fi" \
             "        read -r -p \"Remove uv with cache? (\"${UV_INSTALL_DIR}\") [y/N]: \" resp" \
             "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
             "        read -r -p \"Remove python versions installed by this installer? (\"${PYTHON_INSTALL_DIR}\") [y/N]: \" resp" \
@@ -2173,10 +2174,6 @@ create_start_psychopy_wrapper() {
             "    case \"\${arg}\" in" \
             "        --workspace-dir=*)" \
             "            WORKSPACE_DIR=\"\${arg#*=}\"" \
-            "            ;;" \
-            "        --user-dir=*)" \
-            "            USER_DIR_ARG=\"\${arg}\"" \
-            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
             "            ;;" \
             "        --uninstall)" \
             "            UNINSTALL_ARG=true" \
@@ -2270,9 +2267,7 @@ create_start_psychopy_wrapper() {
             "    echo \"[start_psychopy] WARNING: Could not change to workspace directory.\"" \
             "fi" \
             "" \
-            "${config_folder_block}" \
-            "" \
-            "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${CONFIG_ARG}\" \"\$@\""
+            "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\$@\""
     )
     printf "%s\n" "${wrapper_script}" | tee "${wrapper_path}" >/dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
@@ -2498,9 +2493,18 @@ main() {
     fi
 
     # remove .psychopy3 if flag set
-    if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ] && [ -d "${HOME}/.psychopy3" ]; then
-        log_message "INFO: Removing existing '.psychopy3' directory."
-        sudo_wrapper rm -rf "${HOME}/.psychopy3"
+    if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
+        log_message "INFO: Removing existing '.psychopy3' directories for target users."
+        for user in "${TARGET_USERS[@]}"; do
+            user_home=$(getent passwd "${user}" | cut -d: -f6 2>/dev/null || echo "")
+            if [ -z "${user_home}" ]; then
+                log_message "WARNING: Could not determine home directory for user: ${user}"
+                continue
+            elif [ -d "${user_home}/.psychopy3" ]; then
+                sudo_wrapper rm -rf "${user_home}/.psychopy3"
+                log_message "INFO: Removed .psychopy3 for user: ${user}"
+            fi
+        done
     fi
 
     # Create desktop shortcut
