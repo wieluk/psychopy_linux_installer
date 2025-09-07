@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-09-06
+#  Last Updated:  2025-09-07
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -2088,8 +2088,7 @@ create_start_psychopy_wrapper() {
             "" \
             "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
             "" \
-            "WORKSPACE_DIR=\"\${SCRIPT_DIR}/workspace\"" \
-            "USER_DIR_ARG=\"\"" \
+            "WORKSPACE_DIR=\${HOME}" \
             "UNINSTALL_ARG=false" \
             "HELP_ARG=false" \
             "NON_INTERACTIVE_ARG=\"\"" \
