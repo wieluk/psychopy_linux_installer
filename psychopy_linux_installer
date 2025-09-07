@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-08-07
+#  Last Updated:  2025-09-07
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -2467,12 +2467,16 @@ main() {
 
     # Install PsychoPy
     log_message "INFO: Installing PsychoPy '${PSYCHOPY_VERSION}' ..."
+    override_file=$(mktemp)
+    register_cleanup "${override_file}"
+    echo "pypi-search ; sys_platform == 'never'" > "${override_file}"
+
     if [ "${PSYCHOPY_VERSION}" == "git" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install git+https://github.com/psychopy/psychopy.git@dev
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev" --override "${override_file}"
     elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}" --override "${override_file}"
     else
-        log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}"
+        log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}" --override "${override_file}"
     fi
 
     if ! "${UV_INSTALL_DIR}/uv" pip show psychopy &>/dev/null; then
