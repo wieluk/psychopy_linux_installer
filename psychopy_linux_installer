@@ -2477,7 +2477,7 @@ main() {
     # Install patched pypi-search if needed
     if check_pypi_search_dependency "${PSYCHOPY_VERSION}"; then
         log_message "INFO: Installing patched pypi-search dependency..."
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/nbmorgan/pypi-search"
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/wieluk/pypi-search"
     fi
 
     # Install PsychoPy
