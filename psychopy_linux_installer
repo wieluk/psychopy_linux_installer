@@ -5,11 +5,11 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-09-07
+#  Last Updated:  2025-09-20
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="2.2.1"
+SCRIPT_VERSION="2.2.2"
 
 # Define default values
 CURRENT_USER="$(id -un)"
@@ -1546,6 +1546,20 @@ verify_installed_pip_versions() {
     fi
 }
 
+check_pypi_search_dependency() {
+    local version="$1"
+
+    if [ "${version}" == "git" ]; then
+        return 1
+    fi
+
+    if is_version_greater "${version}" "2024.2.5"; then
+        return 1
+    fi
+
+    return 0
+}
+
 
 # ===============================================================================
 # INSTALLATION COMPONENTS - Core component installations
@@ -2460,18 +2474,19 @@ main() {
 
     [ -n "${pip_extra_packages}" ] && install_pip_packages_with_fallback "${pip_extra_packages}"
 
-    # Install PsychoPy
-    log_message "INFO: Installing PsychoPy '${PSYCHOPY_VERSION}' ..."
-    override_file=$(mktemp)
-    register_cleanup "${override_file}"
-    echo "pypi-search ; sys_platform == 'never'" > "${override_file}"
+    # Install patched pypi-search if needed
+    if check_pypi_search_dependency "${PSYCHOPY_VERSION}"; then
+        log_message "INFO: Installing patched pypi-search dependency..."
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/nbmorgan/pypi-search"
+    fi
 
+    # Install PsychoPy
     if [ "${PSYCHOPY_VERSION}" == "git" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev" --override "${override_file}"
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev"
     elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}" --override "${override_file}"
+        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
     else
-        log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}" --override "${override_file}"
+        log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}"
     fi
 
     if ! "${UV_INSTALL_DIR}/uv" pip show psychopy &>/dev/null; then
