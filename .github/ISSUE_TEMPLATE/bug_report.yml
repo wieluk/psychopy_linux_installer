@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a problem after completing the troubleshooting steps.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: checkboxes
+    id: troubleshooting
+    attributes:
+      label: Troubleshooting
+      description: |
+        Before submitting this issue, **confirm each step below**:
+      options:
+        - label: My package manager is working and not locked by another process.
+          required: true
+        - label: If prebuilt wheels failed, I tried installing with `--build-wxpython` to build from source.
+          required: true
+        - label: I made sure `/tmp` has enough disk space during the build process.
+          required: true
+        - label: I have reviewed the log file (path shown in the terminal) for details on the error.
+          required: true
+        - label: I've searched existing GitHub issues to make sure this problem hasn’t already been reported or resolved.
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: e.g. Ubuntu 24.04, Debian 13, ...
+    validations:
+      required: true
+
+  - type: input
+    id: install-command
+    attributes:
+      label: Install command used
+      description: The full command you used to attempt the installation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior (if possible).
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: false
+
+  - type: input
+    id: log-link
+    attributes:
+      label: Log file link
+      description: |
+        Please upload your log file to [Pastebin](https://pastebin.com/) and paste the share link here.
+    validations:
+      required: true
