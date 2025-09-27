@@ -106,7 +106,7 @@ Run the installer directly without saving it to disk:
 | `--disable-path` | Do not create a symlink in `/usr/local/bin` or `~/.local/bin`. | *false* |
 | `--remove-psychopy-settings` | Delete existing PsychoPy user settings at `~/.psychopy3` during installation. | *false* |
 | `--no-fonts` | Skip installation of additional font packages. | *false* |
-| `--uninstall-build-packages` | Remove build packages after installation. **Warning**: Setting this to `true` may cause non-admin installations to fail after this main installation. | *false* |
+| `--cleanup` | Removes build packages and uv cache after installation. **Warning**: Setting this may cause non-admin installations to fail after this main installation. | *false* |
 | `--gui` | Launch the graphical installer (ignores other command-line options). | *false* |
 | `-f`, `--force-overwrite` | Overwrite the target install folder if it already exists. | *false* |
 | `-v`, `--verbose` | Show detailed progress messages in the terminal. | *false* |
