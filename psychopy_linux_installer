@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-09-20
+#  Last Updated:  2025-09-28
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -24,11 +24,11 @@ declare -A DEFAULT_OPTS=(
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
-    [UNINSTALL_BUILD_PACKAGES]=false
     [DISABLE_SHORTCUT]=false
     [DISABLE_PATH]=false
     [NON_INTERACTIVE]=false
     [REMOVE_PSYCHOPY_SETTINGS]=false
+    [CLEANUP]=false
     [NO_FONTS]=false
     [FORCE_OVERWRITE]=false
     [VERBOSE]=false
@@ -43,17 +43,45 @@ declare -A DEFAULT_OPTS=(
 declare -a TEMP_PATHS=()
 register_cleanup() { TEMP_PATHS+=("$@"); }
 cleanup() {
-    if (( ${#TEMP_PATHS[@]} + ${#BUILD_DEPS_INSTALLED[@]} + ${#WXPYTHON_DEPS_INSTALLED[@]} )); then
-        log_message "INFO: Cleaning up temporary paths and removing build dependencies …"
-
+    if [ ${#TEMP_PATHS[@]} -gt 0 ]; then
+        log_message "INFO: Cleaning up temporary paths..."
         for p in "${TEMP_PATHS[@]}"; do
             if [[ -e ${p} ]]; then
                 sudo_wrapper rm -rf "${p}"
             fi
         done
+    fi
 
-        remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
-        remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
+    if [ "${CLEANUP}" = true ]; then
+        if [ ${#BUILD_DEPS_INSTALLED[@]} -gt 0 ]; then
+            log_message "INFO: Removing build dependencies..."
+            remove_system_packages "${BUILD_DEPS_INSTALLED[@]}"
+        fi
+
+        if [ ${#WXPYTHON_DEPS_INSTALLED[@]} -gt 0 ]; then
+            log_message "INFO: Removing wxPython dependencies..."
+            remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
+        fi
+
+        if [ -n "${UV_PYTHON_CACHE_DIR}" ]; then
+            log_message "INFO: Removing uv cache at ${UV_CACHE_DIR}"
+            sudo_wrapper rm -rf "${UV_CACHE_DIR}"
+        fi
+
+        if [ -n "${UV_PYTHON_CACHE_DIR}" ]; then
+            log_message "INFO: Removing Python installation cache at ${UV_PYTHON_CACHE_DIR}"
+            sudo_wrapper rm -rf "${UV_PYTHON_CACHE_DIR}"
+        fi
+
+        if [ -n "${UV_TOOL_DIR}" ]; then
+            log_message "INFO: Removing uv tools directory at ${UV_TOOL_DIR}"
+            sudo_wrapper rm -rf "${UV_TOOL_DIR}"
+        fi
+
+        if [ -f "${PSYCHOPY_DIR}/.venv/bin/python" ]; then
+            log_message "INFO: Clearing pip cache in virtual environment"
+            log "${PSYCHOPY_DIR}/.venv/bin/python" -m pip cache purge
+        fi
     fi
 }
 trap cleanup EXIT
@@ -325,7 +353,7 @@ show_help() {
             "  --disable-path                               Don't add to system path" \
             "  --remove-psychopy-settings                   Remove ${HOME}/.psychopy3" \
             "  --no-fonts                                   Skip font installation" \
-            "  --uninstall-build-packages                   Remove build packages after installation" \
+            "  --cleanup                                    Remove uv cache and build packages after installation" \
             "  --gui                                        Launch GUI mode (ignores CLI args)" \
             "  -f, --force-overwrite                        Overwrite install dir" \
             "  -v, --verbose                                Verbose terminal output" \
@@ -418,8 +446,8 @@ process_arguments() {
         --no-fonts)
             NO_FONTS=true
             ;;
-        --uninstall-build-packages)
-            UNINSTALL_BUILD_PACKAGES=true
+        --cleanup)
+            CLEANUP=true
             ;;
         --gui) ;;
         -f | --force-overwrite)
@@ -693,7 +721,7 @@ show_gui() {
         FALSE "Force overwrite of existing directory"
         FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
         TRUE "Install font packages"
-        FALSE "Uninstall build packages after installation"
+        FALSE "Remove build packages and uv cache after installation"
         FALSE "Enable verbose output"
     )
 
@@ -737,8 +765,8 @@ show_gui() {
         NO_FONTS=true
     fi
 
-    if [[ ${options} == *"Uninstall build packages after installation"* ]]; then
-        UNINSTALL_BUILD_PACKAGES=true
+    if [[ ${options} == *"Remove build packages and uv cache after installation"* ]]; then
+        CLEANUP=true
     fi
 
     if [[ ${options} == *"Build wxPython from source"* ]]; then
@@ -1223,9 +1251,9 @@ install_packages() {
 
         for package in "${to_install[@]}"; do
             if is_package_installed "${package}"; then
-                if [[ "${dep_type}" == "wxpython_deps" ]] && [ "${UNINSTALL_BUILD_PACKAGES}" = true ]; then
+                if [[ "${dep_type}" == "wxpython_deps" ]] && [ "${CLEANUP}" = true ]; then
                     WXPYTHON_DEPS_INSTALLED+=("${package}")
-                elif [[ "${dep_type}" == "build_deps" ]] && [ "${UNINSTALL_BUILD_PACKAGES}" = true ]; then
+                elif [[ "${dep_type}" == "build_deps" ]] && [ "${CLEANUP}" = true ]; then
                     BUILD_DEPS_INSTALLED+=("${package}")
                 else
                     PACKAGES_INSTALLED_BY_SCRIPT+=("${package}")
@@ -2481,6 +2509,7 @@ main() {
     fi
 
     # Install PsychoPy
+    log_message "INFO: Installing PsychoPy ${PSYCHOPY_VERSION} ..."
     if [ "${PSYCHOPY_VERSION}" == "git" ]; then
         log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev"
     elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
