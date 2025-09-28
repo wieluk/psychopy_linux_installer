@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-09-27
+#  Last Updated:  2025-09-28
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -2509,6 +2509,7 @@ main() {
     fi
 
     # Install PsychoPy
+    log_message "INFO: Installing PsychoPy ${PSYCHOPY_VERSION} ..."
     if [ "${PSYCHOPY_VERSION}" == "git" ]; then
         log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev"
     elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
