@@ -535,25 +535,111 @@ def create_averages_comparison_plot(df, releases):
     print(f"✅ Averages comparison plot with subplots → {averages_path}")
 
 
-def generate_readme(created_plots):
-    """Generate README.md with the created plots."""
+def generate_readme(created_plots, df):
+    """Generate README.md with the created plots and statistics."""
     print("ℹ️  Generating README.md...")
     
-    readme_content = "# Output Data\n\n"
+    readme_content = "# Performance Data\n\n"
+    
+    # Add summary statistics section
+    readme_content += "## Summary Statistics\n\n"
+    
+    total_runs = len(df)
+    unique_run_ids = df['run_id'].nunique()
+    date_min = df['started'].min().date()
+    date_max = df['started'].max().date()
+    distinct_dates = df['started'].dt.date.nunique()
+    
+    readme_content += f"- **Total test runs**: {total_runs}\n"
+    readme_content += f"- **Unique workflow runs**: {unique_run_ids}\n"
+    readme_content += f"- **Date range**: {date_min} to {date_max}\n"
+    readme_content += f"- **Distinct test dates**: {distinct_dates}\n\n"
+    
+    # Duration statistics
+    readme_content += "### Installation Duration\n\n"
+    readme_content += f"- **Average**: {df['duration_m'].mean():.2f} minutes\n"
+    readme_content += f"- **Median**: {df['duration_m'].median():.2f} minutes\n"
+    readme_content += f"- **Min**: {df['duration_m'].min():.2f} minutes\n"
+    readme_content += f"- **Max**: {df['duration_m'].max():.2f} minutes\n"
+    readme_content += f"- **Std Dev**: {df['duration_m'].std():.2f} minutes\n\n"
+    
+    # By Operating System
+    readme_content += "### By Operating System\n\n"
+    os_stats = df.groupby('os').agg({
+        'duration_m': ['count', 'mean', 'median']
+    }).round(2)
+    os_stats.columns = ['Count', 'Avg (min)', 'Median (min)']
+    
+    readme_content += "| OS | Test Runs | Avg Duration | Median Duration |\n"
+    readme_content += "|---|---:|---:|---:|\n"
+    for os_name, row in os_stats.iterrows():
+        readme_content += f"| {os_name} | {int(row['Count'])} | {row['Avg (min)']:.2f} min | {row['Median (min)']:.2f} min |\n"
+    readme_content += "\n"
+    
+    # By Python Version
+    readme_content += "### By Python Version\n\n"
+    py_stats = df.groupby('python_version').agg({
+        'duration_m': ['count', 'mean', 'median']
+    }).round(2)
+    py_stats.columns = ['Count', 'Avg (min)', 'Median (min)']
+    
+    readme_content += "| Python Version | Test Runs | Avg Duration | Median Duration |\n"
+    readme_content += "|---|---:|---:|---:|\n"
+    for py_ver, row in py_stats.iterrows():
+        readme_content += f"| {py_ver} | {int(row['Count'])} | {row['Avg (min)']:.2f} min | {row['Median (min)']:.2f} min |\n"
+    readme_content += "\n"
+    
+    # By PsychoPy Version
+    readme_content += "### By PsychoPy Version\n\n"
+    psychopy_stats = df.groupby('psychopy_version').agg({
+        'duration_m': ['count', 'mean', 'median']
+    }).round(2)
+    psychopy_stats.columns = ['Count', 'Avg (min)', 'Median (min)']
+    
+    readme_content += "| PsychoPy Version | Test Runs | Avg Duration | Median Duration |\n"
+    readme_content += "|---|---:|---:|---:|\n"
+    for psychopy_ver, row in psychopy_stats.iterrows():
+        readme_content += f"| {psychopy_ver} | {int(row['Count'])} | {row['Avg (min)']:.2f} min | {row['Median (min)']:.2f} min |\n"
+    readme_content += "\n"
+    
+    # Configuration Performance
+    readme_content += "### Configuration Performance\n\n"
+    variant_stats = df.groupby('variant').agg({
+        'duration_m': ['count', 'mean']
+    }).round(2)
+    variant_stats.columns = ['Count', 'Avg Duration']
+    variant_stats = variant_stats.sort_values('Avg Duration')
+    
+    readme_content += "**Fastest 5 configurations (by average duration)**:\n\n"
+    readme_content += "| Configuration | Test Runs | Avg Duration |\n"
+    readme_content += "|---|---:|---:|\n"
+    for variant, row in variant_stats.head(5).iterrows():
+        readme_content += f"| {variant} | {int(row['Count'])} | {row['Avg Duration']:.2f} min |\n"
+    readme_content += "\n"
+    
+    readme_content += "**Slowest 5 configurations (by average duration)**:\n\n"
+    readme_content += "| Configuration | Test Runs | Avg Duration |\n"
+    readme_content += "|---|---:|---:|\n"
+    for variant, row in variant_stats.tail(5).iterrows():
+        readme_content += f"| {variant} | {int(row['Count'])} | {row['Avg Duration']:.2f} min |\n"
+    readme_content += "\n"
+    
+    # Add plots section
+    readme_content += "## Visualization\n\n"
     
     for plot_info in created_plots:
         plot_name = plot_info['name']
         plot_path = plot_info['path']
         relative_path = f"duration_plots/{plot_path.name}"
         
-        readme_content += f"## {plot_name}\n"
+        readme_content += f"### {plot_name}\n"
         readme_content += f"![{plot_name}]({relative_path})\n\n"
     
     readme_path = SCRIPT_DIR / "README.md"
     with open(readme_path, 'w', encoding='utf-8') as f:
         f.write(readme_content)
     
-    print(f"✅ README.md generated with {len(created_plots)} plots → {readme_path}")
+    print(f"✅ README.md generated with statistics and {len(created_plots)} plots → {readme_path}")
 
 
 def main():
@@ -596,7 +682,7 @@ def main():
     create_combined_plot(df, releases)
     create_averages_comparison_plot(df, releases)
 
-    generate_readme(created_plots)
+    generate_readme(created_plots, df)
 
     print("✅ Plot generation complete!")
 
