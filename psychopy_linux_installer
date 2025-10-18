@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-10-04
+#  Last Updated:  2025-10-18
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -2434,6 +2434,12 @@ main() {
         get_latest_pypi_version "psychopy" PSYCHOPY_VERSION
     elif [ "${PSYCHOPY_VERSION}" != "git" ]; then
         check_pypi_for_version psychopy "${PSYCHOPY_VERSION}"
+    fi
+
+    if is_version_greater "${PSYCHOPY_VERSION}" "2024.99.99"; then
+        if is_version_greater "3.9" "${PYTHON_VERSION}"; then
+            log_message "ERROR: PsychoPy versions >= 2025.1.0 only support Python versions > 3.8." nolog
+        fi
     fi
 
     # Set up PsychoPy installation directory

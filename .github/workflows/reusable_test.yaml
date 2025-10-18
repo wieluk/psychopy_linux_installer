@@ -24,6 +24,9 @@ jobs:
         os: ${{ inputs.test-mode == 'quick' && fromJson('["ubuntu-24.04", "ubuntu-22.04"]') || fromJson('["ubuntu-24", "ubuntu-22", "ubuntu-20", "debian-13", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "pop-22", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15", "linuxmint-22"]') }}
         python_version: ${{ inputs.test-mode == 'build' && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
         psychopy_version: ${{ inputs.test-mode == 'build' && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
+        exclude:
+          - python_version: "3.8"
+            psychopy_version: "latest"
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
