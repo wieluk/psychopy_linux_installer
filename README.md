@@ -93,12 +93,12 @@ Run the installer directly without saving it to disk:
 | `--psychopy-version=VERSION` | Specify the PsychoPy version to install (e.g. `2024.2.4`, `latest`, or `git`). | `latest` |
 | `--python-version=[3.8.x\|3.9.x\|3.10.x]` | Choose the Python version for the PsychoPy environment. Patch version is optional. | `3.10` |
 | `--wxpython-version=VERSION` | Specify the wxPython version to install (e.g. `4.2.3`). | `4.2.3` |
-| `--build-wxpython` | Force building wxPython from source instead of downloading prebuilt wheels, even if wheels are available. | *false* |
-| `--wxpython-wheel-index=URL` | Provide a custom URL for wxPython wheels. Useful for rolling distributions (e.g., Arch) or distributions that can use wheels built for another compatible system (e.g., Ubuntu-based). Example: `--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
+| `--build-wxpython` | Force building wxPython from source instead of downloading prebuilt wheels,<br>even if wheels are available. | *false* |
+| `--wxpython-wheel-index=URL` | Provide a custom URL for wxPython wheels. Useful for rolling distributions (e.g., Arch) <br> or distributions that can use wheels built for another compatible system (e.g., Ubuntu-based).<br>Example:<br> `--wxpython-wheel-index=`<br>`https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/` | *(none)* |
 | `--install-dir=DIR` | Set the installation directory for PsychoPy. | `/opt/psychopy` |
-| `--target-users=USER1,USER2,...\|*` | Comma-separated users to install for, or '*' for all real users. Adds users to psychopy group and creates symlink/shortcuts | *current user* |
+| `--target-users=USER1,USER2,...\|*` | Comma-separated users to install for, or '*' for all real users.<br>Adds users to psychopy group and creates symlink/shortcuts | *current user* |
 | `--venv-name=NAME` | Set a custom name for the virtual environment folder. | `PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` |
-| `--additional-packages=PKG,PKG,…` | List extra pip packages to install (comma-separated, supports `package==version`). Example: `--additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2` | *(none)* |
+| `--additional-packages=PKG,PKG,…` | List extra pip packages to install (comma-separated, supports `package==version`).<br>Example:<br>`--additional-packages=psychopy_bids,seedir,psychopy-crs==0.0.2` | *(none)* |
 | `--requirements-file=FILE` | Install all pip packages listed in the given requirements file into the PsychoPy environment. | (none) |
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control how `sudo` is used for system commands:<br>**ask**: Prompt each time sudo is needed.<br>**auto**: Use sudo automatically when required.<br>**error**: Exit if sudo is needed.<br>**continue**: Skip commands needing sudo.<br>**force**: Always use sudo, even if not strictly necessary. | `ask` |
 | `--non-interactive` | Run unattended; sets `--sudo-mode=auto` unless specified. | *false* |
@@ -106,7 +106,7 @@ Run the installer directly without saving it to disk:
 | `--disable-path` | Do not create a symlink in `/usr/local/bin` or `~/.local/bin`. | *false* |
 | `--remove-psychopy-settings` | Delete existing PsychoPy user settings at `~/.psychopy3` during installation. | *false* |
 | `--no-fonts` | Skip installation of additional font packages. | *false* |
-| `--cleanup` | Removes build packages and uv cache after installation. **Warning**: Setting this may cause non-admin installations to fail after this main installation. | *false* |
+| `--cleanup` | Removes build packages and uv cache after installation.<br>**Warning**: Setting this may cause non-admin installations to fail after this main installation. | *false* |
 | `--gui` | Launch the graphical installer (ignores other command-line options). | *false* |
 | `-f`, `--force-overwrite` | Overwrite the target install folder if it already exists. | *false* |
 | `-v`, `--verbose` | Show detailed progress messages in the terminal. | *false* |
