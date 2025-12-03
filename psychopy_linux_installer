@@ -1727,8 +1727,8 @@ install_wxpython_from_github() {
     local download_path="/tmp/${wheel_name}"
     register_cleanup "${download_path}"
 
-    if curl --head --silent --fail "${download_url}" >/dev/null; then
-        if log curl -L -o "${download_path}" "${download_url}"; then
+    if curl --retry 2 --retry-delay 1 --head --silent --fail "${download_url}" >/dev/null; then
+        if log curl --retry 2 --retry-delay 1 -L -o "${download_path}" "${download_url}"; then
             log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
             renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
             mv "${download_path}" "${renamed_wheel}"
