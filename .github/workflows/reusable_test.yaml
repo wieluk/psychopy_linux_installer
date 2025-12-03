@@ -240,7 +240,7 @@ jobs:
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
 
   docker-distro-test:
-    name: Docker ${{ matrix.distro }} Psychopy latest
+    name: Docker ${{ matrix.distro }} PsychoPy latest
     if: ${{ inputs.test-mode == 'quick' }}
     runs-on: ubuntu-latest
     strategy:
