@@ -293,3 +293,8 @@ jobs:
             echo "::error::No result file found for ${{ matrix.distro }}"
             exit 1
           fi
+
+      - name: Cleanup Docker container
+        if: always()
+        run: |
+          docker rm -f psychopy_test || true
