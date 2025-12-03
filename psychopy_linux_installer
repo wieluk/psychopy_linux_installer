@@ -63,7 +63,7 @@ cleanup() {
             remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
         fi
 
-        if [ -n "${UV_PYTHON_CACHE_DIR}" ]; then
+        if [ -n "${UV_CACHE_DIR}" ]; then
             log_message "INFO: Removing uv cache at ${UV_CACHE_DIR}"
             sudo_wrapper rm -rf "${UV_CACHE_DIR}"
         fi
@@ -1644,7 +1644,7 @@ setup_uv() {
                 return 0
             fi
         else
-            sudo_wrapper -f /tmp/uv-install.sh
+            sudo_wrapper rm -f /tmp/uv-install.sh
             log_message "ERROR: install script failed."
         fi
     else
