@@ -39,7 +39,9 @@ fi
 
 # Run installer
 echo "Running installer..."
-if ! docker exec "$CONTAINER_NAME" bash -c "/psychopy_linux_installer --install-dir=/tmp_dir --venv-name=psychopy --additional-packages=pytest,psychopy-bids -f --non-interactive $INSTALLER_ARGS"; then
+# Safely split INSTALLER_ARGS and pass as arguments to docker exec
+set -- $INSTALLER_ARGS
+if ! docker exec "$CONTAINER_NAME" /psychopy_linux_installer --install-dir=/tmp_dir --venv-name=psychopy --additional-packages=pytest,psychopy-bids -f --non-interactive "$@"; then
     echo "FAILED_INSTALL" > "$RESULT_FILE"
     docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1
     exit 1
