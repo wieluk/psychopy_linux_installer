@@ -5,11 +5,11 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2025-10-19
+#  Last Updated:  2025-12-04
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="2.2.4"
+SCRIPT_VERSION="2.2.5"
 
 # Define default values
 CURRENT_USER="$(id -un)"
