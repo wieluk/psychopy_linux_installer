@@ -238,3 +238,63 @@ jobs:
         if: always()
         run: |
           sudo rm -rf /tmp_dir ~/Desktop/* ~/.local/share/applications/*
+
+  docker-distro-test:
+    name: Docker ${{ matrix.distro }} PsychoPy latest
+    if: ${{ inputs.test-mode == 'quick' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: "ubuntu:22.04"
+            args: "--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04/"
+          - distro: "debian:bookworm"
+            args: ""
+          - distro: "fedora:41"
+            args: ""
+          - distro: "rockylinux:9"
+            args: ""
+          - distro: "archlinux:latest"
+            args: "--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
+          - distro: "opensuse/leap:15"
+            args: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run distro installation
+        env:
+          DISTRO: ${{ matrix.distro }}
+          DISTRO_ARGS: ${{ matrix.args }}
+        run: |
+          chmod +x .github/ci_distro_test.sh
+          sudo bash .github/ci_distro_test.sh "$DISTRO" "$DISTRO_ARGS"
+
+      - name: Verify installation
+        run: |
+          docker exec psychopy_test bash -c "psychopy -v"
+
+      - name: Run test program
+        if: ${{ matrix.distro != 'opensuse/leap:15' && matrix.distro != 'archlinux:latest' }}
+        run: |
+          docker exec psychopy_test bash -c "xvfb-run -s '-screen 0 1024x768x24' /tmp_dir/psychopy/.venv/bin/python /test_program/test_program_lastrun.py"
+
+      - name: Show test result
+        if: always()
+        run: |
+          if [ -f ".github/ci_distro_test_logs/result.txt" ]; then
+            result=$(cat .github/ci_distro_test_logs/result.txt)
+            echo "Result: $result"
+            if [[ "$result" == "FAILED"* ]]; then
+              echo "::error::${{ matrix.distro }} test failed: $result"
+              exit 1
+            fi
+          else
+            echo "::error::No result file found for ${{ matrix.distro }}"
+            exit 1
+          fi
+
+      - name: Cleanup Docker container
+        if: always()
+        run: |
+          docker rm -f psychopy_test || true

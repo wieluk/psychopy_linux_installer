@@ -63,7 +63,7 @@ cleanup() {
             remove_system_packages "${WXPYTHON_DEPS_INSTALLED[@]}"
         fi
 
-        if [ -n "${UV_PYTHON_CACHE_DIR}" ]; then
+        if [ -n "${UV_CACHE_DIR}" ]; then
             log_message "INFO: Removing uv cache at ${UV_CACHE_DIR}"
             sudo_wrapper rm -rf "${UV_CACHE_DIR}"
         fi
@@ -1644,7 +1644,7 @@ setup_uv() {
                 return 0
             fi
         else
-            sudo_wrapper -f /tmp/uv-install.sh
+            sudo_wrapper rm -f /tmp/uv-install.sh
             log_message "ERROR: install script failed."
         fi
     else
@@ -1727,8 +1727,8 @@ install_wxpython_from_github() {
     local download_path="/tmp/${wheel_name}"
     register_cleanup "${download_path}"
 
-    if curl --head --silent --fail "${download_url}" >/dev/null; then
-        if log curl -L -o "${download_path}" "${download_url}"; then
+    if curl --retry 2 --retry-delay 1 --head --silent --fail "${download_url}" >/dev/null; then
+        if log curl --retry 2 --retry-delay 1 -L -o "${download_path}" "${download_url}"; then
             log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
             renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
             mv "${download_path}" "${renamed_wheel}"
