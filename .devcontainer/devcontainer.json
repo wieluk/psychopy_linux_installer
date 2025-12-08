@@ -32,5 +32,5 @@
             ]
         }
     },
-    "postCreateCommand": "sudo chmod +x test/*.sh && sudo chmod +x .devcontainer/.pre_commit.sh && sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.pre_commit.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer && pip install -r test/performance_data/requirements.txt"
+    "postCreateCommand": "sudo chmod +x test/*.sh && sudo chmod +x .devcontainer/.pre_commit.sh && sudo ln -sf /workspaces/psychopy_linux_installer/.devcontainer/.pre_commit.sh /workspaces/psychopy_linux_installer/.git/hooks/pre-commit && git config --global --add safe.directory /workspaces/psychopy_linux_installer"
 }
