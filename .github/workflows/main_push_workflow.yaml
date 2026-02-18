@@ -7,7 +7,7 @@ on:
       - psychopy_linux_installer
       - .github/workflows/main_push_workflow.yaml
       - .github/workflows/reusable_*.yaml
-      - .github/PsychoPy_tests/**
+      - .github/psychopy_tests/**
   workflow_dispatch:
 
 concurrency:

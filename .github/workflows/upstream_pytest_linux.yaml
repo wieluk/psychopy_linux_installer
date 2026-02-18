@@ -1,0 +1,97 @@
+name: upstream linux pytest workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream-branch:
+        required: false
+        type: string
+        default: "dev"
+      psychopy-version:
+        required: false
+        type: string
+        default: "latest"
+      python-version:
+        required: false
+        type: string
+        default: "3.10"
+      test-path:
+        required: false
+        type: string
+        default: "psychopy/tests"
+      marker-expression:
+        required: false
+        type: string
+        default: "not needs_sound and not needs_wx and not needs_qt and not needs_pygame and not emulator"
+
+jobs:
+  upstream-linux-pytest:
+    name: Upstream Linux pytest (installer venv)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            xvfb
+
+      - name: Setup environment and install with local installer
+        env:
+          PYTHON_VERSION: ${{ inputs.python-version }}
+          PSYCHOPY_VERSION: ${{ inputs.psychopy-version }}
+        run: |
+          sudo chmod +x "$GITHUB_WORKSPACE/psychopy_linux_installer"
+          sudo rm -rf /tmp_dir
+          sudo mkdir /tmp_dir
+          sudo chmod -R a+rX /tmp_dir
+          sudo chown -R "$USER":"$(id -gn "$USER")" /tmp_dir
+
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest"
+          "$GITHUB_WORKSPACE/psychopy_linux_installer" $ARGS
+
+      - name: Clone upstream PsychoPy tests
+        env:
+          UPSTREAM_BRANCH: ${{ inputs.upstream-branch }}
+        run: |
+          git clone --depth 1 --branch "$UPSTREAM_BRANCH" https://github.com/psychopy/psychopy.git /tmp/psychopy-upstream
+
+      - name: Run upstream Linux-safe pytest subset with installer venv
+        env:
+          TEST_PATH: ${{ inputs.test-path }}
+          MARKER_EXPR: ${{ inputs.marker-expression }}
+        run: |
+          set -e
+          TARGET="/tmp/psychopy-upstream/$TEST_PATH"
+          if [ ! -e "$TARGET" ]; then
+            echo "::error::Test path not found: $TARGET"
+            exit 1
+          fi
+
+          xvfb-run -s "-screen 0 1024x768x24" \
+            /tmp_dir/psychopy/.venv/bin/python -m pytest \
+            "$TARGET" \
+            -m "$MARKER_EXPR" \
+            -v --disable-warnings -ra
+
+      - name: Show installation logs
+        if: always()
+        run: |
+          LOG_FILE=$(find /tmp /tmp_dir -name 'psychopy_linux_installer_*.log' -type f -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -n1)
+          if [ -n "$LOG_FILE" ]; then
+            echo "=== Found installation log: $LOG_FILE ==="
+            cat "$LOG_FILE"
+            echo "==== End of log ===="
+          else
+            echo "No installation logs found in either /tmp or /tmp_dir"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          /tmp_dir/psychopy/start_psychopy --uninstall --non-interactive=y || true
+          sudo rm -rf /tmp/psychopy-upstream /tmp_dir ~/Desktop/* ~/.local/share/applications/*
