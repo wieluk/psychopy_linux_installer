@@ -2494,27 +2494,22 @@ main() {
 
     log_message "INFO: Creating Python environment with uv ..."
 
-    # Check that the requested Python version is available before attempting venv creation
-    if ! "${UV_INSTALL_DIR}/uv" python list 2>/dev/null | grep -q "cpython-${PYTHON_VERSION}-"; then
+    if log "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
+        log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
+    else
         local major_minor available_versions uv_version
         major_minor=$(echo "${PYTHON_VERSION}" | grep -oE '^[0-9]+\.[0-9]+')
         available_versions=$("${UV_INSTALL_DIR}/uv" python list 2>/dev/null \
             | grep -oE "cpython-${major_minor}\.[0-9]+" \
             | sed 's/cpython-//' | sort -V | uniq | tr '\n' ' ')
         uv_version=$("${UV_INSTALL_DIR}/uv" --version 2>/dev/null || echo "unknown")
-        log_message "WARNING: Python ${PYTHON_VERSION} is not available in uv's managed installations or search path (uv ${uv_version})."
         if [ -n "${available_versions}" ]; then
             log_message "NOTE: Available Python ${major_minor}.x versions via uv: ${available_versions}"
             log_message "NOTE: To fix this, change '# Python version: ${PYTHON_VERSION}' in your requirements.txt to one of the versions listed above."
         else
-            log_message "NOTE: No Python ${major_minor}.x versions found in uv's download list. uv may be outdated."
+            log_message "NOTE: No Python ${major_minor}.x versions found. uv (${uv_version}) may be outdated."
             log_message "NOTE: Update uv by running: curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=${UV_INSTALL_DIR} sh"
         fi
-    fi
-
-    if log "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
-        log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
-    else
         log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
     fi
     # shellcheck disable=SC1091
