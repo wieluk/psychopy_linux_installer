@@ -1558,7 +1558,7 @@ verify_installed_pip_versions() {
     declare -A installed_versions
 
     normalize_name() {
-        echo "${1,,}" | tr '-.' '_'
+        echo "${1,,}" | tr -- '-.' '_'
     }
 
     while read -r line; do
