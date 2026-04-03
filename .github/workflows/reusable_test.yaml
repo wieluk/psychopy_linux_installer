@@ -180,6 +180,10 @@ jobs:
               pkg="$(echo "$line" | cut -d'=' -f1 | xargs | tr '[:upper:]' '[:lower:]')"
               # Assuming the format "package==version", field 3 is the version.
               req_ver="$(echo "$line" | cut -d'=' -f3 | xargs)"
+            elif [[ "$line" == *" @ "* ]]; then
+              # Handle PEP 440 direct references: "package @ file:///..." or "package @ https://..."
+              pkg="$(echo "$line" | cut -d'@' -f1 | xargs | tr '[:upper:]' '[:lower:]')"
+              req_ver=""
             else
               pkg="$(echo "$line" | tr '[:upper:]' '[:lower:]')"
               req_ver=""
