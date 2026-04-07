@@ -109,7 +109,7 @@ Run the installer directly without saving it to disk:
 | `--cleanup` | Removes build packages and uv cache after installation.<br>**Warning**: Setting this may cause non-admin installations to fail after this main installation. | *false* |
 | `--gui` | Launch the graphical installer (ignores other command-line options). | *false* |
 | `-f`, `--force-overwrite` | Overwrite the target install folder if it already exists. | *false* |
-| `-v`, `--verbose` | Show detailed progress messages in the terminal. | *false* |
+| `--log-level=LEVEL` | Set the log level. Valid values: `debug`, `info`, `warning`, `error`.<br>`debug` shows full command output. | `info` |
 | `--version` | Print the installer script version and exit. | *(n/a)* |
 | `-h`, `--help` | Show usage information and exit. | *(n/a)* |
 
@@ -139,7 +139,7 @@ bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/la
 - Adds user to `psychopy` group and sets security limits.
 - Generates a startup wrapper script (`start_psychopy`) with uninstaller (--unistall).
 - Optionally creates a desktop shortcut and a symbolic link in `/usr/local/bin/` or `~/local/bin`.
-- Logs all actions to a file (initially in `/tmp`, then moved to the install directory). Use `--verbose` for detailed terminal output.
+- Logs all actions to a file (initially in `/tmp`, then moved to the install directory). Use `--log-level=debug` for detailed terminal output.
 
 **Notes:**
 
