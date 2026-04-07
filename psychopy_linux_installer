@@ -9,7 +9,7 @@
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="2.2.5"
+SCRIPT_VERSION="2.2.6"
 
 # Define default values
 CURRENT_USER="$(id -un)"
@@ -1392,7 +1392,8 @@ remove_system_packages() {
 
 # Reads and parses a requirements file, adjusting dependency versions as needed.
 parse_requirements_file() {
-    local file operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version skipped_packages adjusted_packages req_packages_list raw_packages_list
+    local file operator package_name package_version pkg_lower version original_spec new_spec req_python_version req_wxpython_version req_psychopy_version skipped_packages adjusted_packages req_packages_list raw_packages_list wheel_specs_list wheel_url wheel_path_raw wheel_path rel_path req_dir
+    local -a req_lines
     local -A package_versions
     local -A package_operators
     file="${1}"
@@ -1401,7 +1402,10 @@ parse_requirements_file() {
         log_message "ERROR: Requirements file '${file}' is missing, empty, or inaccessible." nolog
     fi
 
-    while IFS= read -r line; do
+    req_dir="$(dirname "$(realpath "${file}")")"
+    mapfile -t req_lines < "${file}"
+
+    for line in "${req_lines[@]}"; do
         if [[ "${line}" =~ ^# ]] || [[ -z "${line}" ]]; then
             continue
         fi
@@ -1421,8 +1425,25 @@ parse_requirements_file() {
                 package_versions["${package_name}"]="${package_version}"
                 package_operators["${package_name}"]="${operator}"
             fi
+        elif [[ "${line}" =~ ^([A-Za-z0-9._-]+)[[:space:]]+@[[:space:]]+(file://.+\.whl) ]]; then
+            package_name="${BASH_REMATCH[1],,}"
+            wheel_url="${BASH_REMATCH[2]}"
+            wheel_path_raw="${wheel_url#file://}"
+            if [[ "${wheel_path_raw}" == /\./* ]]; then
+                # Relative path (file:///./wheels/foo.whl) — resolve against requirements.txt dir
+                rel_path="${wheel_path_raw#/./}"
+                wheel_path="${req_dir}/${rel_path}"
+            else
+                # Absolute path (file:///abs/path/foo.whl)
+                wheel_path="${wheel_path_raw}"
+            fi
+            if [[ -f "${wheel_path}" ]]; then
+                wheel_specs_list+=("${package_name} @ file://${wheel_path}")
+            else
+                log_message "WARNING: Wheel file '${wheel_path}' not found for '${package_name}'. Skipping wheel install — use a name==version fallback line to install from PyPI instead."
+            fi
         fi
-    done <"${file}"
+    done
 
     for pkg in "${!package_versions[@]}"; do
         if [[ "${pkg}" != "wxpython" && "${pkg}" != "psychopy" && "${pkg}" != "winrt" && "${pkg}" != "pywin32" && "${pkg}" != "pypiwin32" && "${pkg}" != "pywinhook" ]]; then
@@ -1433,6 +1454,7 @@ parse_requirements_file() {
             fi
         fi
     done
+    req_packages_list+=("${wheel_specs_list[@]}")
     REQUIREMENTSFILE_PACKAGES=$(
         IFS=','
         echo "${req_packages_list[*]}"
@@ -1546,7 +1568,7 @@ install_pip_packages_with_fallback() {
         for package in "${PACKAGES[@]}"; do
             log log_message "INFO: Installing '${package}' ..."
             if log "${UV_INSTALL_DIR}/uv" pip install "${package}"; then
-                log log_message "INFO: '${pkg_name}' version '${installed_version}' installed successfully."
+                log log_message "INFO: '${package}' installed successfully."
             else
                 log log_message "WARNING: Failed to install '${package}'. Skipping."
             fi
@@ -1562,7 +1584,7 @@ verify_installed_pip_versions() {
     declare -A installed_versions
 
     normalize_name() {
-        echo "${1,,}" | tr '-' '_'
+        echo "${1,,}" | tr -- '-.' '_'
     }
 
     while read -r line; do
@@ -2501,6 +2523,19 @@ main() {
     if log "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
         log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
     else
+        local major_minor available_versions uv_version
+        major_minor=$(echo "${PYTHON_VERSION}" | grep -oE '^[0-9]+\.[0-9]+')
+        available_versions=$("${UV_INSTALL_DIR}/uv" python list 2>/dev/null \
+            | grep -oE "cpython-${major_minor}\.[0-9]+" \
+            | sed 's/cpython-//' | sort -V | uniq | tr '\n' ' ')
+        uv_version=$("${UV_INSTALL_DIR}/uv" --version 2>/dev/null || echo "unknown")
+        if [ -n "${available_versions}" ]; then
+            log_message "NOTE: Available Python ${major_minor}.x versions via uv: ${available_versions}"
+            log_message "NOTE: To fix this, change '# Python version: ${PYTHON_VERSION}' in your requirements.txt to one of the versions listed above."
+        else
+            log_message "NOTE: No Python ${major_minor}.x versions found. uv (${uv_version}) may be outdated."
+            log_message "NOTE: Update uv by running: curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=${UV_INSTALL_DIR} sh"
+        fi
         log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
     fi
     # shellcheck disable=SC1091

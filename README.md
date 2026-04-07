@@ -117,6 +117,7 @@ Run the installer directly without saving it to disk:
 
 - Non-Admin Installation: The `--sudo-mode=continue --install-dir=~/psychopy` option enables non-admin users to upgrade or reinstall if the packages are already installed. This option assumes an administrator has previously run the installation.
 - Version Selection: The `--psychopy-version` and `--wxpython-version` options accept specific versions from [PyPI](https://pypi.org), as well as `latest` or `git`. Note that `git` versions may be unstable and are generally not recommended.
+- If requirements.txt contains relative paths to wheel files, the wheels folder must be in the same directory as requirements.txt.
 
 ## Examples
 

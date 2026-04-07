@@ -180,13 +180,17 @@ jobs:
               pkg="$(echo "$line" | cut -d'=' -f1 | xargs | tr '[:upper:]' '[:lower:]')"
               # Assuming the format "package==version", field 3 is the version.
               req_ver="$(echo "$line" | cut -d'=' -f3 | xargs)"
+            elif [[ "$line" == *" @ "* ]]; then
+              # Handle PEP 440 direct references: "package @ file:///..." or "package @ https://..."
+              pkg="$(echo "$line" | cut -d'@' -f1 | xargs | tr '[:upper:]' '[:lower:]')"
+              req_ver=""
             else
               pkg="$(echo "$line" | tr '[:upper:]' '[:lower:]')"
               req_ver=""
             fi
 
             # Get the installed version using pip show.
-            installed_version="$(/tmp_dir/psychopy/bin/pip show "$pkg" 2>/dev/null | grep -i '^Version:' | awk '{print $2}' || true)"
+            installed_version="$(/tmp_dir/psychopy/.venv/bin/pip show "$pkg" 2>/dev/null | grep -i '^Version:' | awk '{print $2}' || true)"
             if [[ -z "$installed_version" ]]; then
               echo "Missing: $pkg (required ${req_ver:-any version})"
               differences_found=1
