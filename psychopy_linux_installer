@@ -5,7 +5,7 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2026-04-03
+#  Last Updated:  2026-04-07
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
@@ -31,7 +31,7 @@ declare -A DEFAULT_OPTS=(
     [CLEANUP]=false
     [NO_FONTS]=false
     [FORCE_OVERWRITE]=false
-    [VERBOSE]=false
+    [LOG_LEVEL]="info"
 )
 
 
@@ -87,6 +87,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Log message function that writes colored output to terminal and plain text to the log file. It also handles exits on errors.
+# Log levels (ascending): debug < info < warning < error
 log_message() {
     local reset="\033[0m" green="\033[32m" yellow="\033[33m" red="\033[31m" cyan="\033[36m"
     local timestamp formatted_message plain_message
@@ -95,12 +96,32 @@ log_message() {
 
     # Disable colors if output is not a terminal.
     if [[ ! -t 1 ]]; then
-        reset=""
-        green=""
-        yellow=""
-        red=""
-        cyan=""
+        reset="" green="" yellow="" red="" cyan=""
     fi
+
+    # Map level names to numeric values for comparison
+    local -A _level_num=([debug]=0 [info]=1 [warning]=2 [error]=3)
+    local _current_num="${_level_num[${LOG_LEVEL:-info}]}"
+    local _msg_level _msg_num _has_prefix=false
+
+    case "${1}" in
+    INFO:*)    _msg_level="info"    ; _has_prefix=true ;;
+    WARNING:*) _msg_level="warning" ; _has_prefix=true ;;
+    ERROR:*)   _msg_level="error"   ; _has_prefix=true ;;
+    NOTE:*)    _msg_level="info"    ; _has_prefix=true ;;
+    *)         _msg_level="info"    ;;
+    esac
+    _msg_num="${_level_num[${_msg_level}]}"
+
+    plain_message="${timestamp} - ${1}"
+
+    if [[ "${FUNCNAME[1]}" != "log" ]]; then
+        echo "${plain_message}" >>"${LOG_FILE}"
+    fi
+
+    # Skip terminal output if message level is below current log level.
+    # Plain messages (no prefix) always display regardless of log level.
+    ${_has_prefix} && (( _msg_num < _current_num )) && return
 
     case "${1}" in
     INFO:*)
@@ -120,12 +141,6 @@ log_message() {
         ;;
     esac
 
-    plain_message="${timestamp} - ${1}"
-
-    if [[ "${FUNCNAME[1]}" != "log" ]]; then
-        echo "${plain_message}" >>"${LOG_FILE}"
-    fi
-
     printf "%s\n" "${formatted_message}"
 
     if [[ "${1}" == ERROR:* ]]; then
@@ -137,9 +152,9 @@ log_message() {
     fi
 }
 
-# Wrapper to control command output based on verbosity and to handle spinners for long-running commands.
+# Wrapper to control command output based on log level and to handle spinners for long-running commands.
 log() {
-    if [ "${VERBOSE}" = true ]; then
+    if [ "${LOG_LEVEL}" = "debug" ]; then
         "${@}" 2>&1 | tee -a "${LOG_FILE}"
         return "${PIPESTATUS[0]}"
     elif [[ ! -t 2 ]]; then
@@ -356,7 +371,7 @@ show_help() {
             "  --cleanup                                    Remove uv cache and build packages after installation" \
             "  --gui                                        Launch GUI mode (ignores CLI args)" \
             "  -f, --force-overwrite                        Overwrite install dir" \
-            "  -v, --verbose                                Verbose terminal output" \
+            "  --log-level=debug|info|warning|error         Log level (default: ${DEFAULT_OPTS[LOG_LEVEL]})" \
             "  --version                                    Show installer version" \
             "  -h, --help                                   Show this help" \
             "" \
@@ -453,8 +468,11 @@ process_arguments() {
         -f | --force-overwrite)
             FORCE_OVERWRITE=true
             ;;
-        -v | --verbose)
-            VERBOSE=true
+        --log-level=*)
+            LOG_LEVEL="${arg#*=}"
+            if [[ "${LOG_LEVEL}" != "debug" && "${LOG_LEVEL}" != "info" && "${LOG_LEVEL}" != "warning" && "${LOG_LEVEL}" != "error" ]]; then
+                log_message "ERROR: Invalid value for --log-level. Valid options are 'debug', 'info', 'warning', or 'error'." nolog
+            fi
             ;;
         --version)
             trap - EXIT
@@ -576,7 +594,8 @@ show_gui() {
             FALSE "Custom wxPython wheel index" "None" \
             FALSE "Additional pip packages" "None" \
             FALSE "Use requirements.txt" "False" \
-            FALSE "Users to install for" "${DEFAULT_OPTS[TARGET_USERS]}"
+            FALSE "Users to install for" "${DEFAULT_OPTS[TARGET_USERS]}" \
+            FALSE "Log level" "${DEFAULT_OPTS[LOG_LEVEL]}"
     ); then
         :
     else
@@ -722,7 +741,6 @@ show_gui() {
         FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
         TRUE "Install font packages"
         FALSE "Remove build packages and uv cache after installation"
-        FALSE "Enable verbose output"
     )
 
     if [[ -z "${WXPYTHON_WHEEL_INDEX+x}" || -z "${WXPYTHON_WHEEL_INDEX}" ]]; then
@@ -773,8 +791,16 @@ show_gui() {
         BUILD_WXPYTHON=true
     fi
 
-    if [[ ${options} == *"Enable verbose output"* ]]; then
-        VERBOSE=true
+    # Log level selection
+    if [[ "${checklist_result}" == *"Log level"* ]]; then
+        if LOG_LEVEL=$(zenity --list --title="Log Level" --width=800 --height=400 \
+            --text="Select the desired log level:" \
+            --radiolist --column="Select" --column="Level" \
+            TRUE "info" FALSE "debug" FALSE "warning" FALSE "error") && [ -n "${LOG_LEVEL}" ]; then
+            :
+        else
+            exit 0
+        fi
     fi
 
     # Sudo mode selection
@@ -2425,7 +2451,7 @@ main() {
     # Detect OS version, architecture and script version
     detect_os_version
     PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
-    log_message "INFO: Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
+    log_message "Initiating PsychoPy-${PSYCHOPY_VERSION} installation using psychopy_linux_installer(${SCRIPT_VERSION}) on ${OS_VERSION_FULL} (${PROCESSOR_STRUCTURE})."
 
     # Detect package manager
     detect_package_manager
@@ -2613,7 +2639,7 @@ main() {
 
     if "${PSYCHOPY_DIR}/.venv/bin/psychopy" -v &>/dev/null; then
         if "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
-            log_message "INFO: PsychoPy installation completed successfully!"
+            log_message "PsychoPy installation completed successfully!"
         else
             log_message "ERROR: PsychoPy wrapper script verification failed!"
         fi
