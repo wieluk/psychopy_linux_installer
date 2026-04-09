@@ -2178,7 +2178,7 @@ create_start_psychopy_wrapper() {
             "" \
             "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
             "" \
-            "WORKSPACE_DIR=\${HOME}" \
+            "WORKSPACE_DIR=\${SCRIPT_DIR}/workspace" \
             "UNINSTALL_ARG=false" \
             "HELP_ARG=false" \
             "NON_INTERACTIVE_ARG=\"\"" \
@@ -2353,11 +2353,16 @@ create_start_psychopy_wrapper() {
             "fi" \
             "" \
             "echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
+                "if [ ! -d \"\${WORKSPACE_DIR}\" ]; then" \
+                "    mkdir -p \"\${WORKSPACE_DIR}\" 2>/dev/null || true" \
+                "fi" \
             "if ! cd \"\${WORKSPACE_DIR}\"; then" \
             "    echo \"[start_psychopy] WARNING: Could not change to workspace directory.\"" \
+                "    WORKSPACE_DIR=\${HOME}" \
+                "    cd \"\${WORKSPACE_DIR}\" 2>/dev/null || true" \
             "fi" \
             "" \
-            "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\$@\""
+                "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${PSYCHOPY_ARGS[@]}\""
     )
     printf "%s\n" "${wrapper_script}" | tee "${wrapper_path}" >/dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
