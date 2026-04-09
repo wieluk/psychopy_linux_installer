@@ -102,7 +102,7 @@ Run the installer directly without saving it to disk:
 | `--requirements-file=FILE` | Install all pip packages listed in the given requirements file into the PsychoPy environment. | (none) |
 | `--sudo-mode=[ask\|auto\|error\|continue\|force]` | Control how `sudo` is used for system commands:<br>**ask**: Prompt each time sudo is needed.<br>**auto**: Use sudo automatically when required.<br>**error**: Exit if sudo is needed.<br>**continue**: Skip commands needing sudo.<br>**force**: Always use sudo, even if not strictly necessary. | `ask` |
 | `--non-interactive` | Run unattended; sets `--sudo-mode=auto` unless specified. | *false* |
-| `--shortcuts=LIST\|all\|none` | Shortcuts to create. Comma-separated list of: `psychopy`, `builder`, `coder`.<br>Use `all` for all three, `none` for no shortcuts. | `psychopy` |
+| `--desktop-shortcuts=LIST\|all\|none` | Shortcuts to create. Comma-separated list of: `psychopy`, `builder`, `coder`.<br>Use `all` for all three, `none` for no shortcuts. | `psychopy` |
 | `--disable-path` | Do not create a symlink in `/usr/local/bin` or `~/.local/bin`. | *false* |
 | `--remove-psychopy-settings` | Delete existing PsychoPy user settings at `~/.psychopy3` during installation. | *false* |
 | `--no-fonts` | Skip installation of additional font packages. | *false* |
@@ -149,7 +149,7 @@ bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/la
 
 ## Post-Installation
 
-After installation, a desktop shortcut for the main PsychoPy application will be created by default. Use `--shortcuts=all` to also create Builder and Coder shortcuts, or `--shortcuts=none` to skip shortcut creation. The application will also be added to your system's PATH as:
+After installation, a desktop shortcut for the main PsychoPy application will be created by default. Use `--desktop-shortcuts=all` to also create Builder and Coder shortcuts, or `--desktop-shortcuts=none` to skip shortcut creation. The application will also be added to your system's PATH as:
 
 `PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}` or `${VENV_NAME}`
 
