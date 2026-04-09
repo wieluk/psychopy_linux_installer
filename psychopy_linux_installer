@@ -24,7 +24,7 @@ declare -A DEFAULT_OPTS=(
     [VENV_NAME]=""
     [ADDITIONAL_PACKAGES]=""
     [SUDO_MODE]="ask"
-    [DISABLE_SHORTCUT]=false
+    [SHORTCUTS]="psychopy"
     [DISABLE_PATH]=false
     [NON_INTERACTIVE]=false
     [REMOVE_PSYCHOPY_SETTINGS]=false
@@ -364,7 +364,7 @@ show_help() {
             "  --requirements-file=FILE                     Install pip packages from requirements.txt" \
             "  --sudo-mode=ask|auto|error|continue|force    Sudo usage mode (default: ${DEFAULT_OPTS[SUDO_MODE]})" \
             "  --non-interactive                            No user prompts (sets sudo-mode=auto if not set)" \
-            "  --disable-shortcut                           No desktop shortcut" \
+            "  --shortcuts=LIST|all|none                    Shortcuts to create; comma-separated: psychopy,builder,coder (default: ${DEFAULT_OPTS[SHORTCUTS]})" \
             "  --disable-path                               Don't add to system path" \
             "  --remove-psychopy-settings                   Remove ${HOME}/.psychopy3" \
             "  --no-fonts                                   Skip font installation" \
@@ -449,8 +449,8 @@ process_arguments() {
                 SUDO_MODE=auto
             fi
             ;;
-        --disable-shortcut)
-            DISABLE_SHORTCUT=true
+        --shortcuts=*)
+            SHORTCUTS="${arg#*=}"
             ;;
         --disable-path)
             DISABLE_PATH=true
@@ -595,6 +595,7 @@ show_gui() {
             FALSE "Additional pip packages" "None" \
             FALSE "Use requirements.txt" "False" \
             FALSE "Users to install for" "${DEFAULT_OPTS[TARGET_USERS]}" \
+            FALSE "Shortcuts" "${DEFAULT_OPTS[SHORTCUTS]}" \
             FALSE "Log level" "${DEFAULT_OPTS[LOG_LEVEL]}"
     ); then
         :
@@ -732,10 +733,29 @@ show_gui() {
         fi
     fi
 
+    # Shortcuts to create
+    if [[ "${checklist_result}" == *"Shortcuts"* ]]; then
+        if selected_shortcuts=$(zenity --list --checklist \
+            --title="Select Shortcuts to Create" \
+            --width=800 --height=400 \
+            --text="Select which PsychoPy shortcuts to create:" \
+            --column="Select" --column="Shortcut" \
+            TRUE  "psychopy" \
+            FALSE "builder" \
+            FALSE "coder"); then
+            if [[ -z "${selected_shortcuts}" ]]; then
+                SHORTCUTS="none"
+            else
+                SHORTCUTS="${selected_shortcuts//|/,}"
+            fi
+        else
+            exit 0
+        fi
+    fi
+
     # Additional options
     options_array=(
         TRUE "Add PsychoPy to system PATH"
-        TRUE "Create desktop shortcuts"
         FALSE "Run in non-interactive mode"
         FALSE "Force overwrite of existing directory"
         FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
@@ -758,10 +778,6 @@ show_gui() {
 
     if [[ ${options} != *"Add PsychoPy to system PATH"* ]]; then
         DISABLE_PATH=true
-    fi
-
-    if [[ ${options} != *"Create desktop shortcuts"* ]]; then
-        DISABLE_SHORTCUT=true
     fi
 
     if [[ ${options} == *"Run in non-interactive mode"* ]]; then
@@ -1955,13 +1971,25 @@ create_desktop_shortcut() {
     sudo_wrapper mkdir -p "${resources_dir}"
 
     local -a shortcuts=(
-        "--no-splash|$(basename "${PSYCHOPY_DIR}")|psychopy.png"
-        "--builder --no-splash|Builder $(basename "${PSYCHOPY_DIR}")|builder.png"
-        "--coder --no-splash|Coder $(basename "${PSYCHOPY_DIR}")|coder.png"
+        "--no-splash|$(basename "${PSYCHOPY_DIR}")|psychopy.png|psychopy"
+        "--builder --no-splash|Builder $(basename "${PSYCHOPY_DIR}")|builder.png|builder"
+        "--coder --no-splash|Coder $(basename "${PSYCHOPY_DIR}")|coder.png|coder"
     )
 
+    local -a active_shortcuts=()
+    local _shortcuts_list="${SHORTCUTS}"
+    [[ "${_shortcuts_list}" == "all" ]] && _shortcuts_list="psychopy,builder,coder"
     for spec in "${shortcuts[@]}"; do
-        IFS="|" read -r _ label icon <<< "${spec}"
+        IFS="|" read -r _fargs _flabel _ficon shortcut_id <<< "${spec}"
+        if [[ ",${_shortcuts_list}," == *",${shortcut_id},"* ]]; then
+            active_shortcuts+=("${spec}")
+        fi
+    done
+    shortcuts=("${active_shortcuts[@]}")
+    [[ ${#shortcuts[@]} -eq 0 ]] && return 0
+
+    for spec in "${shortcuts[@]}"; do
+        IFS="|" read -r _ label icon _id <<< "${spec}"
         icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon}"
         if log curl -sIf "${icon_url}"; then
             sudo_wrapper curl -sf -o "${resources_dir}/${icon}" "${icon_url}" \
@@ -2003,7 +2031,7 @@ create_desktop_shortcut() {
     system_app_dir="/usr/share/applications"
     if sudo_wrapper test -w "${system_app_dir}"; then
         for spec in "${shortcuts[@]}"; do
-            IFS="|" read -r args label icon <<< "${spec}"
+            IFS="|" read -r args label icon _id <<< "${spec}"
             write_desktop "${system_app_dir}" "${args}" "${label}" "${icon}"
             DESKTOP_FILES+=("${system_app_dir}/${label}.desktop")
         done
@@ -2024,7 +2052,7 @@ create_desktop_shortcut() {
             sudo_wrapper mkdir -p "${user_app_dir}"
             sudo_wrapper chown "${user}:${user}" "${user_app_dir}"
             for spec in "${shortcuts[@]}"; do
-                IFS="|" read -r args label icon <<< "${spec}"
+                IFS="|" read -r args label icon _id <<< "${spec}"
                 write_desktop "${user_app_dir}" "${args}" "${label}" "${icon}"
                 sudo_wrapper chown "${user}:${user}" "${user_app_dir}/${label}.desktop"
                 DESKTOP_FILES+=("${user_app_dir}/${label}.desktop")
@@ -2141,7 +2169,7 @@ create_start_psychopy_wrapper() {
     local shortcut_block=""
     local shortcut_quoted_files
     printf -v shortcut_quoted_files '"%s" ' "${DESKTOP_FILES[@]}"
-    if [ "${DISABLE_SHORTCUT}" = false ]; then
+    if [[ "${SHORTCUTS}" != "none" ]]; then
         shortcut_block=$(printf "%s\n" \
             "    echo \"Removing desktop shortcuts: ${shortcut_quoted_files}\"" \
             "    \${SUDO} rm -f ${shortcut_quoted_files}" \
@@ -2624,7 +2652,7 @@ main() {
     fi
 
     # Create desktop shortcut
-    if [ "${DISABLE_SHORTCUT}" = false ]; then
+    if [[ "${SHORTCUTS}" != "none" ]]; then
         create_desktop_shortcut
     fi
 
