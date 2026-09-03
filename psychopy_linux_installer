@@ -37,6 +37,9 @@ declare -A DEFAULT_OPTS=(
     [REMOVE_STUDIO_SETTINGS]=false
 )
 
+# Highest wxPython version that still supports Python <3.10 (4.2.5+ requires Python >=3.10).
+WXPYTHON_LEGACY_VERSION="4.2.1"
+
 # Shared curl retry/timeout options: small lookups vs. larger file downloads.
 CURL_RETRY_OPTS=(--retry 3 --retry-delay 2 --connect-timeout 10 --max-time 30)
 CURL_DOWNLOAD_OPTS=(--retry 3 --retry-delay 2 --connect-timeout 10 --max-time 300)
@@ -632,6 +635,58 @@ select_wxpython_wheel_index() {
     done
 }
 
+# Suggests a wxPython wheel index to try, based on OS_ID_LIKE, once all automatic tiers fail.
+suggest_wxpython_wheel_index() {
+    local suggested_url=""
+    # Match ID too, not just ID_LIKE: plain Debian and plain Arch set no ID_LIKE at all, and they
+    # are exactly the distros this Ubuntu-wheel fallback is meant for.
+    case " ${OS_ID_LIKE} ${OS_ID} " in
+    *" ubuntu "* | *" debian "* | *" arch "*)
+        # Arch/Manjaro have no dedicated wxpython.org folder; Ubuntu wheels work as a fallback.
+        suggested_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
+        ;;
+    esac
+
+    local detected_desc="detected: ${OS_VERSION_FULL}"
+    [ -n "${OS_ID_LIKE}" ] && detected_desc="${detected_desc}, ID_LIKE: ${OS_ID_LIKE}"
+
+    if [ -n "${suggested_url}" ]; then
+        log_message "NOTE: No wxPython wheel matches this system exactly (${detected_desc}). A wheel for a closely related distribution may still work -- try re-running with: --wxpython-wheel-index=${suggested_url} . If that also fails, building from source is the guaranteed-to-work fallback (may take several minutes)."
+    else
+        log_message "NOTE: No wxPython wheel matches this system exactly (${detected_desc}). Browse available wheels at https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ and retry with --wxpython-wheel-index=<matching folder URL>. If no compatible wheel is found, building from source is the guaranteed-to-work fallback (may take several minutes)."
+    fi
+}
+
+# Offers classic vs. Studio for PsychoPy >= 2026.2.0; safe to call twice, no-op once decided.
+maybe_offer_studio() {
+    [ "${STUDIO}" = true ] && return 0
+    [ "${STUDIO_OFFER_DECIDED}" = true ] && return 0
+    is_version_greater "${PSYCHOPY_VERSION}" "2026.0.99" || return 0
+    STUDIO_OFFER_DECIDED=true
+
+    local split_note=""
+    is_version_greater "${PSYCHOPY_VERSION}" "2026.1.99" && split_note=" Note: from 2026.2.0 onward the classic app also moves into its own 'psychopy_app' package, a bridge upstream expects to retire around 2027."
+
+    if [ "${NON_INTERACTIVE}" = true ]; then
+        log_message "NOTE: PsychoPy Studio, the actively developed replacement for the classic app, is available for PsychoPy ${PSYCHOPY_VERSION} -- installing classic as usual.${split_note} Pass --studio to install PsychoPy Studio instead."
+    else
+        response=$(prompt_user "PsychoPy Studio (the actively developed Electron-based replacement for the classic wxPython app) is available for PsychoPy ${PSYCHOPY_VERSION}.${split_note}\n\nWhich would you like to install?" \
+            "Install classic PsychoPy App" \
+            "Install PsychoPy Studio instead" \
+            "Cancel installation")
+        case "${response}" in
+        "Install PsychoPy Studio instead")
+            STUDIO=true
+            ;;
+        "Install classic PsychoPy App")
+            ;;
+        *)
+            log_message "ERROR: Installation cancelled by user." nolog
+            ;;
+        esac
+    fi
+}
+
 # Launches a Zenity-based GUI to collect user input interactively.
 show_gui() {
     local wxpython_versions psychopy_versions options checklist_result wx_url folders selected_folder checklist_items all_users selected_users
@@ -725,10 +780,10 @@ show_gui() {
     # wxPython version
     if [ "${STUDIO}" = false ] && [[ "${checklist_result}" == *"wxpython version"* ]]; then
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
-        if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
-            log_message "INFO: Python 3.8.x selected. Only wxPython versions up to 4.2.2 are compatible."
-            wxpython_versions=$(echo "${wxpython_versions}" | awk '$1 <= "4.2.2"')
-            wxpython_default="4.2.2"
+        if [[ "${PYTHON_VERSION}" =~ ^3\.(8|9)(\.[0-9]+)?$ ]]; then
+            log_message "INFO: Python ${PYTHON_VERSION} selected. Only wxPython versions up to ${WXPYTHON_LEGACY_VERSION} are compatible (4.2.5+ requires Python >=3.10)."
+            wxpython_versions=$(echo "${wxpython_versions}" | awk -v max="${WXPYTHON_LEGACY_VERSION}" '$1 <= max')
+            wxpython_default="${WXPYTHON_LEGACY_VERSION}"
         else
             wxpython_default="${DEFAULT_OPTS[WXPYTHON_VERSION]}"
         fi
@@ -1071,14 +1126,18 @@ detect_os_version() {
     OS_VERSION=""
     OS_VERSION_LINK=""
     OS_VERSION_FULL=""
+    OS_ID_LIKE=""
+    OS_ID=""
 
-    local major_version version ID VERSION_ID
+    local major_version version ID VERSION_ID ID_LIKE
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ -n "${ID}" ] && [ -n "${VERSION_ID}" ]; then
             ID=$(echo "${ID}" | tr '[:upper:]' '[:lower:]')
             VERSION_ID=$(echo "${VERSION_ID}" | tr '[:upper:]' '[:lower:]')
             major_version=$(echo "${VERSION_ID}" | cut -d. -f1)
+            OS_ID_LIKE=$(echo "${ID_LIKE:-}" | tr '[:upper:]' '[:lower:]')
+            OS_ID="${ID}"
 
             OS_VERSION="${ID}-${major_version}"
             OS_VERSION_FULL="${ID}-${VERSION_ID}"
@@ -1827,18 +1886,19 @@ install_wxpython() {
     elif [ "${BUILD_WXPYTHON}" = true ]; then
         build_wxpython
     else
-        # Try all automatic wheel sources
-        if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}"; then
+        # Try all automatic wheel sources, logging a warning for each failed tier.
+        if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && { log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from custom wheel index '${WXPYTHON_WHEEL_INDEX}' failed."; false; }; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from custom wheel index."
-        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}"; then
+        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from PyPI failed."; false; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from PyPI."
-        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}"; then
+        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org (${OS_VERSION_LINK}) failed."; false; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
-        elif install_wxpython_from_github; then
+        elif install_wxpython_from_github || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from GitHub release failed."; false; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from GitHub release."
         # Prompt for manual wheel index if all else fails and interactive
         elif [ "${NON_INTERACTIVE}" = false ]; then
             log_message "WARNING: All automatic wxPython wheel installations failed."
+            suggest_wxpython_wheel_index
             response=$(prompt_user "No suitable wxPython wheel was found.\nWould you like to manually select a wheel index before building from source?" \
                 "Select wheel index" \
                 "Build from source")
@@ -1860,6 +1920,8 @@ install_wxpython() {
                 build_wxpython
             fi
         else
+            suggest_wxpython_wheel_index
+            log_message "WARNING: All automatic wxPython wheel installations failed. Building from source ..."
             build_wxpython
         fi
     fi
@@ -1885,8 +1947,9 @@ install_wxpython_from_github() {
     local download_path="/tmp/${wheel_name}"
     register_cleanup "${download_path}"
 
-    if curl --retry 2 --retry-delay 1 --head --silent --fail "${download_url}" >/dev/null; then
-        if log curl --retry 2 --retry-delay 1 -L -o "${download_path}" "${download_url}"; then
+    if curl "${CURL_RETRY_OPTS[@]}" --head --silent --fail "${download_url}" >/dev/null; then
+        log_message "WARNING: '${wheel_name}' was built in a Docker container, not on real hardware for this distro; if you run into problems with wxPython/PsychoPy, retry with --build-wxpython."
+        if log curl "${CURL_DOWNLOAD_OPTS[@]}" -L -o "${download_path}" "${download_url}"; then
             log_message "INFO: Successfully downloaded wxPython wheel from GitHub release. Installing wxPython from '${wheel_name}' ..."
             renamed_wheel="${wheel_name%-"${OS_VERSION}".whl}.whl"
             mv "${download_path}" "${renamed_wheel}"
@@ -1967,22 +2030,73 @@ build_wxpython() {
                 fi
             fi
         else
-            log_message "WARNING: '/tmp' is only '${tmp_size_gb}GB'. wxPython build may fail. Please increase your '/tmp' with 'sudo mount -o remount,size=8G /tmp' if build fails."
+            log_message "WARNING: '/tmp' only has '${tmp_size_gb}GB' free. wxPython build may fail. Please increase your '/tmp' with 'sudo mount -o remount,size=8G /tmp' if build fails."
         fi
     fi
 
-    # Set install arguments based on BUILD_WXPYTHON flag
+    # Building from an extracted sdist below, so --no-binary is implicit.
     if [ "${BUILD_WXPYTHON}" = true ]; then
-        install_args=(--no-binary=wxpython --no-cache-dir --force-reinstall)
+        install_args=(--no-cache-dir --force-reinstall)
     else
-        install_args=(--no-binary=wxpython)
+        install_args=()
+    fi
+
+    # wxPython's sdist build needs typing_extensions on Python <3.11 but doesn't declare it; install it separately via PYTHONPATH.
+    typing_extensions_dir=$(mktemp -d)
+    register_cleanup "${typing_extensions_dir}"
+    log "${UV_INSTALL_DIR}/uv" pip install --target "${typing_extensions_dir}" typing_extensions
+
+    # Fetch and unpack the sdist ourselves instead of letting uv do it inline, so the same source
+    # fixes the release-wheel build applies can be applied here too -- keep this in sync with the
+    # "Build wxPython" step in .github/workflows/reusable_build.yaml.
+    src_dir=$(mktemp -d)
+    register_cleanup "${src_dir}"
+    sdist_url=$(curl -s "${CURL_RETRY_OPTS[@]}" "https://pypi.org/pypi/wxpython/${WXPYTHON_VERSION}/json" |
+        jq -r '.urls[] | select(.packagetype=="sdist") | .url' | head -n1)
+    if [ -z "${sdist_url}" ]; then
+        log_message "ERROR: No wxPython ${WXPYTHON_VERSION} source distribution found on PyPI."
+    fi
+    log_message "INFO: Downloading wxPython ${WXPYTHON_VERSION} source ..."
+    if ! log curl "${CURL_DOWNLOAD_OPTS[@]}" -L -o "${src_dir}/wxpython-sdist.tar.gz" "${sdist_url}"; then
+        log_message "ERROR: Failed to download wxPython source from '${sdist_url}'."
+    fi
+    if ! log tar -xzf "${src_dir}/wxpython-sdist.tar.gz" -C "${src_dir}"; then
+        log_message "ERROR: Failed to extract the wxPython source archive."
+    fi
+    wx_src=$(find "${src_dir}" -maxdepth 1 -type d -iname "wxpython-*" | head -n1)
+    if [ -z "${wx_src}" ]; then
+        log_message "ERROR: Could not locate the extracted wxPython source directory."
+    fi
+
+    build_constraints=$(mktemp)
+    register_cleanup "${build_constraints}"
+    # setuptools >=81 dropped the 'dry_run' param older wxPython setup.py code needs; capping it is
+    # harmless for newer releases since none currently require setuptools>=81.
+    echo 'setuptools<81' >"${build_constraints}"
+
+    # Releases without their own pyproject.toml (e.g. 4.2.x) declare no PEP 517 build-system
+    # requires, so an isolated build resolves sip to the latest release; pin whatever this release's
+    # own requirements/devel.txt asks for. Releases WITH a pyproject.toml already carry the correct
+    # sip pin there, and a second one here would make the resolver fail outright.
+    if [ ! -f "${wx_src}/pyproject.toml" ]; then
+        sip_constraint=$(grep -oP '^sip\s*==\s*\K[0-9.]+' "${wx_src}/requirements/devel.txt" 2>/dev/null || true)
+        if [ -n "${sip_constraint}" ]; then
+            log_message "INFO: Pinning sip==${sip_constraint} for the build (per this wxPython release's own requirements)."
+            echo "sip==${sip_constraint}" >>"${build_constraints}"
+        fi
+        # GCC >=14 turned -Wincompatible-pointer-types into a hard error, which this release's
+        # vendored sip/siplib/siplib.c trips. wxPython's wscript overwrites CFLAGS from wx-config,
+        # so -Wno-error via the environment is silently discarded -- patch the line itself.
+        if [ -f "${wx_src}/sip/siplib/siplib.c" ]; then
+            sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' "${wx_src}/sip/siplib/siplib.c"
+        fi
     fi
 
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
-    if log "${UV_INSTALL_DIR}/uv" pip install "${install_args[@]}" "wxpython==${WXPYTHON_VERSION}"; then
+    if PYTHONPATH="${typing_extensions_dir}${PYTHONPATH:+:${PYTHONPATH}}" log "${UV_INSTALL_DIR}/uv" pip install --build-constraints "${build_constraints}" "${install_args[@]}" "${wx_src}"; then
         log_message "INFO: Successfully built wxPython from source."
     else
-        log_message "ERROR: Building wxPython from source failed."
+        log_message "ERROR: Building wxPython from source failed. This is most commonly caused by insufficient free space on /tmp -- check that first."
     fi
 }
 
@@ -2669,13 +2783,12 @@ main() {
         process_arguments "${@}"
     fi
 
-    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
-        if [[ -z "${WXPYTHON_VERSION}" ]]; then
-            WXPYTHON_VERSION="4.2.2"
-            log_message "INFO: Python 3.8.x selected. Only wxPython versions up to 4.2.2 are compatible. Using: ${WXPYTHON_VERSION}."
-        elif is_version_greater "${WXPYTHON_VERSION}" "4.2.2"; then
-            log_message "ERROR: wxPython > 4.2.2 is not supported with Python 3.8." nolog
-        fi
+    # Explicit --wxpython-version choices are validated later in install_wxpython() against
+    # live PyPI data; this only picks a sane default for Python <3.10 users who didn't ask
+    # for a specific version, so they don't hit that error for doing nothing.
+    if [ "${STUDIO}" = false ] && [ -z "${WXPYTHON_VERSION}" ] && [[ "${PYTHON_VERSION}" =~ ^3\.(8|9)(\.[0-9]+)?$ ]]; then
+        WXPYTHON_VERSION="${WXPYTHON_LEGACY_VERSION}"
+        log_message "INFO: Python ${PYTHON_VERSION} selected. Defaulting to wxPython ${WXPYTHON_VERSION}, the newest version that still supports it."
     fi
 
     if [[ "${VENV_NAME,,}" =~ ^(\.?python|\.?uv)$ ]]; then
