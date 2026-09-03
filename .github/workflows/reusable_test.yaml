@@ -33,8 +33,7 @@ jobs:
           - os: ubuntu-22
             runs_on: ubuntu-22.04
         exclude:
-          # "latest" (2026.2.x) requires Python >=3.10; installing it on older Python is an
-          # error by design (see check_psychopy_python_compatibility in the installer).
+          # "latest" (2026.2.x) requires Python >=3.10; older Python is an error by design (see check_pypi_python_compatibility in the installer).
           - python_version: "3.8"
             psychopy_version: "latest"
           - python_version: "3.9"
@@ -63,7 +62,7 @@ jobs:
         run: |
           SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
           $SUDO apt-get install -y xvfb alsa-utils
-          # No /dev/snd in CI -- null-sink config lets PortAudio/ffpyplayer init without a real device.
+          # No /dev/snd in CI; null-sink config lets PortAudio/ffpyplayer init without a real device.
           $SUDO tee /etc/asound.conf > /dev/null <<'EOF'
           pcm.!default { type plug; slave.pcm "null"; }
           ctl.!default { type hw; card 0; }
@@ -130,7 +129,7 @@ jobs:
         run: |
           SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
           echo "Starting PsychoPy pytest..."
-          # xvfb-run is a Debian-only wrapper script, not packaged everywhere -- start/stop Xvfb manually instead.
+          # xvfb-run is a Debian-only wrapper script, not packaged everywhere; start/stop Xvfb manually instead.
           Xvfb :99 -screen 0 1024x768x24 &
           XVFB_PID=$!
           trap 'kill $XVFB_PID 2>/dev/null || true' EXIT
@@ -193,7 +192,7 @@ jobs:
       options: --cap-add=SYS_NICE --cap-add=SYS_RESOURCE --cap-add=IPC_LOCK
     strategy:
       matrix:
-        # "quick": breadth (many distros, shallow). "normal"/"build": full depth. Pop!_OS/Mint omitted -- same package base as ubuntu-22/24, no separate image.
+        # "quick": breadth (many distros, shallow). "normal"/"build": full depth. Pop!_OS/Mint omitted (same package base as ubuntu-22/24, no separate image).
         os: ${{ inputs.test-mode == 'quick' && fromJson('["debian-12", "fedora-41", "rocky-9", "manjarolinux-25", "opensuse-leap-15"]') || fromJson('["ubuntu-20", "debian-13", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15"]') }}
         python_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
         # "quick"/"build" pin to the last pre-Studio release; "latest" now resolves to Studio, which has no venv/pytest and no wxPython (--build-wxpython is a no-op). test-studio (runs whenever test-mode != 'build') covers the Studio leg instead.
@@ -201,8 +200,7 @@ jobs:
         # "include" must mirror the active "os" list exactly, or unmatched entries become orphaned combos missing python_version/psychopy_version.
         include: ${{ inputs.test-mode == 'quick' && fromJson('[{"os":"debian-12","image":"debian:bookworm"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"}]') || fromJson('[{"os":"ubuntu-20","image":"ubuntu:20.04"},{"os":"debian-13","image":"debian:trixie"},{"os":"debian-12","image":"debian:bookworm"},{"os":"debian-11","image":"debian:bullseye"},{"os":"fedora-39","image":"fedora:39"},{"os":"fedora-40","image":"fedora:40"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"centos-9","image":"quay.io/centos/centos:stream9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"}]') }}
         exclude:
-          # "latest" (2026.2.x) requires Python >=3.10; installing it on older Python is an
-          # error by design (see check_psychopy_python_compatibility in the installer).
+          # "latest" (2026.2.x) requires Python >=3.10; older Python is an error by design (see check_pypi_python_compatibility in the installer).
           - python_version: "3.8"
             psychopy_version: "latest"
           - python_version: "3.9"
@@ -264,7 +262,7 @@ jobs:
             pacman)  pacman -Sy --noconfirm xorg-server-xvfb alsa-utils ;;
             zypper)  zypper --non-interactive install xorg-x11-server-Xvfb alsa-utils ;;
           esac
-          # No /dev/snd in a container -- null-sink config lets PortAudio/ffpyplayer init without a real device.
+          # No /dev/snd in a container; null-sink config lets PortAudio/ffpyplayer init without a real device.
           cat > /etc/asound.conf <<'EOF'
           pcm.!default { type plug; slave.pcm "null"; }
           ctl.!default { type hw; card 0; }
@@ -328,7 +326,7 @@ jobs:
       - name: Run PsychoPy pytest
         run: |
           echo "Starting PsychoPy pytest..."
-          # xvfb-run is a Debian-only wrapper script, not packaged everywhere (e.g. opensuse) -- start/stop Xvfb manually instead.
+          # xvfb-run is a Debian-only wrapper script, not packaged everywhere (e.g. opensuse); start/stop Xvfb manually instead.
           Xvfb :99 -screen 0 1024x768x24 &
           XVFB_PID=$!
           trap 'kill $XVFB_PID 2>/dev/null || true' EXIT
@@ -380,7 +378,7 @@ jobs:
           userdel -r testpsychopyuser 2>/dev/null || true
 
   # Explicit --studio coverage; always "latest" since Studio AppImages only exist for versions where Studio exists.
-  # Always ubuntu:24.04 -- use the native hosted VM directly, no container needed at all.
+  # Always ubuntu:24.04, using the native hosted VM directly with no container needed.
   test-studio:
     name: Test explicit --studio install
     if: ${{ inputs.test-mode != 'build' }}
@@ -442,9 +440,7 @@ jobs:
       - name: Verify PsychoPy Studio installation
         run: |
           SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
-          # Studio is a GUI Electron app -- "-v" doesn't print a version and exit, it launches the
-          # full app, so just check the wrapper and AppImage are in place and executable (same as
-          # the installer's own final verification), rather than trying to run the GUI in CI.
+          # Studio is a GUI app; "-v" launches it instead of printing a version, so just check wrapper/AppImage presence/executability.
           if ! $SUDO su - testpsychopyuser -c '[ -x /tmp_dir/psychopy/start_psychopy ] && find /tmp_dir/psychopy -maxdepth 1 -name "PsychoPy_Studio_*.AppImage" -executable | grep -q .'; then
             echo "PsychoPy Studio installation verification failed: wrapper or AppImage missing/not executable."
             exit 1
@@ -482,7 +478,7 @@ jobs:
           $SUDO rm -rf /tmp_dir
           $SUDO userdel -r testpsychopyuser 2>/dev/null || true
 
-  # Always ubuntu:24.04 -- use the native hosted VM directly, no container needed at all.
+  # Always ubuntu:24.04, using the native hosted VM directly with no container needed.
   run-installer-with-requirements-txt:
     name: Run installer with requirements file
     if: ${{ inputs.test-mode != 'build' }}

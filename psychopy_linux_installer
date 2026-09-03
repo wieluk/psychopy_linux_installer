@@ -9,14 +9,15 @@
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="2.2.7"
+SCRIPT_VERSION="3.0.0"
 
 # Define default values
 CURRENT_USER="$(id -un)"
 declare -A DEFAULT_OPTS=(
     [PSYCHOPY_VERSION]="latest"
+    [PSYCHOPY_APP_VERSION]="latest"
     [PYTHON_VERSION]="3.10"
-    [WXPYTHON_VERSION]="4.2.3"
+    [WXPYTHON_VERSION]="4.3.1"
     [WXPYTHON_WHEEL_INDEX]=""
     [BUILD_WXPYTHON]=false
     [INSTALL_DIR]="/opt/psychopy"
@@ -216,9 +217,7 @@ is_version_greater() {
     fi
 }
 
-# True when the classic GUI comes from the separate 'psychopy_app' package, so the launcher and the
-# final check must invoke it as a module. Kept in one place because a git-tag install never gets
-# psychopy_app and so must keep using the venv's own 'psychopy' entry point instead.
+# True when the classic GUI lives in the separate 'psychopy_app' package and the launcher/final check must invoke it as a module.
 uses_psychopy_app_module() {
     [ "${PSYCHOPY_VERSION}" != "git" ] && [ "${PSYCHOPY_GIT_TAG}" != "true" ] &&
         is_version_greater "${PSYCHOPY_VERSION}" "2026.1.99"
@@ -381,6 +380,7 @@ show_help() {
             "Usage: ./psychopy_linux_installer [options]" \
             "Options:" \
             "  --psychopy-version=VERSION                   Set PsychoPy version (default: ${DEFAULT_OPTS[PSYCHOPY_VERSION]})" \
+            "  --psychopy-app-version=VERSION               Set PsychoPy App (GUI) version, used from 2026.2.0 onward (default: ${DEFAULT_OPTS[PSYCHOPY_APP_VERSION]})" \
             "  --python-version=3.8.x|3.9.x|3.10.x          Set Python version (default: ${DEFAULT_OPTS[PYTHON_VERSION]})" \
             "  --wxpython-version=VERSION                   Set wxPython version (default: ${DEFAULT_OPTS[WXPYTHON_VERSION]})" \
             "  --build-wxpython                             Build wxPython from source" \
@@ -420,6 +420,9 @@ process_arguments() {
         case ${arg} in
         --psychopy-version=*)
             PSYCHOPY_VERSION="${arg#*=}"
+            ;;
+        --psychopy-app-version=*)
+            PSYCHOPY_APP_VERSION="${arg#*=}"
             ;;
         --python-version=*)
             PYTHON_VERSION="${arg#*=}"
@@ -638,8 +641,7 @@ select_wxpython_wheel_index() {
 # Suggests a wxPython wheel index to try, based on OS_ID_LIKE, once all automatic tiers fail.
 suggest_wxpython_wheel_index() {
     local suggested_url=""
-    # Match ID too, not just ID_LIKE: plain Debian and plain Arch set no ID_LIKE at all, and they
-    # are exactly the distros this Ubuntu-wheel fallback is meant for.
+    # Match ID too, not just ID_LIKE: plain Debian and Arch set no ID_LIKE but are the distros this fallback targets.
     case " ${OS_ID_LIKE} ${OS_ID} " in
     *" ubuntu "* | *" debian "* | *" arch "*)
         # Arch/Manjaro have no dedicated wxpython.org folder; Ubuntu wheels work as a fallback.
@@ -651,7 +653,7 @@ suggest_wxpython_wheel_index() {
     [ -n "${OS_ID_LIKE}" ] && detected_desc="${detected_desc}, ID_LIKE: ${OS_ID_LIKE}"
 
     if [ -n "${suggested_url}" ]; then
-        log_message "NOTE: No wxPython wheel matches this system exactly (${detected_desc}). A wheel for a closely related distribution may still work -- try re-running with: --wxpython-wheel-index=${suggested_url} . If that also fails, building from source is the guaranteed-to-work fallback (may take several minutes)."
+        log_message "NOTE: No wxPython wheel matches this system exactly (${detected_desc}). A wheel for a closely related distribution may still work; try re-running with: --wxpython-wheel-index=${suggested_url}. If that also fails, building from source is the guaranteed-to-work fallback (may take several minutes)."
     else
         log_message "NOTE: No wxPython wheel matches this system exactly (${detected_desc}). Browse available wheels at https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ and retry with --wxpython-wheel-index=<matching folder URL>. If no compatible wheel is found, building from source is the guaranteed-to-work fallback (may take several minutes)."
     fi
@@ -665,12 +667,12 @@ maybe_offer_studio() {
     STUDIO_OFFER_DECIDED=true
 
     local split_note=""
-    is_version_greater "${PSYCHOPY_VERSION}" "2026.1.99" && split_note=" Note: from 2026.2.0 onward the classic app also moves into its own 'psychopy_app' package, a bridge upstream expects to retire around 2027."
+    is_version_greater "${PSYCHOPY_VERSION}" "2026.1.99" && split_note=" Note: from 2026.2.0 onward the classic app also moves into its own 'psychopy_app' package."
 
     if [ "${NON_INTERACTIVE}" = true ]; then
-        log_message "NOTE: PsychoPy Studio, the actively developed replacement for the classic app, is available for PsychoPy ${PSYCHOPY_VERSION} -- installing classic as usual.${split_note} Pass --studio to install PsychoPy Studio instead."
+        log_message "NOTE: PsychoPy Studio is available for PsychoPy ${PSYCHOPY_VERSION} (installing classic by default).${split_note} Pass --studio to install PsychoPy Studio instead."
     else
-        response=$(prompt_user "PsychoPy Studio (the actively developed Electron-based replacement for the classic wxPython app) is available for PsychoPy ${PSYCHOPY_VERSION}.${split_note}\n\nWhich would you like to install?" \
+        response=$(prompt_user "PsychoPy Studio is available for PsychoPy ${PSYCHOPY_VERSION}.${split_note}\n\nWhich would you like to install?" \
             "Install classic PsychoPy App" \
             "Install PsychoPy Studio instead" \
             "Cancel installation")
@@ -914,8 +916,7 @@ show_gui() {
         REMOVE_PSYCHOPY_SETTINGS=true
     fi
 
-    # The fonts checkbox is only offered for classic installs, so its absence must not be read as
-    # "unchecked" for Studio -- that would put --no-fonts in the rerun command, which --studio rejects.
+    # Fonts checkbox is only offered for classic installs; skip reading it for Studio to avoid putting --no-fonts in the rerun command.
     if [ "${STUDIO}" = false ] && [[ ${options} != *"Install font packages"* ]]; then
         NO_FONTS=true
     fi
@@ -1712,9 +1713,7 @@ check_pypi_for_version() {
     log_message "ERROR: '${package}' version '${version}' not found on PyPI." nolog
 }
 
-# Errors out early if PYTHON_VERSION doesn't satisfy this PyPI package version's declared Python
-# requirement (e.g. psychopy>=2026.2.0 and wxpython>=4.2.5 both require Python>=3.10), instead of
-# letting uv's dependency resolver fail later with a much less actionable message.
+# Errors out early when PYTHON_VERSION fails the package's PyPI requires_python check, since uv's resolver gives a worse message later.
 check_pypi_python_compatibility() {
     local package="${1}" version="${2}"
     local requires_python min_py max_py max_inclusive exceeds_max
@@ -1723,8 +1722,7 @@ check_pypi_python_compatibility() {
     [ -z "${requires_python}" ] && return 0
 
     min_py=$(echo "${requires_python}" | grep -oP '>=\K[0-9]+\.[0-9]+' | head -n1)
-    # Capture whether the upper bound is exclusive ("<3.13") or inclusive ("<=3.12"); assuming one
-    # or the other would be off by a whole Python release.
+    # Capture whether the upper bound is exclusive ("<3.13") or inclusive ("<=3.12").
     max_py=$(echo "${requires_python}" | grep -oP '<=?\K[0-9]+\.[0-9]+' | head -n1)
     max_inclusive=false
     [[ "${requires_python}" =~ \<=[[:space:]]*${max_py} ]] && max_inclusive=true
@@ -2106,9 +2104,7 @@ build_wxpython() {
     register_cleanup "${typing_extensions_dir}"
     log "${UV_INSTALL_DIR}/uv" pip install --target "${typing_extensions_dir}" typing_extensions
 
-    # Fetch and unpack the sdist ourselves instead of letting uv do it inline, so the same source
-    # fixes the release-wheel build applies can be applied here too -- keep this in sync with the
-    # "Build wxPython" step in .github/workflows/reusable_build.yaml.
+    # Fetch and unpack the sdist ourselves so the same source fixes the release-wheel build applies can run here too.
     src_dir=$(mktemp -d)
     register_cleanup "${src_dir}"
     sdist_url=$(curl -s "${CURL_RETRY_OPTS[@]}" "https://pypi.org/pypi/wxpython/${WXPYTHON_VERSION}/json" |
@@ -2130,23 +2126,17 @@ build_wxpython() {
 
     build_constraints=$(mktemp)
     register_cleanup "${build_constraints}"
-    # setuptools >=81 dropped the 'dry_run' param older wxPython setup.py code needs; capping it is
-    # harmless for newer releases since none currently require setuptools>=81.
+    # Cap setuptools<81: it dropped the 'dry_run' param that older wxPython setup.py code needs.
     echo 'setuptools<81' >"${build_constraints}"
 
-    # Releases without their own pyproject.toml (e.g. 4.2.x) declare no PEP 517 build-system
-    # requires, so an isolated build resolves sip to the latest release; pin whatever this release's
-    # own requirements/devel.txt asks for. Releases WITH a pyproject.toml already carry the correct
-    # sip pin there, and a second one here would make the resolver fail outright.
+    # Releases without a pyproject.toml have no PEP 517 build-system, so pin sip from this release's own requirements/devel.txt (a second pin on releases that already declare one would break the resolver).
     if [ ! -f "${wx_src}/pyproject.toml" ]; then
         sip_constraint=$(grep -oP '^sip\s*==\s*\K[0-9.]+' "${wx_src}/requirements/devel.txt" 2>/dev/null || true)
         if [ -n "${sip_constraint}" ]; then
             log_message "INFO: Pinning sip==${sip_constraint} for the build (per this wxPython release's own requirements)."
             echo "sip==${sip_constraint}" >>"${build_constraints}"
         fi
-        # GCC >=14 turned -Wincompatible-pointer-types into a hard error, which this release's
-        # vendored sip/siplib/siplib.c trips. wxPython's wscript overwrites CFLAGS from wx-config,
-        # so -Wno-error via the environment is silently discarded -- patch the line itself.
+        # GCC >=14 made -Wincompatible-pointer-types a hard error that this release's vendored siplib.c trips; -Wno-error is discarded by wscript, so patch the line itself.
         if [ -f "${wx_src}/sip/siplib/siplib.c" ]; then
             sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' "${wx_src}/sip/siplib/siplib.c"
         fi
@@ -2156,7 +2146,7 @@ build_wxpython() {
     if PYTHONPATH="${typing_extensions_dir}${PYTHONPATH:+:${PYTHONPATH}}" log "${UV_INSTALL_DIR}/uv" pip install --build-constraints "${build_constraints}" "${install_args[@]}" "${wx_src}"; then
         log_message "INFO: Successfully built wxPython from source."
     else
-        log_message "ERROR: Building wxPython from source failed. This is most commonly caused by insufficient free space on /tmp -- check that first."
+        log_message "ERROR: Building wxPython from source failed. This is most commonly caused by insufficient free space on /tmp; check that first."
     fi
 }
 
@@ -2509,8 +2499,7 @@ create_start_psychopy_wrapper() {
     local remove_optionals_call="    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; fi"
     [ "${STUDIO}" = true ] && remove_optionals_call="    if [ \"\${mode}\" != \"n\" ]; then remove_studio_config \"\${mode}\"; fi"
 
-    # Classic execs psychopy (or the psychopy_app module from 2026.2.0+); Studio execs the AppImage,
-    # retrying with --appimage-extract-and-run only if it failed to start (see the generated comment).
+    # Classic execs psychopy (or the psychopy_app module from 2026.2.0+); Studio execs the AppImage, retrying with --appimage-extract-and-run if the first start fails quickly (likely FUSE).
     local launch_line studio_appimage_basename
     if [ "${STUDIO}" = true ]; then
         studio_appimage_basename=$(basename "${STUDIO_APPIMAGE_PATH}")
@@ -2521,9 +2510,7 @@ create_start_psychopy_wrapper() {
             "# Capture before testing: inside 'if ! cmd', \$? is the negation's status, not the app's." \
             "launch_status=\$?" \
             "if [ \"\${launch_status}\" -ne 0 ]; then" \
-            "    # A missing or incompatible FUSE library makes the AppImage fail to self-mount within" \
-            "    # a second or two. A failure after that is PsychoPy itself exiting non-zero, and must" \
-            "    # not silently relaunch the whole GUI and extract the AppImage to /tmp." \
+            "    # A FUSE failure shows up in seconds; a later non-zero exit is PsychoPy itself, which must not silently re-extract the AppImage to /tmp." \
             "    if [ \$((SECONDS - launch_start)) -lt 10 ]; then" \
             "        echo \"[start_psychopy] AppImage failed to start (often a missing FUSE library); retrying with --appimage-extract-and-run ...\" >&2" \
             "        exec \"\${APPIMAGE}\" --appimage-extract-and-run \"\${PSYCHOPY_ARGS[@]}\"" \
@@ -2843,9 +2830,7 @@ main() {
         process_arguments "${@}"
     fi
 
-    # Explicit --wxpython-version choices are validated later in install_wxpython() against
-    # live PyPI data; this only picks a sane default for Python <3.10 users who didn't ask
-    # for a specific version, so they don't hit that error for doing nothing.
+    # Only pick a default for Python <3.10 users who didn't specify a version; explicit choices are validated against PyPI later in install_wxpython().
     if [ "${STUDIO}" = false ] && [ -z "${WXPYTHON_VERSION}" ] && [[ "${PYTHON_VERSION}" =~ ^3\.(8|9)(\.[0-9]+)?$ ]]; then
         WXPYTHON_VERSION="${WXPYTHON_LEGACY_VERSION}"
         log_message "INFO: Python ${PYTHON_VERSION} selected. Defaulting to wxPython ${WXPYTHON_VERSION}, the newest version that still supports it."
@@ -2930,8 +2915,20 @@ main() {
         fi
     fi
 
+    # Resolve psychopy-app (the classic GUI package from 2026.2.0 onward) independently of the core psychopy package, since their releases don't version-track each other on PyPI.
+    if [ "${STUDIO}" = false ] && [ "${PSYCHOPY_VERSION}" != "git" ] && [ "${PSYCHOPY_GIT_TAG}" != "true" ] && uses_psychopy_app_module; then
+        if [ "${PSYCHOPY_APP_VERSION}" == "latest" ]; then
+            get_latest_pypi_version "psychopy-app" PSYCHOPY_APP_VERSION
+        else
+            check_pypi_for_version "psychopy-app" "${PSYCHOPY_APP_VERSION}"
+        fi
+    fi
+
     if [ "${STUDIO}" = false ] && [ "${PSYCHOPY_VERSION}" != "git" ] && [ "${PSYCHOPY_GIT_TAG}" != "true" ]; then
         check_pypi_python_compatibility "psychopy" "${PSYCHOPY_VERSION}"
+    fi
+    if [ "${STUDIO}" = false ] && [ "${PSYCHOPY_VERSION}" != "git" ] && [ "${PSYCHOPY_GIT_TAG}" != "true" ] && uses_psychopy_app_module; then
+        check_pypi_python_compatibility "psychopy-app" "${PSYCHOPY_APP_VERSION}"
     fi
 
     # Set up PsychoPy installation directory
@@ -3059,8 +3056,8 @@ main() {
 
         # From 2026.2.0 onward the classic GUI lives in a separate 'psychopy_app' package.
         if uses_psychopy_app_module; then
-            log_message "INFO: Installing PsychoPy App ${PSYCHOPY_VERSION} ..."
-            log "${UV_INSTALL_DIR}/uv" pip install psychopy_app=="${PSYCHOPY_VERSION}"
+            log_message "INFO: Installing PsychoPy App ${PSYCHOPY_APP_VERSION} ..."
+            log "${UV_INSTALL_DIR}/uv" pip install "psychopy_app==${PSYCHOPY_APP_VERSION}"
             if ! "${UV_INSTALL_DIR}/uv" pip show psychopy_app &>/dev/null; then
                 log_message "ERROR: PsychoPy App installation failed."
             fi
@@ -3140,8 +3137,7 @@ main() {
     fi
 }
 
-# Empty BASH_SOURCE means there is no script file ('curl ... | bash', 'bash -c'); sourcing for the
-# unit tests leaves it set but different from $0, which is the only case that must skip main.
+# Empty BASH_SOURCE means no script file (curl | bash, bash -c); unit tests source this and so must skip main.
 if [[ -z "${BASH_SOURCE[0]}" || "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "${@}"
 fi

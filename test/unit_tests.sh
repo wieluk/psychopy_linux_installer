@@ -80,7 +80,7 @@ assert_contains() {
 # shellcheck source=/dev/null
 source "${INSTALLER}"
 
-# Make privileged/side-effecting helpers no-ops -- unit tests never touch sudo, real package managers, or the network.
+# Make privileged/side-effecting helpers no-ops; unit tests never touch sudo, real package managers, or the network.
 sudo_wrapper() { "$@"; }
 install_packages() { :; }
 install_dependencies() { :; }
@@ -227,7 +227,7 @@ unset -f prompt_user
 # ===============================================================================
 print_header "parse_requirements_file"
 
-# Isolated fixture directory -- it gets rm -rf'd at the end of this section.
+# Isolated fixture directory; rm -rf'd at the end of this section.
 FIXTURE_DIR=$(mktemp -d)
 REQ_FILE="${FIXTURE_DIR}/requirements.txt"
 cat > "${REQ_FILE}" <<'EOF'
@@ -278,7 +278,7 @@ rm -rf "${FIXTURE_DIR}"
 # ===============================================================================
 print_header "process_arguments"
 
-# Not run in a subshell -- assert_* increments CHECKS/ERRORS in the caller's shell.
+# Not run in a subshell: assert_* increments CHECKS/ERRORS in the caller's shell.
 STUDIO=false PSYCHOPY_VERSION="" PYTHON_VERSION="" WXPYTHON_VERSION="" INSTALL_DIR=""
 process_arguments --psychopy-version=2024.2.4 --python-version=3.10 --install-dir=/tmp/psychopy-test
 assert_eq "process_arguments sets PSYCHOPY_VERSION" "2024.2.4" "${PSYCHOPY_VERSION}"
@@ -309,6 +309,10 @@ assert_eq "process_arguments sets STUDIO" "true" "${STUDIO}"
 STUDIO=false PSYCHOPY_VERSION="" PYTHON_VERSION=""
 process_arguments --studio --studio-version=2026.1.2
 assert_eq "process_arguments sets STUDIO_VERSION" "2026.1.2" "${STUDIO_VERSION}"
+
+STUDIO=false STUDIO_VERSION="" PSYCHOPY_VERSION="" PYTHON_VERSION="" PSYCHOPY_APP_VERSION=""
+process_arguments --psychopy-app-version=2026.2.0
+assert_eq "process_arguments sets PSYCHOPY_APP_VERSION" "2026.2.0" "${PSYCHOPY_APP_VERSION}"
 
 output=$( (STUDIO=false; process_arguments --studio --python-version=3.8) 2>&1 )
 rc=$?
@@ -341,7 +345,7 @@ assert_eq "process_arguments sets REMOVE_STUDIO_SETTINGS" "true" "${REMOVE_STUDI
 # ===============================================================================
 print_header "create_rerun_command"
 
-# Not run in a subshell -- see the note above.
+# Not run in a subshell: see the note above.
 for key in "${!DEFAULT_OPTS[@]}"; do
     printf -v "${key}" '%s' "${DEFAULT_OPTS[${key}]}"
 done
@@ -354,6 +358,8 @@ STUDIO=true
 # shellcheck disable=SC2034
 STUDIO_VERSION="2026.1.2"
 # shellcheck disable=SC2034
+PSYCHOPY_APP_VERSION="2026.2.0"
+# shellcheck disable=SC2034
 REQUIREMENTS_FILE=""
 
 rerun_cmd=$(create_rerun_command)
@@ -362,6 +368,7 @@ assert_contains "rerun command includes boolean flag for build-wxpython" "${reru
 assert_contains "rerun command includes non-default install-dir" "${rerun_cmd}" "--install-dir=/custom/install/dir"
 assert_contains "rerun command includes boolean flag for studio" "${rerun_cmd}" "--studio"
 assert_contains "rerun command includes non-default studio-version" "${rerun_cmd}" "--studio-version=2026.1.2"
+assert_contains "rerun command includes non-default psychopy-app-version" "${rerun_cmd}" "--psychopy-app-version=2026.2.0"
 ((CHECKS++))
 if [[ "${rerun_cmd}" != *"--python-version="* ]]; then
     echo -e "${GREEN}${PASS_SYMBOL} PASS${NC}: rerun command omits options left at their default"
@@ -383,8 +390,7 @@ assert_false "a made-up user is not valid" -- validate_user_list "definitely-not
 # ===============================================================================
 print_header "uses_psychopy_app_module"
 
-# The launcher, the install step and the final verification all gate on this one predicate; a
-# git-tag install never gets psychopy_app, so it must keep using the venv's own entry point.
+# The launcher, install step and final verification all gate on this predicate; a git-tag install never gets psychopy_app, so it must keep using the venv's entry point.
 PSYCHOPY_GIT_TAG=false PSYCHOPY_VERSION="2026.2.1"
 assert_true  "2026.2.1 from PyPI uses the psychopy_app module" -- uses_psychopy_app_module
 PSYCHOPY_GIT_TAG=false PSYCHOPY_VERSION="2026.1.3"

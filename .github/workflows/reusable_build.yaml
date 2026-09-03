@@ -25,7 +25,7 @@ jobs:
             wxpython_version: "grab"
           - python_version: "3.9"
             wxpython_version: "grab"
-          # "grab-legacy" uses the script's default for Python <3.10 -- 3.10 is already covered by "grab".
+          # "grab-legacy" uses the script's default for Python <3.10; "grab" already covers 3.10.
           - python_version: "3.10"
             wxpython_version: "grab-legacy"
           # wxPython 4.2.5 requires Python >=3.10; building it for 3.8/3.9 can never succeed.
@@ -299,7 +299,7 @@ jobs:
               echo "$pkg_block" | grep -E "^[[:space:]]*$var=\(" | sed -E "s/^[[:space:]]*$var=\(//; s/\)[[:space:]]*$//"
           }
 
-          # build_deps carries the compiler toolchain -- a fresh container has none by default.
+          # build_deps carries the compiler toolchain, which a fresh container has none of by default.
           all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "wxpython_deps") $(extract_deps "build_deps")"
 
           echo "Extracted packages to install: $all_deps"
@@ -389,27 +389,17 @@ jobs:
           python --version
 
           BUILD_CONSTRAINTS=$(mktemp)
-          # setuptools >=81 dropped the 'dry_run' param older wxPython setup.py code needs; capping
-          # it is harmless for newer releases too since none currently require setuptools>=81.
+          # Cap setuptools<81: it dropped the 'dry_run' param that older wxPython setup.py code needs.
           echo 'setuptools<81' >"$BUILD_CONSTRAINTS"
 
-          # Releases without their own pyproject.toml (e.g. 4.2.x) declare no PEP 517 build-system
-          # requires, so an isolated build resolves sip to the latest release by default; pin
-          # whatever this release's own requirements/devel.txt asks for (e.g. sip==6.7.9 for 4.2.1),
-          # since newer sip generates siplib.c code that no longer compiles against older sources.
-          # Releases WITH a pyproject.toml (e.g. 4.3.x) already declare their own correct sip pin
-          # there -- adding another one here would conflict and make the resolver fail outright.
+          # Releases without a pyproject.toml have no PEP 517 build-system, so pin sip from this release's own requirements/devel.txt (a second pin on releases that already declare one would break the resolver).
           if [ ! -f pyproject.toml ]; then
               SIP_CONSTRAINT=$(grep -oP '^sip\s*==\s*\K[0-9.]+' requirements/devel.txt 2>/dev/null || true)
               if [ -n "$SIP_CONSTRAINT" ]; then
                   echo "Pinning sip==$SIP_CONSTRAINT for the build (per this wxPython release's own requirements/devel.txt)."
                   echo "sip==$SIP_CONSTRAINT" >>"$BUILD_CONSTRAINTS"
               fi
-              # GCC >=14 turned -Wincompatible-pointer-types into a hard error by default, and these
-              # releases vendor their own sip/siplib/siplib.c (unrelated to the sip package pin
-              # above) with one assignment that only compiled clean under the old warn-only default.
-              # wxPython's own wscript overwrites CFLAGS from wx-config, so passing -Wno-error via
-              # the environment is silently discarded -- patch the actual line instead.
+              # GCC >=14 made -Wincompatible-pointer-types a hard error that the vendored siplib.c trips; -Wno-error is discarded by wscript, so patch the line itself.
               if [ -f sip/siplib/siplib.c ]; then
                   sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' sip/siplib/siplib.c
               fi
@@ -517,7 +507,7 @@ jobs:
             wxpython_version: "grab"
           - python_version: "3.9"
             wxpython_version: "grab"
-          # "grab-legacy" uses the script's default for Python <3.10 -- 3.10 is already covered by "grab".
+          # "grab-legacy" uses the script's default for Python <3.10; "grab" already covers 3.10.
           - python_version: "3.10"
             wxpython_version: "grab-legacy"
           # wxPython 4.2.5 requires Python >=3.10; building it for 3.8/3.9 can never succeed.
@@ -799,7 +789,7 @@ jobs:
               echo "$pkg_block" | grep -E "^[[:space:]]*$var=\(" | sed -E "s/^[[:space:]]*$var=\(//; s/\)[[:space:]]*$//"
           }
 
-          # build_deps carries the compiler toolchain -- a fresh container has none by default.
+          # build_deps carries the compiler toolchain, which a fresh container has none of by default.
           all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "wxpython_deps") $(extract_deps "build_deps")"
 
           echo "Extracted packages to install: $all_deps"
@@ -889,27 +879,17 @@ jobs:
           python --version
 
           BUILD_CONSTRAINTS=$(mktemp)
-          # setuptools >=81 dropped the 'dry_run' param older wxPython setup.py code needs; capping
-          # it is harmless for newer releases too since none currently require setuptools>=81.
+          # Cap setuptools<81: it dropped the 'dry_run' param that older wxPython setup.py code needs.
           echo 'setuptools<81' >"$BUILD_CONSTRAINTS"
 
-          # Releases without their own pyproject.toml (e.g. 4.2.x) declare no PEP 517 build-system
-          # requires, so an isolated build resolves sip to the latest release by default; pin
-          # whatever this release's own requirements/devel.txt asks for (e.g. sip==6.7.9 for 4.2.1),
-          # since newer sip generates siplib.c code that no longer compiles against older sources.
-          # Releases WITH a pyproject.toml (e.g. 4.3.x) already declare their own correct sip pin
-          # there -- adding another one here would conflict and make the resolver fail outright.
+          # Releases without a pyproject.toml have no PEP 517 build-system, so pin sip from this release's own requirements/devel.txt (a second pin on releases that already declare one would break the resolver).
           if [ ! -f pyproject.toml ]; then
               SIP_CONSTRAINT=$(grep -oP '^sip\s*==\s*\K[0-9.]+' requirements/devel.txt 2>/dev/null || true)
               if [ -n "$SIP_CONSTRAINT" ]; then
                   echo "Pinning sip==$SIP_CONSTRAINT for the build (per this wxPython release's own requirements/devel.txt)."
                   echo "sip==$SIP_CONSTRAINT" >>"$BUILD_CONSTRAINTS"
               fi
-              # GCC >=14 turned -Wincompatible-pointer-types into a hard error by default, and these
-              # releases vendor their own sip/siplib/siplib.c (unrelated to the sip package pin
-              # above) with one assignment that only compiled clean under the old warn-only default.
-              # wxPython's own wscript overwrites CFLAGS from wx-config, so passing -Wno-error via
-              # the environment is silently discarded -- patch the actual line instead.
+              # GCC >=14 made -Wincompatible-pointer-types a hard error that the vendored siplib.c trips; -Wno-error is discarded by wscript, so patch the line itself.
               if [ -f sip/siplib/siplib.c ]; then
                   sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' sip/siplib/siplib.c
               fi
