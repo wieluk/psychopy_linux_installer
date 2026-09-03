@@ -4,78 +4,70 @@ on:
   workflow_call:
 
 jobs:
-  build:
-    runs-on: [self-hosted, "${{ matrix.os }}"]
+  # ubuntu-22/24 get real hosted VMs (20.04 was retired); other distros use build-container below.
+  build-ubuntu:
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
         os:
           - ubuntu-24
           - ubuntu-22
-          - ubuntu-20
-          - debian-13
-          - debian-12
-          - debian-11
-          - fedora-39
-          - fedora-40
-          - fedora-41
-          - pop-22
-          - rocky-9
-          - centos-9
-          - manjarolinux-25
-          - opensuse-leap-15
-          - linuxmint-22
         python_version: ["3.8", "3.9", "3.10"]
-        wxpython_version: ["grab", "4.2.2", "4.2.1", "4.2.0", "4.1.1"]
+        wxpython_version: ["grab", "grab-legacy", "4.2.5", "4.1.1"]
+        include:
+          - os: ubuntu-24
+            runs_on: ubuntu-24.04
+          - os: ubuntu-22
+            runs_on: ubuntu-22.04
         exclude:
+          # "grab" uses the script's current default wxPython version, which requires Python >=3.10.
           - python_version: "3.8"
             wxpython_version: "grab"
-          - os: fedora-40
-            python_version: "3.8"
-            wxpython_version: "4.2.1"
-          - os: fedora-40
-            python_version: "3.9"
-            wxpython_version: "4.2.1"
-          - os: fedora-40
-            python_version: "3.10"
-            wxpython_version: "4.2.1"
-          - os: fedora-40
-            python_version: "3.10"
-            wxpython_version: "4.1.1"
-          - os: fedora-41
-            python_version: "3.8"
-            wxpython_version: "4.2.1"
-          - os: fedora-41
-            python_version: "3.9"
-            wxpython_version: "4.2.1"
-          - os: fedora-41
-            python_version: "3.10"
-            wxpython_version: "4.2.1"
-          - os: fedora-41
-            python_version: "3.10"
-            wxpython_version: "4.1.1"
-          - os: manjarolinux-25
-            python_version: "3.8"
-            wxpython_version: "4.2.1"
-          - os: manjarolinux-25
-            python_version: "3.9"
-            wxpython_version: "4.2.1"
-          - os: manjarolinux-25
-            python_version: "3.10"
-            wxpython_version: "4.2.1"
-          - os: manjarolinux-25
-            python_version: "3.10"
-            wxpython_version: "4.1.1"
+          - python_version: "3.9"
+            wxpython_version: "grab"
+          # "grab-legacy" uses the script's default for Python <3.10 -- 3.10 is already covered by "grab".
+          - python_version: "3.10"
+            wxpython_version: "grab-legacy"
+          # wxPython 4.2.5 requires Python >=3.10; building it for 3.8/3.9 can never succeed.
+          - python_version: "3.8"
+            wxpython_version: "4.2.5"
+          - python_version: "3.9"
+            wxpython_version: "4.2.5"
       fail-fast: false
     permissions:
       contents: write
+    env:
+      # -y alone doesn't guarantee non-interactive apt-get; some packages still prompt via debconf.
+      DEBIAN_FRONTEND: noninteractive
 
     steps:
-      - uses: actions/checkout@v4
+      # Some minimal images (e.g. opensuse/leap, archlinux) lack git+tar, which actions/checkout needs internally.
+      # $SUDO is empty when already root (container jobs) and "sudo" otherwise (native VM jobs, non-root default user).
+      - name: Install checkout prerequisites
+        run: |
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
+          if command -v apt-get > /dev/null; then
+            $SUDO apt-get update -qq
+            $SUDO apt-get install -y git tar ca-certificates
+          elif command -v dnf > /dev/null; then
+            $SUDO dnf install -y git tar ca-certificates
+          elif command -v yum > /dev/null; then
+            $SUDO yum install -y git tar ca-certificates
+          elif command -v pacman > /dev/null; then
+            $SUDO pacman -Sy --noconfirm git tar ca-certificates
+          elif command -v zypper > /dev/null; then
+            $SUDO zypper --non-interactive install git tar ca-certificates
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
 
       - name: Determine if Failure is Allowed
         id: check-failure
         run: |
-          if [[ "${{ matrix.wxpython_version }}" == "grab" ]]; then
+          if [[ "${{ matrix.wxpython_version }}" == "grab" || "${{ matrix.wxpython_version }}" == "grab-legacy" ]]; then
             echo "ALLOW_FAILURE=false" >> $GITHUB_ENV
           else
             echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
@@ -83,28 +75,31 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo rm -rf /tmp_dir
-          sudo mkdir /tmp_dir
-          sudo chown -R $USER:$(id -gn $USER) /tmp_dir
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
+          $SUDO rm -rf /tmp_dir
+          $SUDO mkdir /tmp_dir
+          $SUDO chmod a+rwX /tmp_dir
 
           if command -v apt-get > /dev/null; then
-            sudo apt-get update
-            sudo apt-get install -y jq curl
+            $SUDO apt-get update
+            $SUDO apt-get install -y jq curl
             PKG_MANAGER="apt-get"
           elif command -v pacman > /dev/null; then
-            sudo pacman -Syu --noconfirm jq curl
+            $SUDO pacman -Syu --noconfirm jq curl
             PKG_MANAGER="pacman"
           elif command -v dnf > /dev/null; then
-            sudo dnf makecache -q
-            sudo dnf install -y jq curl
+            $SUDO dnf makecache -q
+            # RHEL-family minimal images ship curl-minimal, which conflicts with the full curl package.
+            $SUDO dnf install -y --allowerasing jq curl
             PKG_MANAGER="dnf"
           elif command -v yum > /dev/null; then
-            sudo yum makecache -q
-            sudo yum install -y jq curl
+            $SUDO yum makecache -q
+            # RHEL-family minimal images ship curl-minimal, which conflicts with the full curl package.
+            $SUDO yum install -y --allowerasing jq curl
             PKG_MANAGER="yum"
           elif command -v zypper > /dev/null; then
-            sudo zypper refresh
-            sudo zypper install -y jq curl
+            $SUDO zypper refresh
+            $SUDO zypper install -y jq curl
             PKG_MANAGER="zypper"
           else
             echo "Unsupported package manager"
@@ -125,6 +120,12 @@ jobs:
             WXPYTHON_VERSION=$(grep -m1 '^\s*\[WXPYTHON_VERSION\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
             if [ -z "$WXPYTHON_VERSION" ]; then
               echo "Error: Failed to extract WXPYTHON_VERSION from script."
+              exit 1
+            fi
+          elif [ "${{ matrix.wxpython_version }}" = "grab-legacy" ]; then
+            WXPYTHON_VERSION=$(grep -m1 '^WXPYTHON_LEGACY_VERSION=' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
+            if [ -z "$WXPYTHON_VERSION" ]; then
+              echo "Error: Failed to extract WXPYTHON_LEGACY_VERSION from script."
               exit 1
             fi
           else
@@ -179,28 +180,8 @@ jobs:
             exit 1
           fi
 
-          # Function to detect the OS version
-          detect_os_version() {
-              if [ -f /etc/os-release ]; then
-                  . /etc/os-release
-                  if [ -n "$ID" ] && [ -n "$VERSION_ID" ]; then
-                      major_version=$(echo "$VERSION_ID" | cut -d. -f1)
-                      echo "$ID-$major_version"
-                      return
-                  fi
-              fi
-
-              if command -v lsb_release > /dev/null 2>&1; then
-                  version=$(lsb_release -sr | cut -d. -f1)
-                  echo "$(lsb_release -si)-$version"
-                  return
-              fi
-
-              echo "Warning: Unable to detect OS version."
-              exit 1
-          }
-
-          OS_VERSION=$(detect_os_version | tr '[:upper:]' '[:lower:]')
+          # Tag the wheel with the target distro label, not the substitute container's own /etc/os-release (e.g. manjarolinux-25 via archlinux:latest).
+          OS_VERSION="${{ matrix.os }}"
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
           PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
@@ -211,17 +192,17 @@ jobs:
             local release_id=$1
             local page=1
             local assets=""
-            
+
             while :; do
               local response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100&page=$page")
-              
+
               [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
-              
+
               while read -r name && read -r url; do
                 assets+="$name"$'\n'"$url"$'\n'
               done < <(echo "$response" | jq -r '.[] | (.name, .browser_download_url)')
-              
+
               page=$((page + 1))
             done
             echo "$assets"
@@ -279,7 +260,7 @@ jobs:
           echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
           echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
           echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
-      
+
       - name: Transfer wxPython from previous release
         if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
         run: |
@@ -296,11 +277,20 @@ jobs:
       - name: Install build dependencies
         if: env.SKIP_WXPYTHON_PROCESS == 'false'
         run: |
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
           func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
 
+          # Case labels can combine managers (e.g. "yum | dnf)"), so split on "|" and match a whole alternative, not just a bare "pkg)" line.
           pkg_block=$(echo "$func_block" | awk -v pkg="$PKG_MANAGER" '
-            $0 ~ "^[[:space:]]*"pkg"\\)" {found=1; next}
-            found && $0 ~ "^[[:space:]]*;;" {exit}
+            !found && $0 ~ /^[[:space:]]*[A-Za-z0-9_.| -]+\)[[:space:]]*$/ {
+              label = $0
+              gsub(/^[[:space:]]*|[[:space:]]*$/, "", label)
+              sub(/\)[[:space:]]*$/, "", label)
+              n = split(label, alts, /[[:space:]]*\|[[:space:]]*/)
+              for (i = 1; i <= n; i++) if (alts[i] == pkg) { found=1; next }
+              next
+            }
+            found && $0 ~ /^[[:space:]]*;;[[:space:]]*$/ {exit}
             found {print}
           ')
 
@@ -309,34 +299,35 @@ jobs:
               echo "$pkg_block" | grep -E "^[[:space:]]*$var=\(" | sed -E "s/^[[:space:]]*$var=\(//; s/\)[[:space:]]*$//"
           }
 
-          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "wxpython_deps")"
+          # build_deps carries the compiler toolchain -- a fresh container has none by default.
+          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "wxpython_deps") $(extract_deps "build_deps")"
 
           echo "Extracted packages to install: $all_deps"
 
           case "$PKG_MANAGER" in
               apt-get)
                   for pkg in $all_deps; do
-                      sudo apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                      $SUDO apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
                   done
                   ;;
               dnf)
                   for pkg in $all_deps; do
-                      sudo dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                      $SUDO dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
                   done
                   ;;
               yum)
                   for pkg in $all_deps; do
-                      sudo yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                      $SUDO yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
                   done
                   ;;
               pacman)
                   for pkg in $all_deps; do
-                      sudo pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                      $SUDO pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
                   done
                   ;;
               zypper)
                   for pkg in $all_deps; do
-                      sudo zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                      $SUDO zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
                   done
                   ;;
               *)
@@ -376,9 +367,9 @@ jobs:
 
           # Use the installed uv
           UV_BIN="${UV_INSTALL_DIR}/uv"
-          
+
           $UV_BIN venv --python "python${PYTHON_VERSION}" --seed "/tmp_dir/psychopy_venv"
-          
+
           source /tmp_dir/psychopy_venv/bin/activate
           pip install -U pip distro sip six psychtoolbox setuptools wheel
 
@@ -396,7 +387,35 @@ jobs:
           cd "$WXPYTHON_DIR"
 
           python --version
-          python -m pip wheel .
+
+          BUILD_CONSTRAINTS=$(mktemp)
+          # setuptools >=81 dropped the 'dry_run' param older wxPython setup.py code needs; capping
+          # it is harmless for newer releases too since none currently require setuptools>=81.
+          echo 'setuptools<81' >"$BUILD_CONSTRAINTS"
+
+          # Releases without their own pyproject.toml (e.g. 4.2.x) declare no PEP 517 build-system
+          # requires, so an isolated build resolves sip to the latest release by default; pin
+          # whatever this release's own requirements/devel.txt asks for (e.g. sip==6.7.9 for 4.2.1),
+          # since newer sip generates siplib.c code that no longer compiles against older sources.
+          # Releases WITH a pyproject.toml (e.g. 4.3.x) already declare their own correct sip pin
+          # there -- adding another one here would conflict and make the resolver fail outright.
+          if [ ! -f pyproject.toml ]; then
+              SIP_CONSTRAINT=$(grep -oP '^sip\s*==\s*\K[0-9.]+' requirements/devel.txt 2>/dev/null || true)
+              if [ -n "$SIP_CONSTRAINT" ]; then
+                  echo "Pinning sip==$SIP_CONSTRAINT for the build (per this wxPython release's own requirements/devel.txt)."
+                  echo "sip==$SIP_CONSTRAINT" >>"$BUILD_CONSTRAINTS"
+              fi
+              # GCC >=14 turned -Wincompatible-pointer-types into a hard error by default, and these
+              # releases vendor their own sip/siplib/siplib.c (unrelated to the sip package pin
+              # above) with one assignment that only compiled clean under the old warn-only default.
+              # wxPython's own wscript overwrites CFLAGS from wx-config, so passing -Wno-error via
+              # the environment is silently discarded -- patch the actual line instead.
+              if [ -f sip/siplib/siplib.c ]; then
+                  sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' sip/siplib/siplib.c
+              fi
+          fi
+
+          "$UV_BIN" build . --wheel -o . --python "$(command -v python)" --build-constraints "$BUILD_CONSTRAINTS"
 
           # Use a case-insensitive glob to capture the wheel file.
           WXPYTHON_WHEEL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.whl)
@@ -440,4 +459,504 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          sudo rm -rf /tmp_dir
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
+          $SUDO rm -rf /tmp_dir
+
+  # Distros without a native GitHub-hosted VM image build inside an official Docker base image instead.
+  build-container:
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        os:
+          - ubuntu-20
+          - debian-13
+          - debian-12
+          - debian-11
+          - fedora-39
+          - fedora-40
+          - fedora-41
+          - rocky-9
+          - centos-9
+          - manjarolinux-25
+          - opensuse-leap-15
+        python_version: ["3.8", "3.9", "3.10"]
+        wxpython_version: ["grab", "grab-legacy", "4.2.5", "4.1.1"]
+        include:
+          - os: ubuntu-20
+            image: ubuntu:20.04
+          - os: debian-13
+            image: debian:trixie
+          - os: debian-12
+            image: debian:bookworm
+          - os: debian-11
+            image: debian:bullseye
+          - os: fedora-39
+            image: fedora:39
+          - os: fedora-40
+            image: fedora:40
+          - os: fedora-41
+            image: fedora:41
+          - os: rocky-9
+            image: rockylinux:9
+          # Plain "centos:9" no longer exists on Docker Hub; only CentOS Stream is published now.
+          - os: centos-9
+            image: quay.io/centos/centos:stream9
+          # No official Manjaro image; archlinux:latest is the closest well-maintained substitute.
+          - os: manjarolinux-25
+            image: archlinux:latest
+          - os: opensuse-leap-15
+            image: opensuse/leap:15
+        exclude:
+          # "grab" uses the script's current default wxPython version, which requires Python >=3.10.
+          - python_version: "3.8"
+            wxpython_version: "grab"
+          - python_version: "3.9"
+            wxpython_version: "grab"
+          # "grab-legacy" uses the script's default for Python <3.10 -- 3.10 is already covered by "grab".
+          - python_version: "3.10"
+            wxpython_version: "grab-legacy"
+          # wxPython 4.2.5 requires Python >=3.10; building it for 3.8/3.9 can never succeed.
+          - python_version: "3.8"
+            wxpython_version: "4.2.5"
+          - python_version: "3.9"
+            wxpython_version: "4.2.5"
+          - os: fedora-40
+            python_version: "3.10"
+            wxpython_version: "4.1.1"
+          - os: fedora-41
+            python_version: "3.10"
+            wxpython_version: "4.1.1"
+          - os: manjarolinux-25
+            python_version: "3.10"
+            wxpython_version: "4.1.1"
+      fail-fast: false
+    permissions:
+      contents: write
+    env:
+      # -y alone doesn't guarantee non-interactive apt-get; some packages still prompt via debconf.
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      # Some minimal images (e.g. opensuse/leap, archlinux) lack git+tar, which actions/checkout needs internally.
+      # $SUDO is empty when already root (container jobs) and "sudo" otherwise (native VM jobs, non-root default user).
+      - name: Install checkout prerequisites
+        run: |
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
+          if command -v apt-get > /dev/null; then
+            $SUDO apt-get update -qq
+            $SUDO apt-get install -y git tar ca-certificates
+          elif command -v dnf > /dev/null; then
+            $SUDO dnf install -y git tar ca-certificates
+          elif command -v yum > /dev/null; then
+            $SUDO yum install -y git tar ca-certificates
+          elif command -v pacman > /dev/null; then
+            $SUDO pacman -Sy --noconfirm git tar ca-certificates
+          elif command -v zypper > /dev/null; then
+            $SUDO zypper --non-interactive install git tar ca-certificates
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - name: Determine if Failure is Allowed
+        id: check-failure
+        run: |
+          if [[ "${{ matrix.wxpython_version }}" == "grab" || "${{ matrix.wxpython_version }}" == "grab-legacy" ]]; then
+            echo "ALLOW_FAILURE=false" >> $GITHUB_ENV
+          else
+            echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
+          fi
+
+      - name: Install dependencies
+        run: |
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
+          rm -rf /tmp_dir
+          mkdir /tmp_dir
+
+          if command -v apt-get > /dev/null; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y jq curl
+            PKG_MANAGER="apt-get"
+          elif command -v pacman > /dev/null; then
+            $SUDO pacman -Syu --noconfirm jq curl
+            PKG_MANAGER="pacman"
+          elif command -v dnf > /dev/null; then
+            $SUDO dnf makecache -q
+            # RHEL-family minimal images ship curl-minimal, which conflicts with the full curl package.
+            $SUDO dnf install -y --allowerasing jq curl
+            PKG_MANAGER="dnf"
+          elif command -v yum > /dev/null; then
+            $SUDO yum makecache -q
+            # RHEL-family minimal images ship curl-minimal, which conflicts with the full curl package.
+            $SUDO yum install -y --allowerasing jq curl
+            PKG_MANAGER="yum"
+          elif command -v zypper > /dev/null; then
+            $SUDO zypper refresh
+            $SUDO zypper install -y jq curl
+            PKG_MANAGER="zypper"
+          else
+            echo "Unsupported package manager"
+            exit 1
+          fi
+
+          echo "PKG_MANAGER=$PKG_MANAGER" >> $GITHUB_ENV
+
+      - name: Extract versions from script
+        id: extract_versions
+        run: |
+          INSTALLER_VERSION=$(./psychopy_linux_installer --version)
+          if [ -z "$INSTALLER_VERSION" ]; then
+            echo "Error: Failed to extract INSTALLER_VERSION from script."
+            exit 1
+          fi
+          if [ "${{ matrix.wxpython_version }}" = "grab" ]; then
+            WXPYTHON_VERSION=$(grep -m1 '^\s*\[WXPYTHON_VERSION\]' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
+            if [ -z "$WXPYTHON_VERSION" ]; then
+              echo "Error: Failed to extract WXPYTHON_VERSION from script."
+              exit 1
+            fi
+          elif [ "${{ matrix.wxpython_version }}" = "grab-legacy" ]; then
+            WXPYTHON_VERSION=$(grep -m1 '^WXPYTHON_LEGACY_VERSION=' psychopy_linux_installer | sed -n 's/.*="\([^"]*\)".*/\1/p')
+            if [ -z "$WXPYTHON_VERSION" ]; then
+              echo "Error: Failed to extract WXPYTHON_LEGACY_VERSION from script."
+              exit 1
+            fi
+          else
+            WXPYTHON_VERSION="${{ matrix.wxpython_version }}"
+          fi
+
+          echo "INSTALLER_VERSION=$INSTALLER_VERSION" >> $GITHUB_ENV
+          echo "WXPYTHON_VERSION=$WXPYTHON_VERSION" >> $GITHUB_ENV
+          echo "Installer Version extracted: $INSTALLER_VERSION"
+          echo "wxPython version extracted: $WXPYTHON_VERSION"
+
+      - name: Get release info
+        id: get_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          RELEASE_TAG="v${INSTALLER_VERSION}"
+          API_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}"
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL")
+          RELEASE_ID=$(echo "$RESPONSE" | jq -r '.id')
+          UPLOAD_URL=$(echo "$RESPONSE" | jq -r '.upload_url' | sed 's/{?name,label}//')
+          if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
+            exit 1
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_ENV
+          echo "upload_url=$UPLOAD_URL" >> $GITHUB_ENV
+
+      - name: Check existing files and set variables
+        id: check-files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_ID: ${{ env.release_id }}
+        run: |
+          RELEASES=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases")
+
+          CURRENT_VERSION="${INSTALLER_VERSION}"
+
+          PREVIOUS_RELEASE_ID=$(echo "$RELEASES" | jq -r "
+            map(select(.tag_name != \"v${CURRENT_VERSION}\"))
+            | sort_by(.created_at)
+            | reverse
+            | .[0].id
+          ")
+
+          PYTHON_VERSION="${{ matrix.python_version }}"
+          PYTHON_FULL_VERSION=$(curl -s https://www.python.org/ftp/python/ | grep -oP "href=\"${PYTHON_VERSION}\.[0-9]+/\"" | grep -oP "${PYTHON_VERSION}\.[0-9]+/" | sort -V | tail -n 1 | tr -d '/')
+          if [ -z "$PYTHON_FULL_VERSION" ]; then
+            echo "Failed to determine the latest patch version for Python ${PYTHON_VERSION}."
+            exit 1
+          fi
+
+          # Tag the wheel with the target distro label, not the substitute container's own /etc/os-release (e.g. manjarolinux-25 via archlinux:latest).
+          OS_VERSION="${{ matrix.os }}"
+          PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
+          PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
+          PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
+
+          WXPYTHON_WHEEL_NAME="wxPython-${WXPYTHON_VERSION}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-cp${PYTHON_MAJOR}${PYTHON_MINOR}-${PROCESSOR_STRUCTURE}-${OS_VERSION}.whl"
+
+          check_assets() {
+            local release_id=$1
+            local page=1
+            local assets=""
+
+            while :; do
+              local response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100&page=$page")
+
+              [ "$(echo "$response" | jq '. | length')" -eq 0 ] && break
+
+              while read -r name && read -r url; do
+                assets+="$name"$'\n'"$url"$'\n'
+              done < <(echo "$response" | jq -r '.[] | (.name, .browser_download_url)')
+
+              page=$((page + 1))
+            done
+            echo "$assets"
+          }
+
+          CURRENT_ASSETS=""
+          if [ ! -z "$RELEASE_ID" ]; then
+            CURRENT_ASSETS=$(check_assets "$RELEASE_ID")
+          fi
+
+          PREVIOUS_ASSETS=""
+          if [ ! -z "$PREVIOUS_RELEASE_ID" ] && [ "$PREVIOUS_RELEASE_ID" != "null" ]; then
+            PREVIOUS_ASSETS=$(check_assets "$PREVIOUS_RELEASE_ID")
+          fi
+
+          WXPYTHON_EXISTS=false
+          WXPYTHON_URL=""
+          FOUND_WXPYTHON_IN_CURRENT=false
+          FOUND_WXPYTHON_IN_PREVIOUS=false
+
+          while IFS= read -r line; do
+            if [ "$line" = "$WXPYTHON_WHEEL_NAME" ]; then
+              read -r url
+              WXPYTHON_EXISTS=true
+              WXPYTHON_URL="$url"
+              FOUND_WXPYTHON_IN_CURRENT=true
+            fi
+          done <<< "$CURRENT_ASSETS"
+
+          if [ "$WXPYTHON_EXISTS" = false ]; then
+            while IFS= read -r line; do
+              if [ "$line" = "$WXPYTHON_WHEEL_NAME" ] && [ "$WXPYTHON_EXISTS" = false ]; then
+                read -r url
+                WXPYTHON_EXISTS=true
+                WXPYTHON_URL="$url"
+                FOUND_WXPYTHON_IN_PREVIOUS=true
+              fi
+            done <<< "$PREVIOUS_ASSETS"
+          fi
+
+          if [ "$WXPYTHON_EXISTS" = true ]; then
+            echo "SKIP_WXPYTHON_PROCESS=true" >> $GITHUB_ENV
+            if [ "$FOUND_WXPYTHON_IN_PREVIOUS" = true ]; then
+              echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=true" >> $GITHUB_ENV
+            else
+              echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
+            fi
+            echo "WXPYTHON_URL=$WXPYTHON_URL" >> $GITHUB_ENV
+          else
+            echo "SKIP_WXPYTHON_PROCESS=false" >> $GITHUB_ENV
+            echo "TRANSFER_WXPYTHON_FROM_PREVIOUS=false" >> $GITHUB_ENV
+          fi
+
+          echo "PROCESSOR_STRUCTURE=${PROCESSOR_STRUCTURE}" >> $GITHUB_ENV
+          echo "OS_VERSION=${OS_VERSION}" >> $GITHUB_ENV
+          echo "PYTHON_VERSION=${PYTHON_VERSION}" >> $GITHUB_ENV
+          echo "WXPYTHON_WHEEL_NAME=${WXPYTHON_WHEEL_NAME}" >> $GITHUB_ENV
+
+      - name: Transfer wxPython from previous release
+        if: env.TRANSFER_WXPYTHON_FROM_PREVIOUS == 'true'
+        run: |
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            -o "/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
+            "${{ env.WXPYTHON_URL }}"
+
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"/tmp_dir/${WXPYTHON_WHEEL_NAME}" \
+            "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
+
+      - name: Install build dependencies
+        if: env.SKIP_WXPYTHON_PROCESS == 'false'
+        run: |
+          SUDO=""; [ "$(id -u)" != "0" ] && SUDO="sudo"
+          func_block=$(awk '/^install_dependencies\(\) *\{/,/^\}/' psychopy_linux_installer)
+
+          # Case labels can combine managers (e.g. "yum | dnf)"), so split on "|" and match a whole alternative, not just a bare "pkg)" line.
+          pkg_block=$(echo "$func_block" | awk -v pkg="$PKG_MANAGER" '
+            !found && $0 ~ /^[[:space:]]*[A-Za-z0-9_.| -]+\)[[:space:]]*$/ {
+              label = $0
+              gsub(/^[[:space:]]*|[[:space:]]*$/, "", label)
+              sub(/\)[[:space:]]*$/, "", label)
+              n = split(label, alts, /[[:space:]]*\|[[:space:]]*/)
+              for (i = 1; i <= n; i++) if (alts[i] == pkg) { found=1; next }
+              next
+            }
+            found && $0 ~ /^[[:space:]]*;;[[:space:]]*$/ {exit}
+            found {print}
+          ')
+
+          extract_deps() {
+              local var="$1"
+              echo "$pkg_block" | grep -E "^[[:space:]]*$var=\(" | sed -E "s/^[[:space:]]*$var=\(//; s/\)[[:space:]]*$//"
+          }
+
+          # build_deps carries the compiler toolchain -- a fresh container has none by default.
+          all_deps="$(extract_deps "script_deps") $(extract_deps "psychopy_deps") $(extract_deps "fonts") $(extract_deps "wxpython_deps") $(extract_deps "build_deps")"
+
+          echo "Extracted packages to install: $all_deps"
+
+          case "$PKG_MANAGER" in
+              apt-get)
+                  for pkg in $all_deps; do
+                      $SUDO apt-get install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              dnf)
+                  for pkg in $all_deps; do
+                      $SUDO dnf install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              yum)
+                  for pkg in $all_deps; do
+                      $SUDO yum install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              pacman)
+                  for pkg in $all_deps; do
+                      $SUDO pacman -S --noconfirm "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              zypper)
+                  for pkg in $all_deps; do
+                      $SUDO zypper install -y "$pkg" || echo "Warning: Package $pkg not found, skipping."
+                  done
+                  ;;
+              *)
+                  echo "Error: Unsupported package manager."
+                  exit 1
+                  ;;
+          esac
+
+      - name: Build wxPython
+        if: env.SKIP_WXPYTHON_PROCESS == 'false'
+        continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
+        id: build-wxpython
+        run: |
+          # Set up uv environment in /tmp
+          UV_INSTALL_DIR="/tmp/.uv"
+          PYTHON_INSTALL_DIR="/tmp/.python"
+          export UV_UNMANAGED_INSTALL="${UV_INSTALL_DIR}"
+          export UV_CACHE_DIR="${UV_INSTALL_DIR}/cache"
+          export UV_PYTHON_INSTALL_DIR="${PYTHON_INSTALL_DIR}"
+          export UV_PYTHON_BIN_DIR="${PYTHON_INSTALL_DIR}/bin"
+          export UV_PYTHON_CACHE_DIR="${PYTHON_INSTALL_DIR}/cache"
+          export UV_TOOL_DIR="${UV_INSTALL_DIR}/tools"
+          export UV_TOOL_BIN_DIR="${UV_INSTALL_DIR}/tools/bin"
+
+          mkdir -p "${UV_INSTALL_DIR}"
+          mkdir -p "${PYTHON_INSTALL_DIR}"
+
+          # Check if 'uv' is already installed
+          if command -v "${UV_INSTALL_DIR}/uv" >/dev/null 2>&1; then
+              echo "INFO: 'uv' is already installed."
+          else
+              echo "INFO: 'uv' not found. Installing via official installer script ..."
+              curl -LsSf -o /tmp/uv-install.sh https://astral.sh/uv/install.sh
+              sh /tmp/uv-install.sh
+              rm -f /tmp/uv-install.sh
+          fi
+
+          # Use the installed uv
+          UV_BIN="${UV_INSTALL_DIR}/uv"
+
+          $UV_BIN venv --python "python${PYTHON_VERSION}" --seed "/tmp_dir/psychopy_venv"
+
+          source /tmp_dir/psychopy_venv/bin/activate
+          pip install -U pip distro sip six psychtoolbox setuptools wheel
+
+          if [[ "$PYTHON_VERSION" == "3.8" || "$PYTHON_VERSION" == "3.9" ]]; then
+              pip install attrdict
+          elif [[ "$PYTHON_VERSION" == "3.10" ]]; then
+              pip install attrdict3
+          fi
+
+          mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
+          pip download wxPython==$WXPYTHON_VERSION
+          WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
+          tar -xzf "$WXPYTHON_TARBALL"
+          WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
+          cd "$WXPYTHON_DIR"
+
+          python --version
+
+          BUILD_CONSTRAINTS=$(mktemp)
+          # setuptools >=81 dropped the 'dry_run' param older wxPython setup.py code needs; capping
+          # it is harmless for newer releases too since none currently require setuptools>=81.
+          echo 'setuptools<81' >"$BUILD_CONSTRAINTS"
+
+          # Releases without their own pyproject.toml (e.g. 4.2.x) declare no PEP 517 build-system
+          # requires, so an isolated build resolves sip to the latest release by default; pin
+          # whatever this release's own requirements/devel.txt asks for (e.g. sip==6.7.9 for 4.2.1),
+          # since newer sip generates siplib.c code that no longer compiles against older sources.
+          # Releases WITH a pyproject.toml (e.g. 4.3.x) already declare their own correct sip pin
+          # there -- adding another one here would conflict and make the resolver fail outright.
+          if [ ! -f pyproject.toml ]; then
+              SIP_CONSTRAINT=$(grep -oP '^sip\s*==\s*\K[0-9.]+' requirements/devel.txt 2>/dev/null || true)
+              if [ -n "$SIP_CONSTRAINT" ]; then
+                  echo "Pinning sip==$SIP_CONSTRAINT for the build (per this wxPython release's own requirements/devel.txt)."
+                  echo "sip==$SIP_CONSTRAINT" >>"$BUILD_CONSTRAINTS"
+              fi
+              # GCC >=14 turned -Wincompatible-pointer-types into a hard error by default, and these
+              # releases vendor their own sip/siplib/siplib.c (unrelated to the sip package pin
+              # above) with one assignment that only compiled clean under the old warn-only default.
+              # wxPython's own wscript overwrites CFLAGS from wx-config, so passing -Wno-error via
+              # the environment is silently discarded -- patch the actual line instead.
+              if [ -f sip/siplib/siplib.c ]; then
+                  sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' sip/siplib/siplib.c
+              fi
+          fi
+
+          "$UV_BIN" build . --wheel -o . --python "$(command -v python)" --build-constraints "$BUILD_CONSTRAINTS"
+
+          # Use a case-insensitive glob to capture the wheel file.
+          WXPYTHON_WHEEL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.whl)
+
+          # If the wheel file does not start with "wxPython-"
+          if [[ "$WXPYTHON_WHEEL" != wxPython-* ]]; then
+              NEW_WXPYTHON_WHEEL="wxPython-${WXPYTHON_WHEEL:9}"
+              mv "$WXPYTHON_WHEEL" "$NEW_WXPYTHON_WHEEL"
+              WXPYTHON_WHEEL="$NEW_WXPYTHON_WHEEL"
+          fi
+
+          WXPYTHON_IDENTIFIED_WHEEL="/tmp_dir/${WXPYTHON_WHEEL_NAME}"
+          cp "$WXPYTHON_WHEEL" "$WXPYTHON_IDENTIFIED_WHEEL"
+          echo "WXPYTHON_IDENTIFIED_WHEEL=$WXPYTHON_IDENTIFIED_WHEEL" >> $GITHUB_ENV
+
+          deactivate
+
+      - name: Upload wxPython to Release
+        if: env.SKIP_WXPYTHON_PROCESS == 'false' && steps.build-wxpython.outcome == 'success'
+        run: |
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @"${WXPYTHON_IDENTIFIED_WHEEL}" \
+          "${{ env.upload_url }}?name=${WXPYTHON_WHEEL_NAME}"
+
+      - name: Report build status
+        if: ${{ !cancelled() }}
+        run: |
+          if [[ "${{ steps.build-wxpython.outcome }}" == "failure" ]]; then
+            if [[ "${{ env.ALLOW_FAILURE }}" == "true" ]]; then
+              echo "::warning title=Build Failed (Allowed)::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed (allowed)"
+            else
+              echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
+            fi
+          elif [[ "${{ env.SKIP_WXPYTHON_PROCESS }}" == "true" ]]; then
+            echo "::notice title=Skipped::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
+          else
+            echo "::notice title=Success::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython built successfully"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf /tmp_dir
