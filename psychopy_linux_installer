@@ -32,6 +32,9 @@ declare -A DEFAULT_OPTS=(
     [NO_FONTS]=false
     [FORCE_OVERWRITE]=false
     [LOG_LEVEL]="info"
+    [STUDIO]=false
+    [STUDIO_VERSION]="latest"
+    [REMOVE_STUDIO_SETTINGS]=false
 )
 
 # Shared curl retry/timeout options: small lookups vs. larger file downloads.
@@ -210,6 +213,13 @@ is_version_greater() {
     fi
 }
 
+# True when the classic GUI comes from the separate 'psychopy_app' package, so the launcher and the
+# final check must invoke it as a module. Kept in one place because a git-tag install never gets
+# psychopy_app and so must keep using the venv's own 'psychopy' entry point instead.
+uses_psychopy_app_module() {
+    [ "${PSYCHOPY_VERSION}" != "git" ] && [ "${PSYCHOPY_GIT_TAG}" != "true" ] &&
+        is_version_greater "${PSYCHOPY_VERSION}" "2026.1.99"
+}
 
 # Decides whether a failed command's exit code looks like a permission problem.
 needs_sudo() {
@@ -384,6 +394,9 @@ show_help() {
             "  --remove-psychopy-settings                   Remove ${HOME}/.psychopy3" \
             "  --no-fonts                                   Skip font installation" \
             "  --cleanup                                    Remove uv cache and build packages after installation" \
+            "  --studio                                     Install PsychoPy Studio (AppImage) instead of the classic Python app" \
+            "  --studio-version=VERSION                     Set PsychoPy Studio version (default: ${DEFAULT_OPTS[STUDIO_VERSION]})" \
+            "  --remove-studio-settings                     Remove ${HOME}/.config/psychopy4" \
             "  --gui                                        Launch GUI mode (ignores CLI args)" \
             "  -f, --force-overwrite                        Overwrite install dir" \
             "  --log-level=debug|info|warning|error         Log level (default: ${DEFAULT_OPTS[LOG_LEVEL]})" \
@@ -479,6 +492,15 @@ process_arguments() {
         --cleanup)
             CLEANUP=true
             ;;
+        --studio)
+            STUDIO=true
+            ;;
+        --studio-version=*)
+            STUDIO_VERSION="${arg#*=}"
+            ;;
+        --remove-studio-settings)
+            REMOVE_STUDIO_SETTINGS=true
+            ;;
         --gui) ;;
         -f | --force-overwrite)
             FORCE_OVERWRITE=true
@@ -509,6 +531,24 @@ process_arguments() {
     if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && [ "${BUILD_WXPYTHON}" = true ]; then
         log_message "ERROR: --wxpython-wheel-index cannot be used together with --build-wxpython." nolog
     fi
+
+    if [ "${STUDIO}" = true ]; then
+        [ -n "${PSYCHOPY_VERSION}" ] && log_message "ERROR: --psychopy-version cannot be used with --studio. Use --studio-version instead." nolog
+        [ -n "${PYTHON_VERSION}" ] && log_message "ERROR: --python-version cannot be used with --studio (PsychoPy Studio manages its own Python)." nolog
+        [ -n "${WXPYTHON_VERSION}" ] && log_message "ERROR: --wxpython-version cannot be used with --studio." nolog
+        [ "${BUILD_WXPYTHON}" = true ] && log_message "ERROR: --build-wxpython cannot be used with --studio." nolog
+        [ -n "${WXPYTHON_WHEEL_INDEX}" ] && log_message "ERROR: --wxpython-wheel-index cannot be used with --studio." nolog
+        [ -n "${ADDITIONAL_PACKAGES}" ] && log_message "ERROR: --additional-packages cannot be used with --studio." nolog
+        [ -n "${REQUIREMENTS_FILE}" ] && log_message "ERROR: --requirements-file cannot be used with --studio." nolog
+        [ "${NO_FONTS}" = true ] && log_message "ERROR: --no-fonts cannot be used with --studio." nolog
+        [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ] && log_message "ERROR: --remove-psychopy-settings cannot be used with --studio (PsychoPy Studio has no ~/.psychopy3 settings)." nolog
+    else
+        [ -n "${STUDIO_VERSION}" ] && log_message "ERROR: --studio-version cannot be used without --studio." nolog
+        [ "${REMOVE_STUDIO_SETTINGS}" = true ] && log_message "ERROR: --remove-studio-settings cannot be used without --studio." nolog
+    fi
+
+    # Explicit return so the exit status isn't whatever the last "[ ... ]" check above returned.
+    return 0
 }
 
 # Returns a list of all 'real' users (UID >= 1000, not nologin, not system users)
@@ -653,9 +693,15 @@ show_gui() {
         fi
     fi
 
+    # Resolve "latest" now so we know whether Studio applies before asking irrelevant questions.
+    if [ -z "${PSYCHOPY_VERSION}" ] || [ "${PSYCHOPY_VERSION}" == "latest" ]; then
+        get_latest_pypi_version "psychopy" PSYCHOPY_VERSION
+    fi
+    maybe_offer_studio
+
     # Select Python version
-    if [[ "${checklist_result}" == *"Python version"* ]]; then
-        patch_versions=$(curl -s "https://www.python.org/ftp/python/" |
+    if [ "${STUDIO}" = false ] && [[ "${checklist_result}" == *"Python version"* ]]; then
+        patch_versions=$(curl -s "${CURL_RETRY_OPTS[@]}" "https://www.python.org/ftp/python/" |
             grep -oP '(?<=href=")[^/]+(?=/")' |
             grep -E '^(3\.(8|9|10)\.)' | sort -Vr)
 
@@ -677,7 +723,7 @@ show_gui() {
     fi
 
     # wxPython version
-    if [[ "${checklist_result}" == *"wxpython version"* ]]; then
+    if [ "${STUDIO}" = false ] && [[ "${checklist_result}" == *"wxpython version"* ]]; then
         wxpython_versions=$(fetch_versions_from_pypi wxPython)
         if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.[0-9]+)?$ ]]; then
             log_message "INFO: Python 3.8.x selected. Only wxPython versions up to 4.2.2 are compatible."
@@ -698,12 +744,12 @@ show_gui() {
     fi
 
     # Custom wxPython wheel index
-    if [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
+    if [ "${STUDIO}" = false ] && [[ "${checklist_result}" == *"Custom wxPython wheel index"* ]]; then
         WXPYTHON_WHEEL_INDEX=$(select_wxpython_wheel_index) || exit 0
     fi
 
     # Additional pip packages
-    if [[ "${checklist_result}" == *"Additional pip packages"* ]]; then
+    if [ "${STUDIO}" = false ] && [[ "${checklist_result}" == *"Additional pip packages"* ]]; then
         if ADDITIONAL_PACKAGES=$(zenity --entry --title="Additional Packages" --width=800 --height=500 \
             --text="Specify additional pip packages to install (comma-separated).\n\nExample:\npsychopy-bids,another-package==1.2.3,package3\n\n" \
             --entry-text=""); then
@@ -714,7 +760,7 @@ show_gui() {
     fi
 
     # requirements.txt
-    if [[ "${checklist_result}" == *"Use requirements.txt"* ]]; then
+    if [ "${STUDIO}" = false ] && [[ "${checklist_result}" == *"Use requirements.txt"* ]]; then
         if REQUIREMENTS_FILE=$(zenity --file-selection --title="Select requirements.txt" --file-filter="requirements.txt | *.txt") && [ -n "${REQUIREMENTS_FILE}" ]; then
             :
         else
@@ -773,13 +819,16 @@ show_gui() {
         TRUE "Add PsychoPy to system PATH"
         FALSE "Run in non-interactive mode"
         FALSE "Force overwrite of existing directory"
-        FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
-        TRUE "Install font packages"
-        FALSE "Remove build packages and uv cache after installation"
     )
-
-    if [[ -z "${WXPYTHON_WHEEL_INDEX+x}" || -z "${WXPYTHON_WHEEL_INDEX}" ]]; then
-        options_array+=(FALSE "Build wxPython from source")
+    if [ "${STUDIO}" = false ]; then
+        options_array+=(
+            FALSE "Remove PsychoPy user settings (${HOME}/.psychopy3)"
+            TRUE "Install font packages"
+            FALSE "Remove build packages and uv cache after installation"
+        )
+        if [[ -z "${WXPYTHON_WHEEL_INDEX+x}" || -z "${WXPYTHON_WHEEL_INDEX}" ]]; then
+            options_array+=(FALSE "Build wxPython from source")
+        fi
     fi
 
     if options=$(zenity --list --checklist --title="Additional Options" --width=800 --height=500 \
@@ -810,7 +859,9 @@ show_gui() {
         REMOVE_PSYCHOPY_SETTINGS=true
     fi
 
-    if [[ ${options} != *"Install font packages"* ]]; then
+    # The fonts checkbox is only offered for classic installs, so its absence must not be read as
+    # "unchecked" for Studio -- that would put --no-fonts in the rerun command, which --studio rejects.
+    if [ "${STUDIO}" = false ] && [[ ${options} != *"Install font packages"* ]]; then
         NO_FONTS=true
     fi
 
@@ -1328,7 +1379,7 @@ install_packages() {
 
 # Installs dependency groups
 install_dependencies() {
-    local dep_type dependencies script_deps psychopy_deps fonts wxpython_deps
+    local dep_type dependencies script_deps psychopy_deps fonts wxpython_deps studio_deps
 
     dep_type="${1}"
     dependencies=()
@@ -1345,6 +1396,7 @@ install_dependencies() {
         build_deps=(build-essential python3-dev pkg-config tar file gnu-which)
         fonts=(fonts-dejavu fonts-liberation fontconfig)
         wxpython_deps=(freeglut3-dev gstreamer1.0-plugins-base gstreamer1.0-tools gstreamer1.0-x libgtk2.0-dev libjpeg-dev libnotify-dev libpng-dev libsm-dev libtiff-dev)
+        studio_deps=(libfuse2 libfuse2t64 libgtk-3-0 libgtk-3-0t64 libnss3 libnotify4 libxss1 libxtst6 xdg-utils libatspi2.0-0 libuuid1 libsecret-1-0 libasound2 libasound2t64)
         ;;
     yum | dnf)
         script_deps=(curl git jq)
@@ -1352,6 +1404,7 @@ install_dependencies() {
         build_deps=(gcc gcc-c++ make python3-devel pkgconf-pkg-config tar file which)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
         wxpython_deps=(freeglut-devel gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel glib2-devel)
+        studio_deps=(fuse-libs gtk3 nss libnotify libXScrnSaver libXtst xdg-utils at-spi2-atk libuuid libsecret alsa-lib)
         ;;
     pacman)
         script_deps=(curl git jq)
@@ -1359,6 +1412,7 @@ install_dependencies() {
         build_deps=(gcc make base-devel python pkgconf tar file which)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
         wxpython_deps=(freeglut glib2 gstreamer gtk2 libjpeg libpng libsm libtiff glu mesa)
+        studio_deps=(fuse2 gtk3 nss libnotify libxss libxtst xdg-utils at-spi2-atk libsecret alsa-lib)
         ;;
     zypper)
         script_deps=(curl git jq)
@@ -1366,6 +1420,7 @@ install_dependencies() {
         build_deps=(gcc gcc-c++ make python3-devel pkg-config tar file which)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
+        studio_deps=(libfuse2 gtk3 mozilla-nss libnotify4 libXss1 libXtst6 xdg-utils at-spi2-atk libuuid1 libsecret-1-0 alsa)
         ;;
     esac
 
@@ -1375,6 +1430,7 @@ install_dependencies() {
     build_deps) dependencies=("${build_deps[@]}") ;;
     fonts) dependencies=("${fonts[@]}") ;;
     wxpython_deps) dependencies=("${wxpython_deps[@]}") ;;
+    studio_deps) dependencies=("${studio_deps[@]}") ;;
     *)
         log_message "ERROR: Invalid dependency type specified."
         ;;
@@ -1852,18 +1908,43 @@ install_wxpython_from_github() {
     fi
 }
 
+# Downloads and installs the PsychoPy Studio AppImage
+install_psychopy_studio() {
+    local appimage_name download_url download_path
+    appimage_name="PsychoPy_Studio_${STUDIO_VERSION}.AppImage"
+    download_url="https://github.com/psychopy/psychopy/releases/download/${STUDIO_VERSION}/${appimage_name}"
+    download_path="/tmp/${appimage_name}"
+    STUDIO_APPIMAGE_PATH="${PSYCHOPY_DIR}/${appimage_name}"
+
+    register_cleanup "${download_path}"
+
+    log_message "INFO: Downloading PsychoPy Studio ${STUDIO_VERSION} ..."
+    if ! curl "${CURL_RETRY_OPTS[@]}" --head --silent --fail "${download_url}" >/dev/null; then
+        log_message "ERROR: No PsychoPy Studio release found at '${download_url}'." nolog
+    fi
+    if ! log curl "${CURL_DOWNLOAD_OPTS[@]}" -L -o "${download_path}" "${download_url}"; then
+        log_message "ERROR: Failed to download PsychoPy Studio from '${download_url}'."
+    fi
+
+    sudo_wrapper mv "${download_path}" "${STUDIO_APPIMAGE_PATH}"
+    sudo_wrapper chmod +x "${STUDIO_APPIMAGE_PATH}"
+    set_shared_permissions "${STUDIO_APPIMAGE_PATH}"
+    log_message "INFO: Successfully downloaded PsychoPy Studio."
+}
+
 # Builds wxPython from source with the necessary build dependencies.
 build_wxpython() {
-    local tmp_size_gb tmp_size_new install_args
+    local tmp_size_gb tmp_size_new install_args typing_extensions_dir
+    local src_dir sdist_url wx_src build_constraints sip_constraint
 
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
 
-    # Check /tmp size and prompt to increase if <4GB
-    tmp_size_gb=$(df -B1G --output=size /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
+    # Check /tmp free space (not total size) and prompt to increase it if <4GB.
+    tmp_size_gb=$(df -B1G --output=avail /tmp 2>/dev/null | tail -n1 | tr -d ' ' || echo 0)
     if [ "${tmp_size_gb}" -lt 4 ]; then
         if [ "${NON_INTERACTIVE}" = false ]; then
-            response=$(prompt_user "Your /tmp partition is only ${tmp_size_gb}GB. wxPython build may fail. Do you want to temporarily increase /tmp size until next reboot?" \
+            response=$(prompt_user "Your /tmp partition only has ${tmp_size_gb}GB free. wxPython build may fail. Do you want to temporarily increase /tmp size until next reboot?" \
                 "Increase to 4GB" \
                 "Increase to 8GB" \
                 "No, continue")
@@ -2000,6 +2081,42 @@ setup_psychopy_group_and_limits() {
 }
 
 # Creates desktop shortcuts for PsychoPy applications.
+# Writes a single .desktop launcher file.
+write_desktop() {
+    local dest_dir="$1" args="$2" label="$3" icon_file="$4"
+    local desktop_path icon_line desktop_content comment
+
+    desktop_path="${dest_dir}/${label}.desktop"
+    icon_line=""
+    [[ -f "${resources_dir}/${icon_file}" ]] && icon_line="Icon=${resources_dir}/${icon_file}"
+
+    if [ "${STUDIO}" = true ]; then
+        comment="Comment=Run PsychoPy Studio ${STUDIO_VERSION}"
+    else
+        comment="Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${args}"
+    fi
+
+    desktop_content="$(printf "%s\n" \
+        "[Desktop Entry]" \
+        "Version=1.0" \
+        "Type=Application" \
+        "Name=${label}" \
+        "GenericName=PsychoPy Experiment Builder" \
+        "${comment}" \
+        "Exec=${PSYCHOPY_DIR}/start_psychopy${args:+ ${args}}" \
+        "${icon_line}" \
+        "Terminal=false" \
+        "Categories=Education;Science;Development;" \
+        "MimeType=application/x-psyexp;" \
+        "Keywords=psychopy;experiment;builder;psyexp;design;" \
+        "TryExec=${PSYCHOPY_DIR}/start_psychopy" \
+        "StartupNotify=true" \
+        "StartupWMClass=psychopy")"
+
+    sudo_wrapper sh -c "printf '%s\n' \"\$1\" > \"${desktop_path}\"" _ "${desktop_content}"
+    sudo_wrapper chmod +x "${desktop_path}"
+}
+
 create_desktop_shortcut() {
     local resources_dir system_app_dir global_app_dir
     local icon_url spec args label icon
@@ -2008,63 +2125,42 @@ create_desktop_shortcut() {
     resources_dir="${PSYCHOPY_DIR}/Resources"
     sudo_wrapper mkdir -p "${resources_dir}"
 
-    local -a shortcuts=(
-        "--no-splash|$(basename "${PSYCHOPY_DIR}")|psychopy.png|psychopy"
-        "--builder --no-splash|Builder $(basename "${PSYCHOPY_DIR}")|builder.png|builder"
-        "--coder --no-splash|Coder $(basename "${PSYCHOPY_DIR}")|coder.png|coder"
-    )
-
-    local -a active_shortcuts=()
-    local _shortcuts_list="${DESKTOP_SHORTCUTS}"
-    [[ "${_shortcuts_list}" == "all" ]] && _shortcuts_list="psychopy,builder,coder"
-    for spec in "${shortcuts[@]}"; do
-        IFS="|" read -r _fargs _flabel _ficon shortcut_id <<< "${spec}"
-        if [[ ",${_shortcuts_list}," == *",${shortcut_id},"* ]]; then
-            active_shortcuts+=("${spec}")
+    local -a shortcuts=()
+    if [ "${STUDIO}" = true ]; then
+        shortcuts=("|$(basename "${PSYCHOPY_DIR}")|psychopy.png|psychopy")
+        if [[ "${DESKTOP_SHORTCUTS}" == *"builder"* || "${DESKTOP_SHORTCUTS}" == *"coder"* ]]; then
+            log_message "WARNING: --desktop-shortcuts 'builder'/'coder' options don't apply to --studio; creating the single PsychoPy Studio shortcut instead."
         fi
-    done
-    shortcuts=("${active_shortcuts[@]}")
+    else
+        shortcuts=(
+            "--no-splash|$(basename "${PSYCHOPY_DIR}")|psychopy.png|psychopy"
+            "--builder --no-splash|Builder $(basename "${PSYCHOPY_DIR}")|builder.png|builder"
+            "--coder --no-splash|Coder $(basename "${PSYCHOPY_DIR}")|coder.png|coder"
+        )
+
+        local -a active_shortcuts=()
+        local _shortcuts_list="${DESKTOP_SHORTCUTS}"
+        [[ "${_shortcuts_list}" == "all" ]] && _shortcuts_list="psychopy,builder,coder"
+        for spec in "${shortcuts[@]}"; do
+            IFS="|" read -r _fargs _flabel _ficon shortcut_id <<< "${spec}"
+            if [[ ",${_shortcuts_list}," == *",${shortcut_id},"* ]]; then
+                active_shortcuts+=("${spec}")
+            fi
+        done
+        shortcuts=("${active_shortcuts[@]}")
+    fi
     [[ ${#shortcuts[@]} -eq 0 ]] && return 0
 
     for spec in "${shortcuts[@]}"; do
         IFS="|" read -r _ label icon _id <<< "${spec}"
         icon_url="https://raw.githubusercontent.com/wieluk/psychopy_linux_installer/main/Resources/${icon}"
-        if log curl -sIf "${icon_url}"; then
-            sudo_wrapper curl -sf -o "${resources_dir}/${icon}" "${icon_url}" \
+        if log curl -sIf "${CURL_RETRY_OPTS[@]}" "${icon_url}"; then
+            sudo_wrapper curl -sf "${CURL_RETRY_OPTS[@]}" -o "${resources_dir}/${icon}" "${icon_url}" \
                 || log_message "WARNING: Failed to download ${icon_url}"
         else
             log_message "WARNING: Icon not found at ${icon_url}"
         fi
     done
-
-    write_desktop() {
-        local dest_dir="$1" args="$2" label="$3" icon_file="$4"
-        local desktop_path icon_line desktop_content
-
-        desktop_path="${dest_dir}/${label}.desktop"
-        icon_line=""
-        [[ -f "${resources_dir}/${icon_file}" ]] && icon_line="Icon=${resources_dir}/${icon_file}"
-
-        desktop_content="$(printf "%s\n" \
-            "[Desktop Entry]" \
-            "Version=1.0" \
-            "Type=Application" \
-            "Name=${label}" \
-            "GenericName=PsychoPy Experiment Builder" \
-            "Comment=Run PsychoPy ${PSYCHOPY_VERSION} on Python${PYTHON_VERSION} with ${args}" \
-            "Exec=${PSYCHOPY_DIR}/start_psychopy ${args}" \
-            "${icon_line}" \
-            "Terminal=false" \
-            "Categories=Education;Science;Development;" \
-            "MimeType=application/x-psyexp;" \
-            "Keywords=psychopy;experiment;builder;psyexp;design;" \
-            "TryExec=${PSYCHOPY_DIR}/start_psychopy" \
-            "StartupNotify=true" \
-            "StartupWMClass=psychopy")"
-
-        sudo_wrapper sh -c "printf '%s\n' \"\$1\" > \"${desktop_path}\"" _ "${desktop_content}"
-        sudo_wrapper chmod +x "${desktop_path}"
-    }
 
     system_app_dir="/usr/share/applications"
     if sudo_wrapper test -w "${system_app_dir}"; then
@@ -2235,201 +2331,287 @@ create_start_psychopy_wrapper() {
     *) remove_cmd="echo \"Unknown package manager: ${PKG_MANAGER}. Please remove packages manually.\"" ;;
     esac
 
+    # Studio-only installs never created the Python/uv/.psychopy3 state remove_optionals cleans up; they get remove_studio_config instead.
+    local remove_optionals_call="    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; fi"
+    [ "${STUDIO}" = true ] && remove_optionals_call="    if [ \"\${mode}\" != \"n\" ]; then remove_studio_config \"\${mode}\"; fi"
+
+    # Classic execs psychopy (or the psychopy_app module from 2026.2.0+); Studio execs the AppImage,
+    # retrying with --appimage-extract-and-run only if it failed to start (see the generated comment).
+    local launch_line studio_appimage_basename
+    if [ "${STUDIO}" = true ]; then
+        studio_appimage_basename=$(basename "${STUDIO_APPIMAGE_PATH}")
+        launch_line=$(printf "%s\n" \
+            "APPIMAGE=\"\${SCRIPT_DIR}/${studio_appimage_basename}\"" \
+            "launch_start=\${SECONDS}" \
+            "\"\${APPIMAGE}\" \"\${PSYCHOPY_ARGS[@]}\"" \
+            "# Capture before testing: inside 'if ! cmd', \$? is the negation's status, not the app's." \
+            "launch_status=\$?" \
+            "if [ \"\${launch_status}\" -ne 0 ]; then" \
+            "    # A missing or incompatible FUSE library makes the AppImage fail to self-mount within" \
+            "    # a second or two. A failure after that is PsychoPy itself exiting non-zero, and must" \
+            "    # not silently relaunch the whole GUI and extract the AppImage to /tmp." \
+            "    if [ \$((SECONDS - launch_start)) -lt 10 ]; then" \
+            "        echo \"[start_psychopy] AppImage failed to start (often a missing FUSE library); retrying with --appimage-extract-and-run ...\" >&2" \
+            "        exec \"\${APPIMAGE}\" --appimage-extract-and-run \"\${PSYCHOPY_ARGS[@]}\"" \
+            "    fi" \
+            "    exit \"\${launch_status}\"" \
+            "fi")
+    elif uses_psychopy_app_module; then
+        launch_line="exec \"\${SCRIPT_DIR}/.venv/bin/python\" -m psychopy_app.psychopyApp \"\${PSYCHOPY_ARGS[@]}\""
+    else
+        launch_line="exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${PSYCHOPY_ARGS[@]}\""
+    fi
+
+    # '\$' stays escaped so it's evaluated later, when the generated wrapper runs.
     local wrapper_script
-    wrapper_script=$(
-        printf "%s\n" \
-            "#!/bin/bash" \
-            "# ================================================================================" \
-            "#  PsychoPy Start/Uninstall Wrapper" \
-            "# ================================================================================" \
-            "" \
-            "SCRIPT_DIR=\"\$(dirname \"\$(readlink -f \"\$0\")\")\"" \
-            "" \
-            "WORKSPACE_DIR=\${SCRIPT_DIR}/workspace" \
-            "UNINSTALL_ARG=false" \
-            "HELP_ARG=false" \
-            "NON_INTERACTIVE_ARG=\"\"" \
-            "PSYCHOPY_ARGS=()" \
-            "" \
-            "remove_optionals() {" \
-            "    local mode=\"\$1\"" \
-            "    if [ \"\${mode}\" = \"y\" ]; then" \
-            "        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
-            "        \${SUDO} groupdel psychopy || echo \"Group may not exist.\"" \
-            "        for user in ${TARGET_USERS[*]}; do" \
-            "            user_home=\$(getent passwd \"\${user}\" | cut -d: -f6 2>/dev/null || echo \"\")" \
-            "            if [ -z \"\${user_home}\" ]; then" \
-            "                echo \"WARNING: Could not determine home directory for user: \${user}\"" \
-            "                continue" \
-            "            elif [ -d \"\${user_home}/.psychopy3\" ]; then" \
-            "                \${SUDO} rm -rf \"\${user_home}/.psychopy3\"" \
-            "                echo \"Removed .psychopy3 for user: \${user}\"" \
-            "            fi" \
-            "        done" \
-            "        \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
-            "        \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
-            "    elif [ \"\${mode}\" = \"prompt\" ]; then" \
-            "        read -r -p \"Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: \" resp" \
-            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf" \
-            "        read -r -p \"Remove psychopy group? [y/N]: \" resp" \
-            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo \"Could not remove 'psychopy' group (it may not exist or you lack permissions).\"; }" \
-            "        read -r -p \"Remove PsychoPy user settings (.psychopy3) for all target users (${TARGET_USERS[*]})? [y/N]: \" resp" \
-            "        if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-            "            for user in ${TARGET_USERS[*]}; do" \
-            "                user_home=\$(getent passwd \"\${user}\" | cut -d: -f6 2>/dev/null || echo \"\")" \
-            "                if [ -z \"\${user_home}\" ]; then" \
-            "                    echo \"WARNING: Could not determine home directory for user: \${user}\"" \
-            "                    continue" \
-            "                elif [ -d \"\${user_home}/.psychopy3\" ]; then" \
-            "                    \${SUDO} rm -rf \"\${user_home}/.psychopy3\"" \
-            "                    echo \"Removed .psychopy3 for user: \${user}\"" \
-            "                fi" \
-            "            done" \
-            "        fi" \
-            "        read -r -p \"Remove uv with cache? (\"${UV_INSTALL_DIR}\") [y/N]: \" resp" \
-            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${UV_INSTALL_DIR}\"" \
-            "        read -r -p \"Remove python versions installed by this installer? (\"${PYTHON_INSTALL_DIR}\") [y/N]: \" resp" \
-            "        [[ \"\${resp}\" =~ ^[Yy]$ ]] && \${SUDO} rm -rf \"${PYTHON_INSTALL_DIR}\"" \
-            "    fi" \
-            "}" \
-            "" \
-            "remove_packages() {" \
-            "    local mode=\"\$1\"" \
-            "    UNIVERSIAL_PKG_FILE=\"${UNIVERSIAL_PKG_FILE}\"" \
-            "    combined_pkgs=\"${packages_installed_by_script_string}\"" \
-            "    [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && universal_pkgs=\$(tr '\\n' ' ' < \"\${UNIVERSIAL_PKG_FILE}\" | xargs) && combined_pkgs=\"\${combined_pkgs} \${universal_pkgs}\"" \
-            "    all_pkgs=\$(echo \${combined_pkgs} | tr ' ' '\\n' | sort -u | tr '\\n' ' ' | xargs)" \
-            "    if [ -n \"\${all_pkgs}\" ]; then" \
-            "        if [ \"\${mode}\" = \"y\" ]; then" \
-            "            echo \"Removing the following system packages using ${PKG_MANAGER} (non-interactive):\"" \
-            "            echo \"\${all_pkgs}\"" \
-            "            if ${remove_cmd} \${all_pkgs}; then" \
-            "                [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && echo \"Removing universal package tracking file: \${UNIVERSIAL_PKG_FILE}\" && \${SUDO} rm -f \"\${UNIVERSIAL_PKG_FILE}\"" \
-            "            else" \
-            "                echo \"WARNING: Package removal failed. Not removing universal package tracking file at \${UNIVERSIAL_PKG_FILE}\"" \
-            "            fi" \
-            "        elif [ \"\${mode}\" = \"prompt\" ]; then" \
-            "            echo \"The following system packages were installed by this script (including all environments):\"" \
-            "            echo \"\${all_pkgs}\"" \
-            "            read -p \"Do you want to remove these packages using ${PKG_MANAGER}? [y/N]: \" resp" \
-            "            if [[ \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-            "                if ${remove_cmd} \${all_pkgs}; then" \
-            "                    [ -f \"\${UNIVERSIAL_PKG_FILE}\" ] && echo \"Removing universal package tracking file: \${UNIVERSIAL_PKG_FILE}\" && \${SUDO} rm -f \"\${UNIVERSIAL_PKG_FILE}\"" \
-            "                else" \
-            "                    echo \"WARNING: Package removal failed. Not removing universal package tracking file at \${UNIVERSIAL_PKG_FILE}\"" \
-            "                fi" \
-            "            else" \
-            "                echo \"Skipped removing system packages.\"" \
-            "            fi" \
-            "        else" \
-            "            echo \"Non-interactive mode: Skipping removal of system packages.\"" \
-            "        fi" \
-            "    fi" \
-            "}" \
-            "" \
-            "for arg in \"\$@\"; do" \
-            "    case \"\${arg}\" in" \
-            "        --workspace-dir=*)" \
-            "            WORKSPACE_DIR=\"\${arg#*=}\"" \
-            "            ;;" \
-            "        --uninstall)" \
-            "            UNINSTALL_ARG=true" \
-            "            ;;" \
-            "        --non-interactive=*)" \
-            "            NON_INTERACTIVE_ARG=\"\${arg#*=}\"" \
-            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-            "            ;;" \
-            "        -h|--help)" \
-            "            HELP_ARG=true" \
-            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-            "            ;;" \
-            "        *)" \
-            "            PSYCHOPY_ARGS+=(\"\${arg}\")" \
-            "            ;;" \
-            "    esac" \
-            "done" \
-            "" \
-            "if \${HELP_ARG}; then" \
-            "    echo '================ PsychoPy Start/Uninstall Wrapper ================='" \
-            "    echo 'Usage:'" \
-            "    echo \"  \$(basename \$0) --uninstall      # Uninstall PsychoPy and clean up files\"" \
-            "    echo \"  \$(basename \$0) --workspace-dir=DIR     # Set working directory for PsychoPy session\"" \
-            "    echo \"  \$(basename \$0) [args...]        # Forwards all arguments to PsychoPy\"" \
-            "    echo" \
-            "    echo 'If not called with --uninstall, all arguments are passed directly to PsychoPy.'" \
-            "    echo '---------------------------------------------------------------------'" \
-            "    echo 'The following help is from PsychoPy itself:'" \
-            "    echo '---------------------------------------------------------------------'" \
-            "fi" \
-            "" \
-            "if \${UNINSTALL_ARG}; then" \
-            "    # Move self to /tmp and re-exec if running from inside the install dir" \
-            "    if [[ \"\$(dirname \"\$(readlink -f \"\$0\")\")\" == \"${PSYCHOPY_DIR}\" ]]; then" \
-            "        tmp_uninstaller=\"/tmp/psychopy_uninstaller_\$\$.sh\"" \
-            "        cp \"\$0\" \"\${tmp_uninstaller}\" || { echo 'Failed to copy uninstaller to /tmp'; exit 1; }" \
-            "        chmod +x \"\${tmp_uninstaller}\" || { echo 'Failed to chmod uninstaller in /tmp'; exit 1; }" \
-            "        exec \"\${tmp_uninstaller}\" \"\$@\"" \
-            "        exit 0" \
-            "    fi" \
-            "" \
-            "    case \"\${NON_INTERACTIVE_ARG,,}\" in" \
-            "        y|n)" \
-            "            mode=\"\${NON_INTERACTIVE_ARG,,}\"" \
-            "            if sudo -n true 2>/dev/null; then SUDO=\"sudo\"; else SUDO=\"\"; fi" \
-            "            ;;" \
-            "        *)" \
-            "            mode=\"prompt\"" \
-            "            if sudo true 2>/dev/null; then" \
-            "                SUDO=\"sudo\"" \
-            "            else" \
-            "                SUDO=\"\"" \
-            "                echo \"WARNING: You do not have sudo rights. Uninstalling without sudo may result in a partially uninstalled app.\"" \
-            "                read -r -p \"Do you want to continue without sudo? [y/N]: \" resp" \
-            "                if [[ ! \"\${resp}\" =~ ^[Yy]$ ]]; then" \
-            "                    echo \"Aborting uninstallation.\"" \
-            "                    exit 1" \
-            "                fi" \
-            "            fi" \
-            "            ;;" \
-            "    esac" \
-            "" \
-            "${shortcut_block}" \
-            "" \
-            "${symlink_block}" \
-            "" \
-            "    if [ \"\${mode}\" != \"n\" ]; then remove_optionals \"\${mode}\"; fi" \
-            "    remove_packages \"\${mode}\"" \
-            "" \
-            "    echo \"Removing PsychoPy directory: ${PSYCHOPY_DIR}\"" \
-            "    \${SUDO} rm -rf \"${PSYCHOPY_DIR}\"" \
-            "    if [ \$? -ne 0 ]; then" \
-            "        echo \"ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting.\"" \
-            "        exit 1" \
-            "    fi" \
-            "" \
-            "    # Check if ${INSTALL_DIR} is empty and remove if so" \
-            "    if [ -d ${INSTALL_DIR} ] && [ \"\$(ls -A ${INSTALL_DIR})\" == \"\" ]; then" \
-            "        echo \"Removing empty directory: ${INSTALL_DIR}\"" \
-            "        \${SUDO} rmdir ${INSTALL_DIR}" \
-            "    else" \
-            "        echo \"WARNING: ${INSTALL_DIR} is not empty. Not removing.\"" \
-            "    fi" \
-            "" \
-            "    echo \"Uninstallation complete.\"" \
-            "    exit 0" \
-            "fi" \
-            "" \
-            "echo \"[start_psychopy] Working directory: \${WORKSPACE_DIR}\"" \
-                "if [ ! -d \"\${WORKSPACE_DIR}\" ]; then" \
-                "    mkdir -p \"\${WORKSPACE_DIR}\" 2>/dev/null || true" \
-                "fi" \
-            "if ! cd \"\${WORKSPACE_DIR}\"; then" \
-            "    echo \"[start_psychopy] WARNING: Could not change to workspace directory.\"" \
-                "    WORKSPACE_DIR=\${HOME}" \
-                "    cd \"\${WORKSPACE_DIR}\" 2>/dev/null || true" \
-            "fi" \
-            "" \
-                "exec \"\${SCRIPT_DIR}/.venv/bin/psychopy\" \"\${PSYCHOPY_ARGS[@]}\""
+    wrapper_script=$(cat <<PSYCHOPY_WRAPPER_EOF
+#!/bin/bash
+# ================================================================================
+#  PsychoPy Start/Uninstall Wrapper
+# ================================================================================
+
+SCRIPT_DIR="\$(dirname "\$(readlink -f "\$0")")"
+
+WORKSPACE_DIR=\${SCRIPT_DIR}/workspace
+UNINSTALL_ARG=false
+HELP_ARG=false
+NON_INTERACTIVE_ARG=""
+PSYCHOPY_ARGS=()
+
+remove_optionals() {
+    local mode="\$1"
+    if [ "\${mode}" = "y" ]; then
+        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf
+        \${SUDO} groupdel psychopy || echo "Group may not exist."
+        for user in ${TARGET_USERS[*]}; do
+            user_home=\$(getent passwd "\${user}" | cut -d: -f6 2>/dev/null || echo "")
+            if [ -z "\${user_home}" ]; then
+                echo "WARNING: Could not determine home directory for user: \${user}"
+                continue
+            elif [ -d "\${user_home}/.psychopy3" ]; then
+                \${SUDO} rm -rf "\${user_home}/.psychopy3"
+                echo "Removed .psychopy3 for user: \${user}"
+            fi
+        done
+        \${SUDO} rm -rf "${UV_INSTALL_DIR}"
+        \${SUDO} rm -rf "${PYTHON_INSTALL_DIR}"
+    elif [ "\${mode}" = "prompt" ]; then
+        read -r -p "Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: " resp
+        [[ "\${resp}" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf
+        read -r -p "Remove psychopy group? [y/N]: " resp
+        [[ "\${resp}" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo "Could not remove 'psychopy' group (it may not exist or you lack permissions)."; }
+        read -r -p "Remove PsychoPy user settings (.psychopy3) for all target users (${TARGET_USERS[*]})? [y/N]: " resp
+        if [[ "\${resp}" =~ ^[Yy]$ ]]; then
+            for user in ${TARGET_USERS[*]}; do
+                user_home=\$(getent passwd "\${user}" | cut -d: -f6 2>/dev/null || echo "")
+                if [ -z "\${user_home}" ]; then
+                    echo "WARNING: Could not determine home directory for user: \${user}"
+                    continue
+                elif [ -d "\${user_home}/.psychopy3" ]; then
+                    \${SUDO} rm -rf "\${user_home}/.psychopy3"
+                    echo "Removed .psychopy3 for user: \${user}"
+                fi
+            done
+        fi
+        read -r -p "Remove uv with cache? ("${UV_INSTALL_DIR}") [y/N]: " resp
+        [[ "\${resp}" =~ ^[Yy]$ ]] && \${SUDO} rm -rf "${UV_INSTALL_DIR}"
+        read -r -p "Remove python versions installed by this installer? ("${PYTHON_INSTALL_DIR}") [y/N]: " resp
+        [[ "\${resp}" =~ ^[Yy]$ ]] && \${SUDO} rm -rf "${PYTHON_INSTALL_DIR}"
+    fi
+}
+
+remove_studio_config() {
+    local mode="\$1"
+    if [ "\${mode}" = "y" ]; then
+        \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf
+        \${SUDO} groupdel psychopy || echo "Group may not exist."
+        for user in ${TARGET_USERS[*]}; do
+            user_home=\$(getent passwd "\${user}" | cut -d: -f6 2>/dev/null || echo "")
+            if [ -z "\${user_home}" ]; then
+                echo "WARNING: Could not determine home directory for user: \${user}"
+                continue
+            elif [ -d "\${user_home}/.config/psychopy4" ]; then
+                \${SUDO} rm -rf "\${user_home}/.config/psychopy4"
+                echo "Removed .config/psychopy4 for user: \${user}"
+            fi
+        done
+    elif [ "\${mode}" = "prompt" ]; then
+        read -r -p "Remove /etc/security/limits.d/99-psychopylimits.conf? [y/N]: " resp
+        [[ "\${resp}" =~ ^[Yy]$ ]] && \${SUDO} rm -f /etc/security/limits.d/99-psychopylimits.conf
+        read -r -p "Remove psychopy group? [y/N]: " resp
+        [[ "\${resp}" =~ ^[Yy]$ ]] && { \${SUDO} groupdel psychopy || echo "Could not remove 'psychopy' group (it may not exist or you lack permissions)."; }
+        read -r -p "Remove PsychoPy Studio settings (.config/psychopy4) for all target users (${TARGET_USERS[*]})? [y/N]: " resp
+        if [[ "\${resp}" =~ ^[Yy]$ ]]; then
+            for user in ${TARGET_USERS[*]}; do
+                user_home=\$(getent passwd "\${user}" | cut -d: -f6 2>/dev/null || echo "")
+                if [ -z "\${user_home}" ]; then
+                    echo "WARNING: Could not determine home directory for user: \${user}"
+                    continue
+                elif [ -d "\${user_home}/.config/psychopy4" ]; then
+                    \${SUDO} rm -rf "\${user_home}/.config/psychopy4"
+                    echo "Removed .config/psychopy4 for user: \${user}"
+                fi
+            done
+        fi
+    fi
+}
+
+# Tries a batch removal first, falling back to removing packages one at a time.
+attempt_package_removal() {
+    local pkgs="\$1"
+    local pkg failed=""
+    if ${remove_cmd} \${pkgs}; then
+        return 0
+    fi
+    echo "WARNING: Batch package removal failed. Falling back to removing packages one by one ..."
+    for pkg in \${pkgs}; do
+        ${remove_cmd} "\${pkg}" || failed="\${failed} \${pkg}"
+    done
+    if [ -n "\${failed}" ]; then
+        echo "WARNING: Could not remove the following packages (they may still be required by other installed software):\${failed}"
+        return 1
+    fi
+    return 0
+}
+
+remove_packages() {
+    local mode="\$1"
+    UNIVERSAL_PKG_FILE="${UNIVERSAL_PKG_FILE}"
+    combined_pkgs="${packages_installed_by_script_string}"
+    [ -f "\${UNIVERSAL_PKG_FILE}" ] && universal_pkgs=\$(tr '\n' ' ' < "\${UNIVERSAL_PKG_FILE}" | xargs) && combined_pkgs="\${combined_pkgs} \${universal_pkgs}"
+    all_pkgs=\$(echo \${combined_pkgs} | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
+    if [ -n "\${all_pkgs}" ]; then
+        if [ "\${mode}" = "y" ]; then
+            echo "Removing the following system packages using ${PKG_MANAGER} (non-interactive):"
+            echo "\${all_pkgs}"
+            if attempt_package_removal "\${all_pkgs}"; then
+                [ -f "\${UNIVERSAL_PKG_FILE}" ] && echo "Removing universal package tracking file: \${UNIVERSAL_PKG_FILE}" && \${SUDO} rm -f "\${UNIVERSAL_PKG_FILE}"
+            else
+                echo "WARNING: Not removing universal package tracking file at \${UNIVERSAL_PKG_FILE} since some packages remain."
+            fi
+        elif [ "\${mode}" = "prompt" ]; then
+            echo "The following system packages were installed by this script (including all environments):"
+            echo "\${all_pkgs}"
+            read -p "Do you want to remove these packages using ${PKG_MANAGER}? [y/N]: " resp
+            if [[ "\${resp}" =~ ^[Yy]$ ]]; then
+                if attempt_package_removal "\${all_pkgs}"; then
+                    [ -f "\${UNIVERSAL_PKG_FILE}" ] && echo "Removing universal package tracking file: \${UNIVERSAL_PKG_FILE}" && \${SUDO} rm -f "\${UNIVERSAL_PKG_FILE}"
+                else
+                    echo "WARNING: Not removing universal package tracking file at \${UNIVERSAL_PKG_FILE} since some packages remain."
+                fi
+            else
+                echo "Skipped removing system packages."
+            fi
+        else
+            echo "Non-interactive mode: Skipping removal of system packages."
+        fi
+    fi
+}
+
+for arg in "\$@"; do
+    case "\${arg}" in
+        --workspace-dir=*)
+            WORKSPACE_DIR="\${arg#*=}"
+            ;;
+        --uninstall)
+            UNINSTALL_ARG=true
+            ;;
+        --non-interactive=*)
+            NON_INTERACTIVE_ARG="\${arg#*=}"
+            PSYCHOPY_ARGS+=("\${arg}")
+            ;;
+        -h|--help)
+            HELP_ARG=true
+            PSYCHOPY_ARGS+=("\${arg}")
+            ;;
+        *)
+            PSYCHOPY_ARGS+=("\${arg}")
+            ;;
+    esac
+done
+
+if \${HELP_ARG}; then
+    echo '================ PsychoPy Start/Uninstall Wrapper ================='
+    echo 'Usage:'
+    echo "  \$(basename \$0) --uninstall      # Uninstall PsychoPy and clean up files"
+    echo "  \$(basename \$0) --workspace-dir=DIR     # Set working directory for PsychoPy session"
+    echo "  \$(basename \$0) [args...]        # Forwards all arguments to PsychoPy"
+    echo
+    echo 'If not called with --uninstall, all arguments are passed directly to PsychoPy.'
+    echo '---------------------------------------------------------------------'
+    echo 'The following help is from PsychoPy itself:'
+    echo '---------------------------------------------------------------------'
+fi
+
+if \${UNINSTALL_ARG}; then
+    # Move self to /tmp and re-exec if running from inside the install dir
+    if [[ "\$(dirname "\$(readlink -f "\$0")")" == "${PSYCHOPY_DIR}" ]]; then
+        tmp_uninstaller="/tmp/psychopy_uninstaller_\$\$.sh"
+        cp "\$0" "\${tmp_uninstaller}" || { echo 'Failed to copy uninstaller to /tmp'; exit 1; }
+        chmod +x "\${tmp_uninstaller}" || { echo 'Failed to chmod uninstaller in /tmp'; exit 1; }
+        exec "\${tmp_uninstaller}" "\$@"
+        exit 0
+    fi
+
+    case "\${NON_INTERACTIVE_ARG,,}" in
+        y|n)
+            mode="\${NON_INTERACTIVE_ARG,,}"
+            if sudo -n true 2>/dev/null; then SUDO="sudo"; else SUDO=""; fi
+            ;;
+        *)
+            mode="prompt"
+            if sudo true 2>/dev/null; then
+                SUDO="sudo"
+            else
+                SUDO=""
+                echo "WARNING: You do not have sudo rights. Uninstalling without sudo may result in a partially uninstalled app."
+                read -r -p "Do you want to continue without sudo? [y/N]: " resp
+                if [[ ! "\${resp}" =~ ^[Yy]$ ]]; then
+                    echo "Aborting uninstallation."
+                    exit 1
+                fi
+            fi
+            ;;
+    esac
+
+${shortcut_block}
+
+${symlink_block}
+
+${remove_optionals_call}
+    remove_packages "\${mode}"
+
+    echo "Removing PsychoPy directory: ${PSYCHOPY_DIR}"
+    \${SUDO} rm -rf "${PSYCHOPY_DIR}"
+    if [ \$? -ne 0 ]; then
+        echo "ERROR: Failed to remove ${PSYCHOPY_DIR}. Exiting."
+        exit 1
+    fi
+
+    # Check if ${INSTALL_DIR} is empty and remove if so
+    if [ -d "${INSTALL_DIR}" ] && [ "\$(ls -A "${INSTALL_DIR}")" == "" ]; then
+        echo "Removing empty directory: ${INSTALL_DIR}"
+        \${SUDO} rmdir "${INSTALL_DIR}"
+    else
+        echo "WARNING: ${INSTALL_DIR} is not empty. Not removing."
+    fi
+
+    echo "Uninstallation complete."
+    exit 0
+fi
+
+echo "[start_psychopy] Working directory: \${WORKSPACE_DIR}"
+if [ ! -d "\${WORKSPACE_DIR}" ]; then
+    mkdir -p "\${WORKSPACE_DIR}" 2>/dev/null || true
+fi
+if ! cd "\${WORKSPACE_DIR}"; then
+    echo "[start_psychopy] WARNING: Could not change to workspace directory."
+    WORKSPACE_DIR=\${HOME}
+    cd "\${WORKSPACE_DIR}" 2>/dev/null || true
+fi
+
+${launch_line}
+PSYCHOPY_WRAPPER_EOF
     )
     printf "%s\n" "${wrapper_script}" | tee "${wrapper_path}" >/dev/null
     sudo_wrapper chmod +x "${wrapper_path}"
@@ -2445,6 +2627,8 @@ main() {
     PSYCHOPY_GIT_TAG=false
     TEMPORARY_SUDO_SETUP_DONE=false
     USE_GUI=false
+    STUDIO=false
+    STUDIO_OFFER_DECIDED=false
     PKG_MANAGER_UPDATED=false
     SCRIPT_UPDATED=false
 
@@ -2545,7 +2729,7 @@ main() {
     setup_psychopy_group_and_limits
 
     # Check if python version is valid
-    if [[ "${PYTHON_VERSION}" =~ ^3\.([8-9]|[1-9][0-9]+)\.[0-9]+$ ]]; then
+    if [ "${STUDIO}" = false ] && [[ "${PYTHON_VERSION}" =~ ^3\.([8-9]|[1-9][0-9]+)\.[0-9]+$ ]]; then
         python_url="https://www.python.org/ftp/python/${PYTHON_VERSION}/"
         if ! curl "${CURL_RETRY_OPTS[@]}" --head --silent --fail "${python_url}" >/dev/null; then
             log_message "ERROR: Python version ${PYTHON_VERSION} not found at ${python_url}. Please choose a valid version from https://www.python.org/ftp/python." nolog
@@ -2553,22 +2737,34 @@ main() {
     fi
 
     # Determine PsychoPy version to install
-    if [ "${PSYCHOPY_VERSION}" == "latest" ]; then
-        get_latest_pypi_version "psychopy" PSYCHOPY_VERSION
-    elif [ "${PSYCHOPY_VERSION}" != "git" ]; then
-        check_pypi_for_version psychopy "${PSYCHOPY_VERSION}"
+    if [ "${STUDIO}" = false ]; then
+        if [ "${PSYCHOPY_VERSION}" == "latest" ]; then
+            get_latest_pypi_version "psychopy" PSYCHOPY_VERSION
+        elif [ "${PSYCHOPY_VERSION}" != "git" ]; then
+            check_pypi_for_version psychopy "${PSYCHOPY_VERSION}"
+        fi
     fi
 
-    if is_version_greater "${PSYCHOPY_VERSION}" "2024.99.99"; then
-        if is_version_greater "3.9" "${PYTHON_VERSION}"; then
-            log_message "ERROR: PsychoPy versions >= 2025.1.0 only support Python versions > 3.8." nolog
+    # No-op here if --gui already decided this above.
+    maybe_offer_studio
+
+    # Determine PsychoPy Studio version to install
+    if [ "${STUDIO}" = true ]; then
+        if [ "${STUDIO_VERSION}" == "latest" ]; then
+            get_latest_studio_version STUDIO_VERSION
+        else
+            check_studio_version "${STUDIO_VERSION}"
         fi
     fi
 
     # Set up PsychoPy installation directory
     INSTALL_DIR="${INSTALL_DIR/#\~/${HOME}}"
     INSTALL_DIR="${INSTALL_DIR%/}"
-    VENV_NAME="${VENV_NAME:-PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}}"
+    if [ "${STUDIO}" = true ]; then
+        VENV_NAME="${VENV_NAME:-PsychoPy-Studio-${STUDIO_VERSION}}"
+    else
+        VENV_NAME="${VENV_NAME:-PsychoPy-${PSYCHOPY_VERSION}-Python${PYTHON_VERSION}}"
+    fi
     PSYCHOPY_DIR="${INSTALL_DIR}/${VENV_NAME}"
     prepare_psychopy_directory
 
@@ -2584,113 +2780,142 @@ main() {
     fi
     log_message "NOTE: Installation directory set. Log file moved to: '${LOG_FILE}'."
 
-    # Install PsychoPy dependencies
-    log_message "INFO: Installing PsychoPy dependencies. This might take a while ..."
-    install_dependencies psychopy_deps
-    log_message "INFO: Installing build dependencies. This might take a while ..."
-    install_dependencies build_deps
+    if [ "${STUDIO}" = true ]; then
+        log_message "INFO: Installing PsychoPy Studio dependencies. This might take a while ..."
+        install_dependencies studio_deps
+        install_psychopy_studio
 
-    # Setup uv create virtual environment
-    setup_uv
-
-    log_message "INFO: Creating Python environment with uv ..."
-
-    if log "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
-        log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
-    else
-        local major_minor available_versions uv_version
-        major_minor=$(echo "${PYTHON_VERSION}" | grep -oE '^[0-9]+\.[0-9]+')
-        available_versions=$("${UV_INSTALL_DIR}/uv" python list 2>/dev/null \
-            | grep -oE "cpython-${major_minor}\.[0-9]+" \
-            | sed 's/cpython-//' | sort -V | uniq | tr '\n' ' ')
-        uv_version=$("${UV_INSTALL_DIR}/uv" --version 2>/dev/null || echo "unknown")
-        if [ -n "${available_versions}" ]; then
-            log_message "NOTE: Available Python ${major_minor}.x versions via uv: ${available_versions}"
-            log_message "NOTE: To fix this, change '# Python version: ${PYTHON_VERSION}' in your requirements.txt to one of the versions listed above."
-        else
-            log_message "NOTE: No Python ${major_minor}.x versions found. uv (${uv_version}) may be outdated."
-            log_message "NOTE: Update uv by running: curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=${UV_INSTALL_DIR} sh"
+        # remove .config/psychopy4 if flag set
+        if [ "${REMOVE_STUDIO_SETTINGS}" = true ]; then
+            log_message "INFO: Removing existing '.config/psychopy4' directories for target users."
+            for user in "${TARGET_USERS[@]}"; do
+                user_home=$(getent passwd "${user}" | cut -d: -f6 2>/dev/null || echo "")
+                if [ -z "${user_home}" ]; then
+                    log_message "WARNING: Could not determine home directory for user: ${user}"
+                    continue
+                elif [ -d "${user_home}/.config/psychopy4" ]; then
+                    sudo_wrapper rm -rf "${user_home}/.config/psychopy4"
+                    log_message "INFO: Removed .config/psychopy4 for user: ${user}"
+                fi
+            done
         fi
-        log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
-    fi
-    # shellcheck disable=SC1091
-    if ! source "${PSYCHOPY_DIR}/.venv/bin/activate"; then
-        log_message "ERROR: Failed to activate virtual environment."
-    fi
-    check_python_env "${PSYCHOPY_DIR}/.venv/bin/python"
-
-    # Upgrade pip and install required Python packages
-    log_message "INFO: Upgrading 'pip' 'distro', 'sip', 'six', 'psychtoolbox', 'attrdict', 'setuptools', 'wheel' ..."
-    log "${UV_INSTALL_DIR}/uv" pip install -U pip distro sip six psychtoolbox setuptools wheel
-    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) || "${PYTHON_VERSION}" =~ ^3\.9(\.|$) ]]; then
-        log "${UV_INSTALL_DIR}/uv" pip install -U attrdict
     else
-        log "${UV_INSTALL_DIR}/uv" pip install -U attrdict3
-    fi
-    # Install numpy<2 if PsychoPy version is < 2024.2.0 or Python version is 3.9.x
-    if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" =~ ^3\.9(\.|$) ]]; then
-        log_message "INFO: Installing numpy<2"
-        log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
-    fi
-    # Install ffpyplayer==4.5.2 for python 3.8.x to prevent building
-    if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) ]]; then
-        log_message "INFO: Installing ffpyplayer==4.5.2 to prevent building."
-        log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
-    fi
-    install_wxpython
+        # Install PsychoPy dependencies
+        log_message "INFO: Installing PsychoPy dependencies. This might take a while ..."
+        install_dependencies psychopy_deps
+        log_message "INFO: Installing build dependencies. This might take a while ..."
+        install_dependencies build_deps
 
-    # Install additional packages from requirements file and flag
-    pip_extra_packages="${ADDITIONAL_PACKAGES}${ADDITIONAL_PACKAGES:+,}${REQUIREMENTSFILE_PACKAGES}"
+        # Setup uv create virtual environment
+        setup_uv
 
-    [ -n "${pip_extra_packages}" ] && install_pip_packages_with_fallback "${pip_extra_packages}"
+        log_message "INFO: Creating Python environment with uv ..."
 
-    # Install patched pypi-search if needed
-    if check_pypi_search_dependency "${PSYCHOPY_VERSION}"; then
-        log_message "INFO: Installing patched pypi-search dependency..."
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/wieluk/pypi-search"
-    fi
-
-    # Install PsychoPy
-    log_message "INFO: Installing PsychoPy ${PSYCHOPY_VERSION} ..."
-    if [ "${PSYCHOPY_VERSION}" == "git" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev"
-    elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
-        log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
-    else
-        log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}"
-    fi
-
-    if ! "${UV_INSTALL_DIR}/uv" pip show psychopy &>/dev/null; then
-        log_message "ERROR: PsychoPy installation failed."
-    fi
-
-    # Compare installed package versions with requested versions
-    if [ -n "${pip_extra_packages}" ]; then
-        verify_installed_pip_versions "${pip_extra_packages}"
-    fi
-
-    deactivate
-
-
-    # Install some basic fonts for PsychoPy
-    if [ "${NO_FONTS}" = false ]; then
-        log_message "INFO: Installing basic fonts for PsychoPy."
-        install_dependencies fonts
-    fi
-
-    # remove .psychopy3 if flag set
-    if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
-        log_message "INFO: Removing existing '.psychopy3' directories for target users."
-        for user in "${TARGET_USERS[@]}"; do
-            user_home=$(getent passwd "${user}" | cut -d: -f6 2>/dev/null || echo "")
-            if [ -z "${user_home}" ]; then
-                log_message "WARNING: Could not determine home directory for user: ${user}"
-                continue
-            elif [ -d "${user_home}/.psychopy3" ]; then
-                sudo_wrapper rm -rf "${user_home}/.psychopy3"
-                log_message "INFO: Removed .psychopy3 for user: ${user}"
+        if log "${UV_INSTALL_DIR}/uv" venv --python "${PYTHON_VERSION}" "${PSYCHOPY_DIR}/.venv"; then
+            log_message "INFO: Successfully created 'Python${PYTHON_VERSION}' .venv in '${PSYCHOPY_DIR}'."
+        else
+            local major_minor available_versions uv_version
+            major_minor=$(echo "${PYTHON_VERSION}" | grep -oE '^[0-9]+\.[0-9]+')
+            available_versions=$("${UV_INSTALL_DIR}/uv" python list 2>/dev/null \
+                | grep -oE "cpython-${major_minor}\.[0-9]+" \
+                | sed 's/cpython-//' | sort -V | uniq | tr '\n' ' ')
+            uv_version=$("${UV_INSTALL_DIR}/uv" --version 2>/dev/null || echo "unknown")
+            if [ -n "${available_versions}" ]; then
+                log_message "NOTE: Available Python ${major_minor}.x versions via uv: ${available_versions}"
+                log_message "NOTE: To fix this, change '# Python version: ${PYTHON_VERSION}' in your requirements.txt to one of the versions listed above."
+            else
+                log_message "NOTE: No Python ${major_minor}.x versions found. uv (${uv_version}) may be outdated."
+                log_message "NOTE: Update uv by running: curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR=${UV_INSTALL_DIR} sh"
             fi
-        done
+            log_message "ERROR: Failed to create Python virtual environment in '${PSYCHOPY_DIR}/.venv'."
+        fi
+        # shellcheck disable=SC1091
+        if ! source "${PSYCHOPY_DIR}/.venv/bin/activate"; then
+            log_message "ERROR: Failed to activate virtual environment."
+        fi
+        check_python_env "${PSYCHOPY_DIR}/.venv/bin/python"
+
+        # Upgrade pip and install required Python packages
+        log_message "INFO: Upgrading 'pip' 'distro', 'sip', 'six', 'psychtoolbox', 'attrdict', 'setuptools', 'wheel' ..."
+        log "${UV_INSTALL_DIR}/uv" pip install -U pip distro sip six psychtoolbox setuptools wheel
+        if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) || "${PYTHON_VERSION}" =~ ^3\.9(\.|$) ]]; then
+            log "${UV_INSTALL_DIR}/uv" pip install -U attrdict
+        else
+            log "${UV_INSTALL_DIR}/uv" pip install -U attrdict3
+        fi
+        # Install numpy<2 if PsychoPy version is < 2024.2.0 or Python version is 3.9.x
+        if is_version_greater "2024.2.0" "${PSYCHOPY_VERSION}" || [[ "${PYTHON_VERSION}" =~ ^3\.9(\.|$) ]]; then
+            log_message "INFO: Installing numpy<2"
+            log "${UV_INSTALL_DIR}/uv" pip install "numpy<2"
+        fi
+        # Install ffpyplayer==4.5.2 for python 3.8.x to prevent building
+        if [[ "${PYTHON_VERSION}" =~ ^3\.8(\.|$) ]]; then
+            log_message "INFO: Installing ffpyplayer==4.5.2 to prevent building."
+            log "${UV_INSTALL_DIR}/uv" pip install ffpyplayer==4.5.2
+        fi
+        install_wxpython
+
+        # Install additional packages from requirements file and flag
+        pip_extra_packages="${ADDITIONAL_PACKAGES}${ADDITIONAL_PACKAGES:+,}${REQUIREMENTSFILE_PACKAGES}"
+
+        [ -n "${pip_extra_packages}" ] && install_pip_packages_with_fallback "${pip_extra_packages}"
+
+        # Install patched pypi-search if needed
+        if check_pypi_search_dependency "${PSYCHOPY_VERSION}"; then
+            log_message "INFO: Installing patched pypi-search dependency..."
+            log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/wieluk/pypi-search"
+        fi
+
+        # Install PsychoPy
+        log_message "INFO: Installing PsychoPy ${PSYCHOPY_VERSION} ..."
+        if [ "${PSYCHOPY_VERSION}" == "git" ]; then
+            log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@dev"
+        elif [ "${PSYCHOPY_GIT_TAG}" = "true" ]; then
+            log "${UV_INSTALL_DIR}/uv" pip install "git+https://github.com/psychopy/psychopy.git@${PSYCHOPY_VERSION}"
+        else
+            log "${UV_INSTALL_DIR}/uv" pip install psychopy=="${PSYCHOPY_VERSION}"
+        fi
+
+        if ! "${UV_INSTALL_DIR}/uv" pip show psychopy &>/dev/null; then
+            log_message "ERROR: PsychoPy installation failed."
+        fi
+
+        # From 2026.2.0 onward the classic GUI lives in a separate 'psychopy_app' package.
+        if uses_psychopy_app_module; then
+            log_message "INFO: Installing PsychoPy App ${PSYCHOPY_VERSION} ..."
+            log "${UV_INSTALL_DIR}/uv" pip install psychopy_app=="${PSYCHOPY_VERSION}"
+            if ! "${UV_INSTALL_DIR}/uv" pip show psychopy_app &>/dev/null; then
+                log_message "ERROR: PsychoPy App installation failed."
+            fi
+        fi
+
+        # Compare installed package versions with requested versions
+        if [ -n "${pip_extra_packages}" ]; then
+            verify_installed_pip_versions "${pip_extra_packages}"
+        fi
+
+        deactivate
+
+        # Install some basic fonts for PsychoPy
+        if [ "${NO_FONTS}" = false ]; then
+            log_message "INFO: Installing basic fonts for PsychoPy."
+            install_dependencies fonts
+        fi
+
+        # remove .psychopy3 if flag set
+        if [ "${REMOVE_PSYCHOPY_SETTINGS}" = true ]; then
+            log_message "INFO: Removing existing '.psychopy3' directories for target users."
+            for user in "${TARGET_USERS[@]}"; do
+                user_home=$(getent passwd "${user}" | cut -d: -f6 2>/dev/null || echo "")
+                if [ -z "${user_home}" ]; then
+                    log_message "WARNING: Could not determine home directory for user: ${user}"
+                    continue
+                elif [ -d "${user_home}/.psychopy3" ]; then
+                    sudo_wrapper rm -rf "${user_home}/.psychopy3"
+                    log_message "INFO: Removed .psychopy3 for user: ${user}"
+                fi
+            done
+        fi
     fi
 
     # Create desktop shortcut
@@ -2712,15 +2937,34 @@ main() {
 
     log_message "NOTE: To start PsychoPy using the absolute path, run: '${PSYCHOPY_DIR}/start_psychopy'"
 
-    if "${PSYCHOPY_DIR}/.venv/bin/psychopy" -v &>/dev/null; then
-        if "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
-            log_message "PsychoPy installation completed successfully!"
+    if [ "${STUDIO}" = true ]; then
+        if [ -x "${STUDIO_APPIMAGE_PATH}" ] && [ -x "${PSYCHOPY_DIR}/start_psychopy" ]; then
+            log_message "PsychoPy Studio installation completed successfully!"
         else
-            log_message "ERROR: PsychoPy wrapper script verification failed!"
+            log_message "ERROR: PsychoPy Studio installation verification failed!"
         fi
     else
-        log_message "ERROR: PsychoPy binary verification failed!"
+        # Verify via the same '-m psychopy_app.psychopyApp' invocation the wrapper uses (see launch_line).
+        local binary_check_cmd
+        if uses_psychopy_app_module; then
+            binary_check_cmd=("${PSYCHOPY_DIR}/.venv/bin/python" -m psychopy_app.psychopyApp -v)
+        else
+            binary_check_cmd=("${PSYCHOPY_DIR}/.venv/bin/psychopy" -v)
+        fi
+        if "${binary_check_cmd[@]}" &>/dev/null; then
+            if "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
+                log_message "PsychoPy installation completed successfully!"
+            else
+                log_message "ERROR: PsychoPy wrapper script verification failed!"
+            fi
+        else
+            log_message "ERROR: PsychoPy binary verification failed!"
+        fi
     fi
 }
 
-main "${@}"
+# Empty BASH_SOURCE means there is no script file ('curl ... | bash', 'bash -c'); sourcing for the
+# unit tests leaves it set but different from $0, which is the only case that must skip main.
+if [[ -z "${BASH_SOURCE[0]}" || "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "${@}"
+fi
