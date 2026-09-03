@@ -1712,6 +1712,64 @@ check_pypi_for_version() {
     log_message "ERROR: '${package}' version '${version}' not found on PyPI." nolog
 }
 
+# Errors out early if PYTHON_VERSION doesn't satisfy this PyPI package version's declared Python
+# requirement (e.g. psychopy>=2026.2.0 and wxpython>=4.2.5 both require Python>=3.10), instead of
+# letting uv's dependency resolver fail later with a much less actionable message.
+check_pypi_python_compatibility() {
+    local package="${1}" version="${2}"
+    local requires_python min_py max_py max_inclusive exceeds_max
+
+    requires_python=$(curl -s "${CURL_RETRY_OPTS[@]}" "https://pypi.org/pypi/${package}/${version}/json" | jq -r '.info.requires_python // empty')
+    [ -z "${requires_python}" ] && return 0
+
+    min_py=$(echo "${requires_python}" | grep -oP '>=\K[0-9]+\.[0-9]+' | head -n1)
+    # Capture whether the upper bound is exclusive ("<3.13") or inclusive ("<=3.12"); assuming one
+    # or the other would be off by a whole Python release.
+    max_py=$(echo "${requires_python}" | grep -oP '<=?\K[0-9]+\.[0-9]+' | head -n1)
+    max_inclusive=false
+    [[ "${requires_python}" =~ \<=[[:space:]]*${max_py} ]] && max_inclusive=true
+
+    if [ -n "${min_py}" ] && is_version_greater "${min_py}" "${PYTHON_VERSION}"; then
+        log_message "ERROR: ${package} ${version} requires Python ${requires_python}; '--python-version=${PYTHON_VERSION}' is too old. Choose a newer --python-version or a different --${package}-version." nolog
+    elif [ -n "${max_py}" ]; then
+        exceeds_max=false
+        if [ "${max_inclusive}" = true ]; then
+            # "<=3.12": only a Python strictly above the bound is out of range.
+            is_version_greater "${PYTHON_VERSION}" "${max_py}" && exceeds_max=true
+        else
+            # "<3.13": the bound itself is already out of range.
+            is_version_greater "${max_py}" "${PYTHON_VERSION}" || exceeds_max=true
+        fi
+        if [ "${exceeds_max}" = true ]; then
+            log_message "ERROR: ${package} ${version} requires Python ${requires_python}; '--python-version=${PYTHON_VERSION}' is too new. Choose an older --python-version or a different --${package}-version." nolog
+        fi
+    fi
+}
+
+# Retrieves the latest PsychoPy Studio version, from the psychopy/psychopy GitHub releases that carry a Studio AppImage asset.
+get_latest_studio_version() {
+    local var_name="${1}"
+    local version
+    version=$(curl -s "${CURL_RETRY_OPTS[@]}" -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/psychopy/psychopy/releases" |
+        jq -r '[.[] | select(.assets[].name | test("^PsychoPy_Studio_.*\\.AppImage$"))][0].tag_name // empty')
+    if [ -z "${version}" ]; then
+        log_message "ERROR: Unable to fetch the latest PsychoPy Studio version."
+    fi
+    declare -n result=${var_name}
+    # shellcheck disable=SC2034
+    result="${version}"
+}
+
+# Verifies that the requested PsychoPy Studio version exists as a GitHub release asset.
+check_studio_version() {
+    local version="${1}"
+    local url="https://github.com/psychopy/psychopy/releases/download/${version}/PsychoPy_Studio_${version}.AppImage"
+    if ! curl "${CURL_RETRY_OPTS[@]}" --head --silent --fail "${url}" >/dev/null; then
+        log_message "ERROR: PsychoPy Studio version '${version}' not found at '${url}'." nolog
+    fi
+}
+
 # Installs pip packages using uv, with a fallback to individual installations if batch fails.
 install_pip_packages_with_fallback() {
     local packages_csv="$1"
@@ -1877,6 +1935,8 @@ install_wxpython() {
     elif [ "${WXPYTHON_VERSION}" != "git" ]; then
         check_pypi_for_version wxpython "${WXPYTHON_VERSION}"
     fi
+
+    [ "${WXPYTHON_VERSION}" != "git" ] && check_pypi_python_compatibility "wxpython" "${WXPYTHON_VERSION}"
 
     if [ "${WXPYTHON_VERSION}" = "git" ]; then
         log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
@@ -2868,6 +2928,10 @@ main() {
         else
             check_studio_version "${STUDIO_VERSION}"
         fi
+    fi
+
+    if [ "${STUDIO}" = false ] && [ "${PSYCHOPY_VERSION}" != "git" ] && [ "${PSYCHOPY_GIT_TAG}" != "true" ]; then
+        check_pypi_python_compatibility "psychopy" "${PSYCHOPY_VERSION}"
     fi
 
     # Set up PsychoPy installation directory
