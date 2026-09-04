@@ -573,6 +573,26 @@ validate_user_list() {
 }
 
 # Prompts the user to select an option from a list of wxPython wheel folders.
+# Maps an Ubuntu codename to its release number; derivatives report their base in UBUNTU_CODENAME.
+ubuntu_release_from_codename() {
+    case "${1}" in
+    trusty) echo "14.04" ;;
+    xenial) echo "16.04" ;;
+    bionic) echo "18.04" ;;
+    focal) echo "20.04" ;;
+    jammy) echo "22.04" ;;
+    noble) echo "24.04" ;;
+    *) echo "" ;;
+    esac
+}
+
+# Returns the extras.wxpython.org folder URL that best matches this system.
+suggested_wxpython_wheel_url() {
+    local release
+    release=$(ubuntu_release_from_codename "${OS_CODENAME}")
+    echo "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-${release:-24.04}/"
+}
+
 select_wxpython_wheel_index() {
     if ! command -v curl >/dev/null 2>&1; then
         return 1
@@ -604,7 +624,7 @@ select_wxpython_wheel_index() {
         if [[ "${selected_folder}" == "Other_(enter_custom_URL)" ]]; then
             custom_url=$(prompt_text_input \
                 "Enter the URL for a custom wxPython wheel index. You can find pre-built wheels for many Linux distributions here:\n https://extras.wxpython.org/wxPython4/extras/linux/gtk3/" \
-                "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/")
+                "$(suggested_wxpython_wheel_url)")
             [ -z "${custom_url}" ] && return 1
             echo "${custom_url}"
             return 0
@@ -626,8 +646,8 @@ select_wxpython_wheel_index() {
                 "Cancel")
             if [[ "${response}" == "Enter custom URL" ]]; then
                 custom_url=$(prompt_text_input \
-                    "Enter the URL for a custom wxPython wheel index. [default: https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/]" \
-                    "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/")
+                    "Enter the URL for a custom wxPython wheel index. [default: $(suggested_wxpython_wheel_url)]" \
+                    "$(suggested_wxpython_wheel_url)")
                 [ -z "${custom_url}" ] && return 1
                 echo "${custom_url}"
                 return 0
@@ -645,7 +665,7 @@ suggest_wxpython_wheel_index() {
     case " ${OS_ID_LIKE} ${OS_ID} " in
     *" ubuntu "* | *" debian "* | *" arch "*)
         # Arch/Manjaro have no dedicated wxpython.org folder; Ubuntu wheels work as a fallback.
-        suggested_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
+        suggested_url=$(suggested_wxpython_wheel_url)
         ;;
     esac
 
@@ -1129,8 +1149,9 @@ detect_os_version() {
     OS_VERSION_FULL=""
     OS_ID_LIKE=""
     OS_ID=""
+    OS_CODENAME=""
 
-    local major_version version ID VERSION_ID ID_LIKE
+    local major_version version ID VERSION_ID ID_LIKE UBUNTU_CODENAME VERSION_CODENAME ubuntu_base
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         if [ -n "${ID}" ] && [ -n "${VERSION_ID}" ]; then
@@ -1139,11 +1160,16 @@ detect_os_version() {
             major_version=$(echo "${VERSION_ID}" | cut -d. -f1)
             OS_ID_LIKE=$(echo "${ID_LIKE:-}" | tr '[:upper:]' '[:lower:]')
             OS_ID="${ID}"
+            OS_CODENAME=$(echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}" | tr '[:upper:]' '[:lower:]')
+            ubuntu_base=$(ubuntu_release_from_codename "${OS_CODENAME}")
 
             OS_VERSION="${ID}-${major_version}"
             OS_VERSION_FULL="${ID}-${VERSION_ID}"
             if [ "${ID}" = "ubuntu" ]; then
                 OS_VERSION_LINK="${ID}-${VERSION_ID}"
+            elif [ -n "${ubuntu_base}" ]; then
+                # Ubuntu derivatives (Zorin, Mint, Pop!_OS) share their base's library ABI.
+                OS_VERSION_LINK="ubuntu-${ubuntu_base}"
             else
                 OS_VERSION_LINK="${OS_VERSION}"
             fi

@@ -143,11 +143,42 @@ OS_VERSION_FULL="unknown"
 suggest_wxpython_wheel_index
 assert_contains "empty ID_LIKE falls back to the generic browse-manually message" "${captured_message}" "extras.wxpython.org"
 
+# Ubuntu derivatives report their base release in UBUNTU_CODENAME; the suggestion must follow it,
+# because an ubuntu-24.04 wheel links against libtiff.so.6 and cannot load on a 22.04-based system.
+# shellcheck disable=SC2034  # read by suggest_wxpython_wheel_index, sourced from the installer
+OS_ID_LIKE="ubuntu debian"
+# shellcheck disable=SC2034
+OS_VERSION_FULL="zorin-17"
+OS_CODENAME="jammy"
+suggest_wxpython_wheel_index
+assert_contains "jammy-based derivative suggests the ubuntu-22.04 wheel index" "${captured_message}" "ubuntu-22.04"
+
+OS_CODENAME="noble"
+suggest_wxpython_wheel_index
+assert_contains "noble-based derivative suggests the ubuntu-24.04 wheel index" "${captured_message}" "ubuntu-24.04"
+
+OS_CODENAME="bookworm"
+suggest_wxpython_wheel_index
+assert_contains "unmapped codename falls back to the newest LTS wheel index" "${captured_message}" "ubuntu-24.04"
+# shellcheck disable=SC2034  # reset so later sections see a clean codename
+OS_CODENAME=""
+
 log_message() {
     case "$1" in
     ERROR:*) echo "$1" >&2; exit 1 ;;
     esac
 }
+
+# ===============================================================================
+# ubuntu_release_from_codename
+# ===============================================================================
+print_header "ubuntu_release_from_codename"
+
+assert_eq "focal maps to 20.04" "20.04" "$(ubuntu_release_from_codename focal)"
+assert_eq "jammy maps to 22.04" "22.04" "$(ubuntu_release_from_codename jammy)"
+assert_eq "noble maps to 24.04" "24.04" "$(ubuntu_release_from_codename noble)"
+assert_eq "unknown codename maps to nothing" "" "$(ubuntu_release_from_codename bookworm)"
+assert_eq "empty codename maps to nothing" "" "$(ubuntu_release_from_codename "")"
 
 # ===============================================================================
 # maybe_offer_studio
