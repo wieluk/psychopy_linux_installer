@@ -19,7 +19,7 @@ jobs:
       installer-version: ${{ steps.extract.outputs.installer_version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Extract Installer Version
@@ -40,7 +40,7 @@ jobs:
       result: ${{ steps.release-checker.outputs.result }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Check if release exists and detect version bump type
@@ -98,7 +98,7 @@ jobs:
     needs: extract-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Create release if not exists
@@ -161,7 +161,7 @@ jobs:
     needs: extract-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Update release from pre-release to full release
