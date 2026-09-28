@@ -229,16 +229,36 @@ maybe_offer_studio
 assert_eq "second call after a non-interactive 'classic' decision does not re-prompt" "" "${captured_message}"
 
 prompt_user() { echo "${PROMPT_USER_RESPONSE}"; }
+# Keeps the test offline.
+studio_release_exists() { [[ " ${STUDIO_RELEASES} " == *" $1 "* ]]; }
+STUDIO_RELEASES="2026.1.3 2026.2.1"
 
 STUDIO=false STUDIO_OFFER_DECIDED=false NON_INTERACTIVE=false PSYCHOPY_VERSION="2026.2.1"
 PROMPT_USER_RESPONSE="Install classic PsychoPy App"
 maybe_offer_studio
 assert_eq "interactive 'classic' choice leaves STUDIO false" "false" "${STUDIO}"
 
-STUDIO=false STUDIO_OFFER_DECIDED=false NON_INTERACTIVE=false PSYCHOPY_VERSION="2026.2.1"
+STUDIO=false STUDIO_OFFER_DECIDED=false NON_INTERACTIVE=false PSYCHOPY_VERSION="2026.2.1" STUDIO_VERSION="latest" CLASSIC_ONLY_ARGS=()
 PROMPT_USER_RESPONSE="Install PsychoPy Studio instead"
 maybe_offer_studio
 assert_eq "interactive 'Studio' choice sets STUDIO true" "true" "${STUDIO}"
+assert_eq "interactive 'Studio' choice installs the Studio release matching the offered version" "2026.2.1" "${STUDIO_VERSION}"
+
+STUDIO=false STUDIO_OFFER_DECIDED=false NON_INTERACTIVE=false PSYCHOPY_VERSION="2026.1.0" STUDIO_VERSION="latest"
+captured_message=""
+maybe_offer_studio
+assert_eq "'Studio' choice falls back to latest when that version has no Studio release" "latest" "${STUDIO_VERSION}"
+assert_contains "falling back to latest Studio is announced" "${captured_message}" "latest PsychoPy Studio"
+
+STUDIO=false STUDIO_OFFER_DECIDED=false NON_INTERACTIVE=false PSYCHOPY_VERSION="2026.1.3" STUDIO_VERSION="latest" CLASSIC_ONLY_ARGS=(--python-version --no-fonts)
+captured_message=""
+maybe_offer_studio
+assert_contains "switching to Studio warns about the classic-only options that are now ignored" "${captured_message}" "--python-version --no-fonts"
+# shellcheck disable=SC2034
+CLASSIC_ONLY_ARGS=()
+# Later process_arguments calls would reject a leftover Studio version.
+STUDIO_VERSION=""
+unset -f studio_release_exists
 
 log_message() {
     case "$1" in
@@ -367,9 +387,19 @@ output=$( (STUDIO=false; process_arguments --remove-studio-settings) 2>&1 )
 rc=$?
 assert_eq "--remove-studio-settings without --studio errors" "1" "${rc}"
 
-STUDIO=false PSYCHOPY_VERSION="" PYTHON_VERSION=""
+STUDIO=false PSYCHOPY_VERSION="" PYTHON_VERSION="" PSYCHOPY_APP_VERSION=""
 process_arguments --studio --remove-studio-settings
 assert_eq "process_arguments sets REMOVE_STUDIO_SETTINGS" "true" "${REMOVE_STUDIO_SETTINGS}"
+
+output=$( (STUDIO=false; PSYCHOPY_APP_VERSION=""; process_arguments --studio --psychopy-app-version=2026.2.0) 2>&1 )
+rc=$?
+assert_eq "--studio + --psychopy-app-version errors" "1" "${rc}"
+
+STUDIO=false STUDIO_VERSION="" REMOVE_STUDIO_SETTINGS=false PSYCHOPY_VERSION="" PSYCHOPY_APP_VERSION="" PYTHON_VERSION="" NO_FONTS=false
+process_arguments --psychopy-version=2026.1.3 --python-version=3.10 --no-fonts
+assert_eq "classic-only options given are remembered for a later switch to Studio" "--python-version --no-fonts" "${CLASSIC_ONLY_ARGS[*]}"
+# shellcheck disable=SC2034
+NO_FONTS=false
 
 # ===============================================================================
 # create_rerun_command
@@ -385,21 +415,20 @@ PSYCHOPY_VERSION="2024.2.4"
 BUILD_WXPYTHON=true
 INSTALL_DIR="/custom/install/dir"
 # shellcheck disable=SC2034
-STUDIO=true
-# shellcheck disable=SC2034
-STUDIO_VERSION="2026.1.2"
-# shellcheck disable=SC2034
 PSYCHOPY_APP_VERSION="2026.2.0"
 # shellcheck disable=SC2034
-REQUIREMENTS_FILE=""
+REQUIREMENTS_FILE="/some/requirements.txt"
+# shellcheck disable=SC2034
+STUDIO_VERSION="2026.1.2"
 
+# shellcheck disable=SC2034
+STUDIO=false
 rerun_cmd=$(create_rerun_command)
-assert_contains "rerun command includes non-default psychopy-version" "${rerun_cmd}" "--psychopy-version=2024.2.4"
-assert_contains "rerun command includes boolean flag for build-wxpython" "${rerun_cmd}" "--build-wxpython"
-assert_contains "rerun command includes non-default install-dir" "${rerun_cmd}" "--install-dir=/custom/install/dir"
-assert_contains "rerun command includes boolean flag for studio" "${rerun_cmd}" "--studio"
-assert_contains "rerun command includes non-default studio-version" "${rerun_cmd}" "--studio-version=2026.1.2"
-assert_contains "rerun command includes non-default psychopy-app-version" "${rerun_cmd}" "--psychopy-app-version=2026.2.0"
+assert_contains "classic rerun command includes non-default psychopy-version" "${rerun_cmd}" "--psychopy-version=2024.2.4"
+assert_contains "classic rerun command includes boolean flag for build-wxpython" "${rerun_cmd}" "--build-wxpython"
+assert_contains "classic rerun command includes non-default install-dir" "${rerun_cmd}" "--install-dir=/custom/install/dir"
+assert_contains "classic rerun command includes non-default psychopy-app-version" "${rerun_cmd}" "--psychopy-app-version=2026.2.0"
+assert_contains "classic rerun command includes the requirements file" "${rerun_cmd}" "--requirements-file=/some/requirements.txt"
 ((CHECKS++))
 if [[ "${rerun_cmd}" != *"--python-version="* ]]; then
     echo -e "${GREEN}${PASS_SYMBOL} PASS${NC}: rerun command omits options left at their default"
@@ -407,6 +436,39 @@ else
     echo -e "${RED}${FAIL_SYMBOL} FAIL${NC}: rerun command omits options left at their default"
     ((ERRORS++))
 fi
+((CHECKS++))
+if [[ "${rerun_cmd}" != *"--studio"* ]]; then
+    echo -e "${GREEN}${PASS_SYMBOL} PASS${NC}: classic rerun command omits Studio-only options"
+else
+    echo -e "${RED}${FAIL_SYMBOL} FAIL${NC}: classic rerun command omits Studio-only options (got '${rerun_cmd}')"
+    ((ERRORS++))
+fi
+
+# GUI mode resolves the PsychoPy version before Studio is picked.
+# shellcheck disable=SC2034
+STUDIO=true
+rerun_cmd=$(create_rerun_command)
+assert_contains "Studio rerun command includes boolean flag for studio" "${rerun_cmd}" "--studio"
+assert_contains "Studio rerun command includes non-default studio-version" "${rerun_cmd}" "--studio-version=2026.1.2"
+assert_contains "Studio rerun command keeps shared options" "${rerun_cmd}" "--install-dir=/custom/install/dir"
+for classic_flag in --psychopy-version --psychopy-app-version --build-wxpython --requirements-file; do
+    ((CHECKS++))
+    if [[ "${rerun_cmd}" != *"${classic_flag}"* ]]; then
+        echo -e "${GREEN}${PASS_SYMBOL} PASS${NC}: Studio rerun command omits ${classic_flag}"
+    else
+        echo -e "${RED}${FAIL_SYMBOL} FAIL${NC}: Studio rerun command omits ${classic_flag} (got '${rerun_cmd}')"
+        ((ERRORS++))
+    fi
+done
+read -r -a rerun_args <<<"${rerun_cmd#* }"
+# shellcheck disable=SC2034
+output=$( (STUDIO=false; unset PSYCHOPY_VERSION PSYCHOPY_APP_VERSION PYTHON_VERSION WXPYTHON_VERSION WXPYTHON_WHEEL_INDEX ADDITIONAL_PACKAGES REQUIREMENTS_FILE STUDIO_VERSION; BUILD_WXPYTHON=false NO_FONTS=false REMOVE_PSYCHOPY_SETTINGS=false REMOVE_STUDIO_SETTINGS=false; process_arguments "${rerun_args[@]}") 2>&1 )
+rc=$?
+assert_eq "Studio rerun command is accepted by process_arguments" "0" "${rc}"
+# shellcheck disable=SC2034
+STUDIO=false
+# shellcheck disable=SC2034
+REQUIREMENTS_FILE=""
 
 # ===============================================================================
 # validate_user_list / get_real_users
@@ -457,6 +519,101 @@ assert_false "inclusive upper bound rejects the version above it (<=3.12, py3.13
 assert_false "lower bound rejects older Python (>=3.10, py3.9)" -- compat_ok ">=3.10" "3.9"
 assert_true  "lower bound accepts the exact minimum (>=3.10, py3.10)" -- compat_ok ">=3.10" "3.10"
 assert_true  "patch-level Python satisfies a minor-version bound (>=3.9, py3.10.12)" -- compat_ok ">=3.9" "3.10.12"
+
+# ===============================================================================
+# check_psychopy_python_floor
+# ===============================================================================
+print_header "check_psychopy_python_floor"
+
+floor_ok() {
+    (
+        PSYCHOPY_VERSION="$1" PYTHON_VERSION="$2"
+        check_psychopy_python_floor
+    ) >/dev/null 2>&1
+}
+assert_false "psychopy 2025.1.0 + Python 3.8 is rejected" -- floor_ok "2025.1.0" "3.8"
+assert_false "psychopy 2025.1.1 + Python 3.8.10 is rejected" -- floor_ok "2025.1.1" "3.8.10"
+assert_true  "psychopy 2025.1.0 + Python 3.9 is allowed" -- floor_ok "2025.1.0" "3.9"
+assert_true  "psychopy 2024.2.4 + Python 3.8 is allowed" -- floor_ok "2024.2.4" "3.8"
+assert_true  "'git' version is not blocked" -- floor_ok "git" "3.8"
+
+# ===============================================================================
+# pick_legacy_wxpython_default
+# ===============================================================================
+print_header "pick_legacy_wxpython_default"
+
+STUDIO=false PYTHON_VERSION="3.9" WXPYTHON_VERSION=""
+pick_legacy_wxpython_default
+assert_eq "Python 3.9 without a wxPython version gets the legacy default" "${WXPYTHON_LEGACY_VERSION}" "${WXPYTHON_VERSION}"
+STUDIO=false PYTHON_VERSION="3.8.10" WXPYTHON_VERSION="4.2.2"
+pick_legacy_wxpython_default
+assert_eq "an explicit wxPython version is kept" "4.2.2" "${WXPYTHON_VERSION}"
+STUDIO=false PYTHON_VERSION="3.10" WXPYTHON_VERSION=""
+pick_legacy_wxpython_default
+assert_eq "Python 3.10 is left to the normal default" "" "${WXPYTHON_VERSION}"
+
+# The requirements file can set the Python version.
+((CHECKS++))
+parse_line=$(grep -n 'parse_requirements_file "${REQUIREMENTS_FILE}"' "${INSTALLER}" | tail -n1 | cut -d: -f1)
+pick_line=$(grep -n '^\s*pick_legacy_wxpython_default$' "${INSTALLER}" | cut -d: -f1)
+if [ -n "${parse_line}" ] && [ -n "${pick_line}" ] && [ "${pick_line}" -gt "${parse_line}" ]; then
+    echo -e "${GREEN}${PASS_SYMBOL} PASS${NC}: main picks the legacy wxPython default after parsing the requirements file"
+else
+    echo -e "${RED}${FAIL_SYMBOL} FAIL${NC}: main picks the legacy wxPython default after parsing the requirements file (parse: ${parse_line}, pick: ${pick_line})"
+    ((ERRORS++))
+fi
+
+# ===============================================================================
+# github_wheel_os_tags
+# ===============================================================================
+print_header "github_wheel_os_tags"
+
+OS_VERSION="linuxmint-22" OS_ID="linuxmint" OS_UBUNTU_BASE="24.04"
+assert_eq "Mint 22 tries its own wheel, then the ubuntu-24 wheel" "linuxmint-22 ubuntu-24" "$(github_wheel_os_tags | xargs)"
+OS_VERSION="pop-22" OS_ID="pop" OS_UBUNTU_BASE="22.04"
+assert_eq "Pop!_OS 22 falls back to the ubuntu-22 wheel" "pop-22 ubuntu-22" "$(github_wheel_os_tags | xargs)"
+OS_VERSION="ubuntu-24" OS_ID="ubuntu" OS_UBUNTU_BASE="24.04"
+assert_eq "Ubuntu itself has no fallback" "ubuntu-24" "$(github_wheel_os_tags | xargs)"
+OS_VERSION="debian-12" OS_ID="debian" OS_UBUNTU_BASE=""
+assert_eq "non-Ubuntu distros have no fallback" "debian-12" "$(github_wheel_os_tags | xargs)"
+# shellcheck disable=SC2034  # read by github_wheel_os_tags, sourced from the installer
+OS_VERSION="unknown" OS_ID="" OS_UBUNTU_BASE=""
+assert_eq "unknown OS yields no tags" "" "$(github_wheel_os_tags | xargs)"
+
+# ===============================================================================
+# get_latest_studio_version
+# ===============================================================================
+print_header "get_latest_studio_version"
+
+latest_studio=$(
+    curl() {
+        cat <<'EOF'
+[{"tag_name":"2026.3.0rc1","prerelease":true,"draft":false,"assets":[{"name":"PsychoPy_Studio_2026.3.0rc1.AppImage"}]},
+ {"tag_name":"2026.2.5","prerelease":false,"draft":false,"assets":[{"name":"psychopy-2026.2.5.tar.gz"}]},
+ {"tag_name":"2026.2.4","prerelease":false,"draft":false,"assets":[{"name":"notes.txt"},{"name":"PsychoPy_Studio_2026.2.4.AppImage"},{"name":"PsychoPy_Studio_2026.2.4.AppImage.zsync"}]}]
+EOF
+    }
+    get_latest_studio_version result_version
+    # shellcheck disable=SC2154  # assigned through the nameref in get_latest_studio_version
+    echo "${result_version}"
+)
+assert_eq "latest Studio skips pre-releases and releases without an AppImage" "2026.2.4" "${latest_studio}"
+
+# ===============================================================================
+# main() ignores exported option variables
+# ===============================================================================
+print_header "main environment isolation"
+
+# OS detection is the first step after argument handling.
+output=$(
+    export PYTHON_VERSION="3.12.4" WXPYTHON_VERSION="4.2.0"
+    check_connection() { :; }
+    detect_os_version() { echo "REACHED_OS_DETECTION python='${PYTHON_VERSION}' studio='${STUDIO}'"; exit 0; }
+    main --studio --non-interactive 2>&1
+)
+rc=$?
+assert_eq "main --studio with exported PYTHON_VERSION gets past argument checks" "0" "${rc}"
+assert_contains "exported PYTHON_VERSION is replaced by the default" "${output}" "python='${DEFAULT_OPTS[PYTHON_VERSION]}' studio='true'"
 
 # ===============================================================================
 # Regression guards for installer hygiene fixes

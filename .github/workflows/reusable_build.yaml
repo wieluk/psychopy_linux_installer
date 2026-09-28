@@ -380,7 +380,8 @@ jobs:
           fi
 
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
-          pip download wxPython==$WXPYTHON_VERSION
+          # A Linux wheel on PyPI would break the tarball lookup below.
+          pip download --no-binary=:all: --no-deps wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")
@@ -870,7 +871,8 @@ jobs:
           fi
 
           mkdir /tmp_dir/wxpython && cd /tmp_dir/wxpython
-          pip download wxPython==$WXPYTHON_VERSION
+          # A Linux wheel on PyPI would break the tarball lookup below.
+          pip download --no-binary=:all: --no-deps wxPython==$WXPYTHON_VERSION
           WXPYTHON_TARBALL=$(ls [Ww][Xx][Pp][Yy][Tt][Hh][Oo][Nn]-*.tar.gz)
           tar -xzf "$WXPYTHON_TARBALL"
           WXPYTHON_DIR=$(find . -maxdepth 1 -type d -iname "wxPython-*")

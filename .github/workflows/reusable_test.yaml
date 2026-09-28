@@ -27,11 +27,8 @@ jobs:
           - ubuntu-22
         python_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
         psychopy_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
-        include:
-          - os: ubuntu-24
-            runs_on: ubuntu-24.04
-          - os: ubuntu-22
-            runs_on: ubuntu-22.04
+        # Normal mode also covers 2026.1.x and a pinned psychopy_app release.
+        include: ${{ inputs.test-mode == 'normal' && fromJson('[{"os":"ubuntu-24","runs_on":"ubuntu-24.04"},{"os":"ubuntu-22","runs_on":"ubuntu-22.04"},{"os":"ubuntu-24","runs_on":"ubuntu-24.04","python_version":"3.10","psychopy_version":"2026.1.3"},{"os":"ubuntu-24","runs_on":"ubuntu-24.04","python_version":"3.10","psychopy_version":"2026.2.0","psychopy_app_version":"2026.2.0"}]') || fromJson('[{"os":"ubuntu-24","runs_on":"ubuntu-24.04"},{"os":"ubuntu-22","runs_on":"ubuntu-22.04"}]') }}
         exclude:
           # "latest" (2026.2.x) requires Python >=3.10; older Python is an error by design (see check_pypi_python_compatibility in the installer).
           - python_version: "3.8"
@@ -85,14 +82,10 @@ jobs:
           $SUDO chmod -R a+rX /tmp_dir
           $SUDO chown -R testpsychopyuser:testpsychopyuser /tmp_dir
 
-          # ubuntu-22 lacks an exact-match wheel for "latest"; skip in build mode, where --wxpython-wheel-index conflicts with --build-wxpython.
-          EXTRA_ARGS=""
-          if [ "${{ inputs.test-mode }}" != "build" ] && [ "${{ matrix.os }}" = "ubuntu-22" ]; then
-            EXTRA_ARGS="--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04/"
-          fi
-
+          # No wheel index argument, so the automatic lookup gets tested.
           BUILD_FLAG="${{ inputs.test-mode == 'build' && '--build-wxpython' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG $EXTRA_ARGS"
+          APP_ARG="${{ matrix.psychopy_app_version && format('--psychopy-app-version={0}', matrix.psychopy_app_version) || '' }}"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG $APP_ARG"
           $SUDO su - testpsychopyuser -c "cd ~/work && ./psychopy_linux_installer $ARGS"
 
       - name: Show installation logs
@@ -122,6 +115,12 @@ jobs:
 
           if ! $SUDO su - testpsychopyuser -c "psychopy -v" | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
             echo "psychopy not found in PATH or wrong version. Expected version: $PSYCHOPY_VERSION"
+            exit 1
+          fi
+
+          # Neither -v nor pytest imports wx, so a missing runtime library would otherwise only break the GUI.
+          if ! $SUDO su - testpsychopyuser -c "/tmp_dir/psychopy/.venv/bin/python -c 'import wx'"; then
+            echo "wxPython cannot be imported"
             exit 1
           fi
 
@@ -207,10 +206,11 @@ jobs:
         # "quick": breadth (many distros, shallow). "normal"/"build": full depth. Pop!_OS/Mint omitted (same package base as ubuntu-22/24, no separate image).
         os: ${{ inputs.test-mode == 'quick' && fromJson('["debian-12", "fedora-41", "rocky-9", "manjarolinux-25", "opensuse-leap-15"]') || fromJson('["ubuntu-20", "debian-13", "debian-12", "debian-11", "fedora-39", "fedora-40", "fedora-41", "rocky-9", "centos-9", "manjarolinux-25", "opensuse-leap-15"]') }}
         python_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
-        # "quick"/"build" pin to the last pre-Studio release; "latest" now resolves to Studio, which has no venv/pytest and no wxPython (--build-wxpython is a no-op). test-studio (runs whenever test-mode != 'build') covers the Studio leg instead.
+        # Studio is only offered interactively, so latest installs the classic app.
         psychopy_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
         # "include" must mirror the active "os" list exactly, or unmatched entries become orphaned combos missing python_version/psychopy_version.
-        include: ${{ inputs.test-mode == 'quick' && fromJson('[{"os":"debian-12","image":"debian:bookworm"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"}]') || fromJson('[{"os":"ubuntu-20","image":"ubuntu:20.04"},{"os":"debian-13","image":"debian:trixie"},{"os":"debian-12","image":"debian:bookworm"},{"os":"debian-11","image":"debian:bullseye"},{"os":"fedora-39","image":"fedora:39"},{"os":"fedora-40","image":"fedora:40"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"centos-9","image":"quay.io/centos/centos:stream9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"}]') }}
+        # Mint gets no wheels of its own, so these cover the Ubuntu base wheel fallback.
+        include: ${{ inputs.test-mode == 'quick' && fromJson('[{"os":"debian-12","image":"debian:bookworm"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"}]') || inputs.test-mode == 'normal' && fromJson('[{"os":"ubuntu-20","image":"ubuntu:20.04"},{"os":"debian-13","image":"debian:trixie"},{"os":"debian-12","image":"debian:bookworm"},{"os":"debian-11","image":"debian:bullseye"},{"os":"fedora-39","image":"fedora:39"},{"os":"fedora-40","image":"fedora:40"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"centos-9","image":"quay.io/centos/centos:stream9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"},{"os":"linuxmint-22","image":"ubuntu:24.04","python_version":"3.10","psychopy_version":"latest"},{"os":"linuxmint-22","image":"ubuntu:24.04","python_version":"3.9","psychopy_version":"2024.1.4"}]') || fromJson('[{"os":"ubuntu-20","image":"ubuntu:20.04"},{"os":"debian-13","image":"debian:trixie"},{"os":"debian-12","image":"debian:bookworm"},{"os":"debian-11","image":"debian:bullseye"},{"os":"fedora-39","image":"fedora:39"},{"os":"fedora-40","image":"fedora:40"},{"os":"fedora-41","image":"fedora:41"},{"os":"rocky-9","image":"rockylinux:9"},{"os":"centos-9","image":"quay.io/centos/centos:stream9"},{"os":"manjarolinux-25","image":"archlinux:latest"},{"os":"opensuse-leap-15","image":"opensuse/leap:15"}]') }}
         exclude:
           # "latest" (2026.2.x) requires Python >=3.10; older Python is an error by design (see check_pypi_python_compatibility in the installer).
           - python_version: "3.8"
@@ -247,6 +247,22 @@ jobs:
           fi
 
       - uses: actions/checkout@v5
+
+      - name: Pretend to be Linux Mint 22
+        if: ${{ matrix.os == 'linuxmint-22' }}
+        run: |
+          rm -f /etc/os-release
+          cat > /etc/os-release <<'EOF'
+          NAME="Linux Mint"
+          VERSION="22.1 (Xia)"
+          ID=linuxmint
+          ID_LIKE="ubuntu debian"
+          PRETTY_NAME="Linux Mint 22.1"
+          VERSION_ID="22.1"
+          VERSION_CODENAME=xia
+          UBUNTU_CODENAME=noble
+          EOF
+          cat /etc/os-release
 
       # Containers run as root by default; use a real non-root sudo user to exercise sudo_wrapper/SUDO_MODE properly.
       - name: Create non-root sudo user
@@ -332,6 +348,12 @@ jobs:
 
           if ! su - testpsychopyuser -c "psychopy -v" | grep -qE "PsychoPy3, version $PSYCHOPY_VERSION"; then
             echo "psychopy not found in PATH or wrong version. Expected version: $PSYCHOPY_VERSION"
+            exit 1
+          fi
+
+          # Neither -v nor pytest imports wx, so a missing runtime library would otherwise only break the GUI.
+          if ! su - testpsychopyuser -c "/tmp_dir/psychopy/.venv/bin/python -c 'import wx'"; then
+            echo "wxPython cannot be imported"
             exit 1
           fi
 
