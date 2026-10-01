@@ -81,6 +81,11 @@ cleanup() {
             sudo_wrapper rm -rf "${UV_CACHE_DIR}"
         fi
 
+        if [ -n "${WXPYTHON_WHEEL_CACHE_DIR}" ] && [ -d "${WXPYTHON_WHEEL_CACHE_DIR}" ]; then
+            log_message "INFO: Removing locally built wxPython wheels at ${WXPYTHON_WHEEL_CACHE_DIR}"
+            sudo_wrapper rm -rf "${WXPYTHON_WHEEL_CACHE_DIR}"
+        fi
+
         if [ -n "${UV_PYTHON_CACHE_DIR}" ]; then
             log_message "INFO: Removing Python installation cache at ${UV_PYTHON_CACHE_DIR}"
             sudo_wrapper rm -rf "${UV_PYTHON_CACHE_DIR}"
@@ -185,7 +190,9 @@ log() {
         } &
         cmd_pid=$!
         (
-            sleep 0.5
+            # Pause with the read builtin, since a full system upgrade can replace /usr/bin/sleep and glibc while this loop runs.
+            exec {pause_fd}<> <(:)
+            read -rt 0.5 -u "${pause_fd}" || true
             if kill -0 "${cmd_pid}" 2>/dev/null; then
                 # shellcheck disable=SC1003
                 chars='|/-\'
@@ -193,7 +200,7 @@ log() {
                 while kill -0 "${cmd_pid}" 2>/dev/null; do
                     printf "\r[%c] Working..." "${chars:i:1}" >&2
                     i=$(( (i + 1) % 4 ))
-                    sleep 0.1
+                    read -rt 0.1 -u "${pause_fd}" || true
                 done
                 printf "\r%-20s\r" "" >&2
             fi
@@ -1981,6 +1988,7 @@ setup_uv() {
     export UV_PYTHON_CACHE_DIR="${PYTHON_INSTALL_DIR}/cache"
     export UV_TOOL_DIR="${UV_INSTALL_DIR}/tools"
     export UV_TOOL_BIN_DIR="${UV_INSTALL_DIR}/tools/bin"
+    WXPYTHON_WHEEL_CACHE_DIR="${UV_INSTALL_DIR}/wxpython-wheels"
 
     sudo_wrapper mkdir -p "${UV_INSTALL_DIR}"
     set_shared_permissions "${UV_INSTALL_DIR}" recursive
@@ -2032,6 +2040,8 @@ install_wxpython() {
         # Try all automatic wheel sources, logging a warning for each failed tier.
         if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && { log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from custom wheel index '${WXPYTHON_WHEEL_INDEX}' failed."; false; }; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from custom wheel index."
+        elif install_wxpython_from_local_cache; then
+            log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from the wheel built on an earlier run."
         elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from PyPI failed."; false; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from PyPI."
         elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org (${OS_VERSION_LINK}) failed."; false; }; then
@@ -2072,6 +2082,28 @@ install_wxpython() {
     if ! "${UV_INSTALL_DIR}/uv" pip show wxPython &>/dev/null; then
         log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try '--build=wxpython'."
     fi
+}
+
+# Directory for wxPython wheels built from source on this system, keyed by OS so a distro upgrade never reuses an old build.
+wxpython_local_wheel_dir() {
+    echo "${WXPYTHON_WHEEL_CACHE_DIR}/${OS_VERSION}"
+}
+
+# Installs a wxPython wheel that an earlier run built from source, so a reinstall can skip the build.
+install_wxpython_from_local_cache() {
+    local wheel_dir python_abi
+
+    wheel_dir=$(wxpython_local_wheel_dir)
+    python_abi=cp$(echo "${PYTHON_VERSION}" | awk -F. '{printf "%s%s", $1, $2}')
+    # No matching wheel is the normal case on systems that never built one, so stay silent.
+    compgen -G "${wheel_dir}/[Ww][Xx][Pp]ython-${WXPYTHON_VERSION}-${python_abi}-*.whl" >/dev/null || return 1
+
+    log_message "INFO: Found wxPython '${WXPYTHON_VERSION}' built on an earlier run in '${wheel_dir}'. Use --build-wxpython to build it again."
+    if log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${wheel_dir}" "wxpython==${WXPYTHON_VERSION}"; then
+        return 0
+    fi
+    log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from '${wheel_dir}' failed."
+    return 1
 }
 
 # Ubuntu derivatives get no wheels of their own but share their base's ABI.
@@ -2153,7 +2185,7 @@ install_psychopy_studio() {
 # Builds wxPython from source with the necessary build dependencies.
 build_wxpython() {
     local tmp_size_gb tmp_size_new install_args typing_extensions_dir
-    local src_dir sdist_url wx_src build_constraints sip_constraint
+    local src_dir sdist_url wx_src build_constraints sip_constraint wheel_out built_wheel cache_dir
 
     log_message "INFO: Installing wxPython build dependencies. This might take a while ..."
     install_dependencies wxpython_deps
@@ -2189,9 +2221,9 @@ build_wxpython() {
         fi
     fi
 
-    # Building from an extracted sdist below, so --no-binary is implicit.
+    # Building from an extracted sdist below, so --no-binary is implicit; the built wheel is always fresh, so only reinstalling needs forcing.
     if [ "${BUILD_WXPYTHON}" = true ]; then
-        install_args=(--no-cache-dir --force-reinstall)
+        install_args=(--force-reinstall)
     else
         install_args=()
     fi
@@ -2240,10 +2272,27 @@ build_wxpython() {
     fi
 
     log_message "INFO: Building wxPython ${WXPYTHON_VERSION} from source. This might take a while ..."
-    if PYTHONPATH="${typing_extensions_dir}${PYTHONPATH:+:${PYTHONPATH}}" log "${UV_INSTALL_DIR}/uv" pip install --build-constraints "${build_constraints}" "${install_args[@]}" "${wx_src}"; then
-        log_message "INFO: Successfully built wxPython from source."
-    else
+    # Build to a wheel file rather than installing the source directory: uv keys that cache on the random mktemp path, so a reinstall would never hit it.
+    wheel_out=$(mktemp -d)
+    register_cleanup "${wheel_out}"
+    if ! PYTHONPATH="${typing_extensions_dir}${PYTHONPATH:+:${PYTHONPATH}}" log "${UV_INSTALL_DIR}/uv" build "${wx_src}" --wheel -o "${wheel_out}" --python "${PSYCHOPY_DIR}/.venv/bin/python" --build-constraints "${build_constraints}"; then
         log_message "ERROR: Building wxPython from source failed. This is most commonly caused by insufficient free space on /tmp; check that first."
+    fi
+    built_wheel=$(find "${wheel_out}" -maxdepth 1 -type f -iname "wxpython-*.whl" | head -n1)
+    if [ -z "${built_wheel}" ]; then
+        log_message "ERROR: The wxPython build finished but produced no wheel in '${wheel_out}'."
+    fi
+    if ! log "${UV_INSTALL_DIR}/uv" pip install "${install_args[@]}" "${built_wheel}"; then
+        log_message "ERROR: Installing the built wxPython wheel '${built_wheel}' failed."
+    fi
+    log_message "INFO: Successfully built wxPython from source."
+
+    cache_dir=$(wxpython_local_wheel_dir)
+    if sudo_wrapper mkdir -p "${cache_dir}" && sudo_wrapper cp -f "${built_wheel}" "${cache_dir}/"; then
+        set_shared_permissions "${WXPYTHON_WHEEL_CACHE_DIR}" recursive
+        log_message "INFO: Kept the built wheel in '${cache_dir}' so reinstalls on this system can skip the build."
+    else
+        log_message "WARNING: Could not keep the built wxPython wheel in '${cache_dir}'; the next install will build it again."
     fi
 }
 

@@ -581,6 +581,65 @@ OS_VERSION="unknown" OS_ID="" OS_UBUNTU_BASE=""
 assert_eq "unknown OS yields no tags" "" "$(github_wheel_os_tags | xargs)"
 
 # ===============================================================================
+# Local cache of wxPython wheels built from source
+# ===============================================================================
+print_header "local wxPython wheel cache"
+
+wheel_cache_tmp=$(mktemp -d)
+# Runs a cache function with the network, uv and permission changes stubbed; the source tarball, wheel copy and lookup are real.
+run_wheel_cache() {
+    (
+        export TMPDIR="${wheel_cache_tmp}"
+        # shellcheck disable=SC2034  # read by functions sourced from the installer
+        WXPYTHON_WHEEL_CACHE_DIR="${wheel_cache_tmp}/wxpython-wheels" UV_INSTALL_DIR="/uv" PSYCHOPY_DIR="/venv" \
+            OS_VERSION="${2}" PYTHON_VERSION="${3}" WXPYTHON_VERSION="4.3.1" BUILD_WXPYTHON=false NON_INTERACTIVE=true
+        set_shared_permissions() { :; }
+        curl() {
+            if [[ "$*" == *"pypi.org/pypi/wxpython/"* ]]; then
+                echo '{"urls":[{"packagetype":"sdist","url":"https://files.example/wxpython-4.3.1.tar.gz"}]}'
+                return
+            fi
+            local out="" src
+            while [ $# -gt 0 ]; do [ "$1" = "-o" ] && out="$2"; shift; done
+            src=$(mktemp -d)
+            mkdir -p "${src}/wxpython-4.3.1" && touch "${src}/wxpython-4.3.1/pyproject.toml"
+            tar -czf "${out}" -C "${src}" wxpython-4.3.1
+        }
+        log() {
+            if [ "$1" = "/uv/uv" ]; then
+                echo "UV: ${*:2}"
+                if [ "$2" = "build" ]; then
+                    local out=""
+                    while [ $# -gt 0 ]; do [ "$1" = "-o" ] && out="$2"; shift; done
+                    touch "${out}/wxpython-4.3.1-cp310-cp310-linux_x86_64.whl"
+                fi
+                return 0
+            fi
+            "$@"
+        }
+        if "${1}"; then echo "RC=0"; else echo "RC=1"; fi
+    )
+}
+
+output=$(run_wheel_cache install_wxpython_from_local_cache cachyos-rolling 3.10)
+assert_eq "an empty cache skips the tier without calling uv" "RC=1" "${output}"
+
+output=$(run_wheel_cache build_wxpython cachyos-rolling 3.10)
+assert_contains "the source build produces a wheel file instead of installing the source directory" "${output}" "UV: build "
+assert_contains "the source build installs the built wheel" "${output}" "UV: pip install ${wheel_cache_tmp}/"
+assert_true "the built wheel is kept in the per-OS cache" -- \
+    test -f "${wheel_cache_tmp}/wxpython-wheels/cachyos-rolling/wxpython-4.3.1-cp310-cp310-linux_x86_64.whl"
+
+output=$(run_wheel_cache install_wxpython_from_local_cache cachyos-rolling 3.10)
+assert_contains "a reinstall finds the kept wheel" "${output}" "RC=0"
+assert_contains "a reinstall installs from the per-OS cache" "${output}" "--find-links ${wheel_cache_tmp}/wxpython-wheels/cachyos-rolling"
+output=$(run_wheel_cache install_wxpython_from_local_cache cachyos-rolling 3.9)
+assert_eq "a wheel for another Python is not used" "RC=1" "${output}"
+output=$(run_wheel_cache install_wxpython_from_local_cache fedora-41 3.10)
+assert_eq "a wheel built on another OS release is not used" "RC=1" "${output}"
+rm -rf "${wheel_cache_tmp}"
+
+# ===============================================================================
 # get_latest_studio_version
 # ===============================================================================
 print_header "get_latest_studio_version"

@@ -13,7 +13,7 @@ jobs:
           - ubuntu-24
           - ubuntu-22
         python_version: ["3.8", "3.9", "3.10"]
-        wxpython_version: ["grab", "grab-legacy", "4.2.5", "4.1.1"]
+        wxpython_version: ["grab", "grab-legacy"]
         include:
           - os: ubuntu-24
             runs_on: ubuntu-24.04
@@ -28,11 +28,6 @@ jobs:
           # "grab-legacy" uses the script's default for Python <3.10; "grab" already covers 3.10.
           - python_version: "3.10"
             wxpython_version: "grab-legacy"
-          # wxPython 4.2.5 requires Python >=3.10; building it for 3.8/3.9 can never succeed.
-          - python_version: "3.8"
-            wxpython_version: "4.2.5"
-          - python_version: "3.9"
-            wxpython_version: "4.2.5"
       fail-fast: false
     permissions:
       contents: write
@@ -63,15 +58,6 @@ jobs:
           fi
 
       - uses: actions/checkout@v5
-
-      - name: Determine if Failure is Allowed
-        id: check-failure
-        run: |
-          if [[ "${{ matrix.wxpython_version }}" == "grab" || "${{ matrix.wxpython_version }}" == "grab-legacy" ]]; then
-            echo "ALLOW_FAILURE=false" >> $GITHUB_ENV
-          else
-            echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
-          fi
 
       - name: Install dependencies
         run: |
@@ -338,7 +324,6 @@ jobs:
 
       - name: Build wxPython
         if: env.SKIP_WXPYTHON_PROCESS == 'false'
-        continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
         id: build-wxpython
         run: |
           # Set up uv environment in /tmp
@@ -436,11 +421,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           if [[ "${{ steps.build-wxpython.outcome }}" == "failure" ]]; then
-            if [[ "${{ env.ALLOW_FAILURE }}" == "true" ]]; then
-              echo "::warning title=Build Failed (Allowed)::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed (allowed)"
-            else
-              echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
-            fi
+            echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
           elif [[ "${{ env.SKIP_WXPYTHON_PROCESS }}" == "true" ]]; then
             echo "::notice title=Skipped::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
           else
@@ -476,7 +457,8 @@ jobs:
           - manjarolinux-25
           - opensuse-leap-15
         python_version: ["3.8", "3.9", "3.10"]
-        wxpython_version: ["grab", "grab-legacy", "4.2.5", "4.1.1"]
+        # Only the script defaults get prebuilt wheels; other versions fall back to the official index or a source build.
+        wxpython_version: ["grab", "grab-legacy"]
         include:
           - os: ubuntu-20
             image: ubuntu:20.04
@@ -511,20 +493,6 @@ jobs:
           # "grab-legacy" uses the script's default for Python <3.10; "grab" already covers 3.10.
           - python_version: "3.10"
             wxpython_version: "grab-legacy"
-          # wxPython 4.2.5 requires Python >=3.10; building it for 3.8/3.9 can never succeed.
-          - python_version: "3.8"
-            wxpython_version: "4.2.5"
-          - python_version: "3.9"
-            wxpython_version: "4.2.5"
-          - os: fedora-40
-            python_version: "3.10"
-            wxpython_version: "4.1.1"
-          - os: fedora-41
-            python_version: "3.10"
-            wxpython_version: "4.1.1"
-          - os: manjarolinux-25
-            python_version: "3.10"
-            wxpython_version: "4.1.1"
       fail-fast: false
     permissions:
       contents: write
@@ -555,15 +523,6 @@ jobs:
           fi
 
       - uses: actions/checkout@v5
-
-      - name: Determine if Failure is Allowed
-        id: check-failure
-        run: |
-          if [[ "${{ matrix.wxpython_version }}" == "grab" || "${{ matrix.wxpython_version }}" == "grab-legacy" ]]; then
-            echo "ALLOW_FAILURE=false" >> $GITHUB_ENV
-          else
-            echo "ALLOW_FAILURE=true" >> $GITHUB_ENV
-          fi
 
       - name: Install dependencies
         run: |
@@ -829,7 +788,6 @@ jobs:
 
       - name: Build wxPython
         if: env.SKIP_WXPYTHON_PROCESS == 'false'
-        continue-on-error: ${{ env.ALLOW_FAILURE == 'true' }}
         id: build-wxpython
         run: |
           # Set up uv environment in /tmp
@@ -927,11 +885,7 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           if [[ "${{ steps.build-wxpython.outcome }}" == "failure" ]]; then
-            if [[ "${{ env.ALLOW_FAILURE }}" == "true" ]]; then
-              echo "::warning title=Build Failed (Allowed)::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed (allowed)"
-            else
-              echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
-            fi
+            echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
           elif [[ "${{ env.SKIP_WXPYTHON_PROCESS }}" == "true" ]]; then
             echo "::notice title=Skipped::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
           else
