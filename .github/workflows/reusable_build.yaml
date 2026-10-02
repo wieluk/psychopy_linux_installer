@@ -392,6 +392,8 @@ jobs:
               if [ -f sip/siplib/siplib.c ]; then
                   sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' sip/siplib/siplib.c
               fi
+              # GCC >=16 emits a wxHtmlHelpController::Display reference into _core, which isn't linked against the html lib, so 'import wx' fails; link it in.
+              sed -i "s/args='--cxxflags --libs core,net' + rpath,/args='--cxxflags --libs html,core,net' + rpath,/" wscript
           fi
 
           "$UV_BIN" build . --wheel -o . --python "$(command -v python)" --build-constraints "$BUILD_CONSTRAINTS"
@@ -845,6 +847,8 @@ jobs:
               if [ -f sip/siplib/siplib.c ]; then
                   sed -i 's/\*selfp = va_arg(va, PyObject \*);/*selfp = (sipSimpleWrapper *)va_arg(va, PyObject *);/' sip/siplib/siplib.c
               fi
+              # GCC >=16 emits a wxHtmlHelpController::Display reference into _core, which isn't linked against the html lib, so 'import wx' fails; link it in.
+              sed -i "s/args='--cxxflags --libs core,net' + rpath,/args='--cxxflags --libs html,core,net' + rpath,/" wscript
           fi
 
           "$UV_BIN" build . --wheel -o . --python "$(command -v python)" --build-constraints "$BUILD_CONSTRAINTS"
