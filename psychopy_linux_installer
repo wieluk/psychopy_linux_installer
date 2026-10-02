@@ -605,15 +605,19 @@ ubuntu_release_from_codename() {
     focal) echo "20.04" ;;
     jammy) echo "22.04" ;;
     noble) echo "24.04" ;;
+    resolute) echo "26.04" ;;
     *) echo "" ;;
     esac
 }
 
 # Returns the extras.wxpython.org folder URL that best matches this system.
 suggested_wxpython_wheel_url() {
-    local release
+    local release wx_url="https://extras.wxpython.org/wxPython4/extras/linux/gtk3"
     release=$(ubuntu_release_from_codename "${OS_CODENAME}")
-    echo "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-${release:-24.04}/"
+    if is_version_greater "${release}" "24.04" && ! curl "${CURL_RETRY_OPTS[@]}" --head --silent --fail "${wx_url}/ubuntu-${release}/" >/dev/null 2>&1; then
+        release="24.04"
+    fi
+    echo "${wx_url}/ubuntu-${release:-24.04}/"
 }
 
 select_wxpython_wheel_index() {
@@ -1312,10 +1316,10 @@ filter_installable_packages() {
         ubuntu-20) [[ "${package}" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
         debian-11) [[ "${package}" == "libwebkit2gtk-4.1-dev" ]] && continue ;;
         pop-22) [[ "${package}" == "pulseaudio" ]] && continue ;;
-        fedora-39 | fedora-40 | fedora-41) [[ "${package}" == "pulseaudio" ]] && continue ;;
-        rocky-9 | centos-9) [[ "${package}" == "pulseaudio" || "${package}" == "portaudio-devel" ]] && continue ;;
+        fedora-*) [[ "${package}" == "pulseaudio" ]] && continue ;;
+        rocky-* | centos-*) [[ "${package}" == "pulseaudio" || "${package}" == "portaudio-devel" ]] && continue ;;
         linuxmint-22) [[ "${package}" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
-        manjarolinux-25) [[ "${package}" == "pulseaudio-utils" || "${package}" == "pulseaudio" ]] && continue ;;
+        manjarolinux-*) [[ "${package}" == "pulseaudio-utils" || "${package}" == "pulseaudio" ]] && continue ;;
         esac
         candidates+=("${package}")
     done
@@ -1527,7 +1531,7 @@ install_dependencies() {
         ;;
     yum | dnf)
         script_deps=(curl git jq)
-        psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
+        psychopy_deps=(alsa-lib-devel gtk3-devel libnotify mesa-libEGL-devel mesa-libGLU-devel portaudio-devel pulseaudio pulseaudio-utils SDL2-devel sdl2-compat-devel webkit2gtk3-devel webkit2gtk4.0-devel libusb1-devel)
         build_deps=(gcc gcc-c++ make python3-devel pkgconf-pkg-config tar file which)
         fonts=(fontconfig dejavu-sans-fonts dejavu-serif-fonts liberation-sans-fonts liberation-serif-fonts liberation-mono-fonts)
         wxpython_deps=(freeglut-devel gstreamer1-devel gtk2-devel libSM-devel libjpeg-devel libjpeg-turbo-devel libnotify-devel libpng-devel libtiff-devel glib2-devel)
@@ -1544,7 +1548,7 @@ install_dependencies() {
     zypper)
         script_deps=(curl git jq)
         psychopy_deps=(alsa-devel gtk3-devel libnotify4 libSM6 libusb-1_0-devel libxcb-xinerama0 portaudio-devel pulseaudio pulseaudio-utils SDL2-devel)
-        build_deps=(gcc gcc-c++ make python3-devel pkg-config tar file which)
+        build_deps=(gcc gcc-c++ make python3-devel pkg-config pkgconf-pkg-config tar file which)
         fonts=(dejavu-fonts liberation-fonts fontconfig)
         wxpython_deps=(freeglut-devel glib2-devel gstreamer-plugins-base libSM-devel libjpeg-turbo libnotify-devel libpng16-devel libtiff-devel)
         studio_deps=(libfuse2 gtk3 mozilla-nss libnotify4 libXss1 libXtst6 xdg-utils at-spi2-atk libuuid1 libsecret-1-0 alsa)
@@ -2133,7 +2137,7 @@ install_wxpython_from_github() {
         log_message "INFO: Downloading '${wheel_name}' from GitHub releases ..."
         [ "${os_tag}" != "${OS_VERSION}" ] && log_message "NOTE: Using the wheel built for '${os_tag}', the Ubuntu release this system is based on."
         # Only the Ubuntu wheels are built on real VMs.
-        if [[ "${os_tag}" != "ubuntu-22" && "${os_tag}" != "ubuntu-24" ]]; then
+        if [[ "${os_tag}" != "ubuntu-22" && "${os_tag}" != "ubuntu-24" && "${os_tag}" != "ubuntu-26" ]]; then
             log_message "WARNING: '${wheel_name}' was built in a Docker container, not on real hardware for this distro; if you run into problems with wxPython/PsychoPy, retry with --build-wxpython."
         fi
 

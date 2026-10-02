@@ -4,17 +4,20 @@ on:
   workflow_call:
 
 jobs:
-  # ubuntu-22/24 get real hosted VMs (20.04 was retired); other distros use build-container below.
+  # Ubuntu LTS releases get real hosted VMs; other distros use build-container below.
   build-ubuntu:
     runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
         os:
+          - ubuntu-26
           - ubuntu-24
           - ubuntu-22
         python_version: ["3.8", "3.9", "3.10"]
         wxpython_version: ["grab", "grab-legacy"]
         include:
+          - os: ubuntu-26
+            runs_on: ubuntu-26.04
           - os: ubuntu-24
             runs_on: ubuntu-24.04
           - os: ubuntu-22
@@ -166,8 +169,8 @@ jobs:
             exit 1
           fi
 
-          # Tag the wheel with the target distro label, not the substitute container's own /etc/os-release (e.g. manjarolinux-25 via archlinux:latest).
-          OS_VERSION="${{ matrix.os }}"
+          # Tag the wheel the way detect_os_version names this system ("<ID>-<major VERSION_ID>").
+          OS_VERSION=$(. /etc/os-release && echo "${ID}-${VERSION_ID%%.*}" | tr '[:upper:]' '[:lower:]')
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
           PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
@@ -421,11 +424,11 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           if [[ "${{ steps.build-wxpython.outcome }}" == "failure" ]]; then
-            echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
+            echo "::error title=Build Failed::${OS_VERSION:-${{ matrix.os }}}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
           elif [[ "${{ env.SKIP_WXPYTHON_PROCESS }}" == "true" ]]; then
-            echo "::notice title=Skipped::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
+            echo "::notice title=Skipped::${OS_VERSION:-${{ matrix.os }}}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
           else
-            echo "::notice title=Success::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython built successfully"
+            echo "::notice title=Success::${OS_VERSION:-${{ matrix.os }}}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython built successfully"
           fi
 
       - name: Cleanup
@@ -444,46 +447,42 @@ jobs:
         shell: bash
     strategy:
       matrix:
+        # Rolling/major tags keep this list current on their own; the wheel's OS tag is read from the image at build time.
         os:
-          - ubuntu-20
-          - debian-13
-          - debian-12
-          - debian-11
-          - fedora-39
-          - fedora-40
-          - fedora-41
+          - debian-stable
+          - debian-oldstable
+          - fedora-latest
+          - rocky-10
           - rocky-9
-          - centos-9
-          - manjarolinux-25
-          - opensuse-leap-15
+          - centos-stream10
+          - manjarolinux
+          - opensuse-leap-latest
         python_version: ["3.8", "3.9", "3.10"]
         # Only the script defaults get prebuilt wheels; other versions fall back to the official index or a source build.
         wxpython_version: ["grab", "grab-legacy"]
         include:
-          - os: ubuntu-20
-            image: ubuntu:20.04
-          - os: debian-13
-            image: debian:trixie
-          - os: debian-12
-            image: debian:bookworm
-          - os: debian-11
-            image: debian:bullseye
-          - os: fedora-39
-            image: fedora:39
-          - os: fedora-40
-            image: fedora:40
-          - os: fedora-41
-            image: fedora:41
+          - os: debian-stable
+            image: debian:stable
+          - os: debian-oldstable
+            image: debian:oldstable
+          # Fedora has no rolling "previous" tag; once a release drops off "latest", its wheels carry over via reusable_copy_release_assets.
+          - os: fedora-latest
+            image: fedora:latest
+          # Docker Hub's library/rockylinux stopped at 9.3; Rocky publishes current images under rockylinux/rockylinux.
+          - os: rocky-10
+            image: rockylinux/rockylinux:10
           - os: rocky-9
-            image: rockylinux:9
-          # Plain "centos:9" no longer exists on Docker Hub; only CentOS Stream is published now.
-          - os: centos-9
-            image: quay.io/centos/centos:stream9
+            image: rockylinux/rockylinux:9
+          # Plain "centos" no longer exists on Docker Hub; only CentOS Stream is published now.
+          - os: centos-stream10
+            image: quay.io/centos/centos:stream10
           # No official Manjaro image; archlinux:latest is the closest well-maintained substitute.
-          - os: manjarolinux-25
+          # Arch's os-release has no VERSION_ID, so the label must name the current Manjaro release by hand.
+          - os: manjarolinux
             image: archlinux:latest
-          - os: opensuse-leap-15
-            image: opensuse/leap:15
+            label: manjarolinux-26
+          - os: opensuse-leap-latest
+            image: opensuse/leap:latest
         exclude:
           # "grab" uses the script's current default wxPython version, which requires Python >=3.10.
           - python_version: "3.8"
@@ -630,8 +629,12 @@ jobs:
             exit 1
           fi
 
-          # Tag the wheel with the target distro label, not the substitute container's own /etc/os-release (e.g. manjarolinux-25 via archlinux:latest).
-          OS_VERSION="${{ matrix.os }}"
+          # Tag the wheel the way detect_os_version names this system ("<ID>-<major VERSION_ID>"), so rolling image tags still yield the installer's lookup name.
+          # Substitute images (archlinux:latest for Manjaro) set matrix.label instead.
+          OS_VERSION="${{ matrix.label }}"
+          if [ -z "${OS_VERSION}" ]; then
+            OS_VERSION=$(. /etc/os-release && echo "${ID}-${VERSION_ID%%.*}" | tr '[:upper:]' '[:lower:]')
+          fi
           PROCESSOR_STRUCTURE=$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m)
           PYTHON_MAJOR=$(echo "${PYTHON_VERSION}" | cut -d. -f1)
           PYTHON_MINOR=$(echo "${PYTHON_VERSION}" | cut -d. -f2)
@@ -885,11 +888,11 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           if [[ "${{ steps.build-wxpython.outcome }}" == "failure" ]]; then
-            echo "::error title=Build Failed::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
+            echo "::error title=Build Failed::${OS_VERSION:-${{ matrix.os }}}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython build failed"
           elif [[ "${{ env.SKIP_WXPYTHON_PROCESS }}" == "true" ]]; then
-            echo "::notice title=Skipped::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
+            echo "::notice title=Skipped::${OS_VERSION:-${{ matrix.os }}}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython already exists"
           else
-            echo "::notice title=Success::${{ matrix.os }}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython built successfully"
+            echo "::notice title=Success::${OS_VERSION:-${{ matrix.os }}}-py${{ matrix.python_version }}-wx${{ matrix.wxpython_version }} - wxPython built successfully"
           fi
 
       - name: Cleanup

@@ -157,6 +157,15 @@ OS_CODENAME="noble"
 suggest_wxpython_wheel_index
 assert_contains "noble-based derivative suggests the ubuntu-24.04 wheel index" "${captured_message}" "ubuntu-24.04"
 
+OS_CODENAME="resolute"
+curl() { return 22; }
+suggest_wxpython_wheel_index
+assert_contains "resolute-based derivative falls back to the ubuntu-24.04 index while upstream has no 26.04 folder" "${captured_message}" "ubuntu-24.04"
+curl() { :; }
+suggest_wxpython_wheel_index
+assert_contains "resolute-based derivative suggests the ubuntu-26.04 index once upstream adds it" "${captured_message}" "ubuntu-26.04"
+unset -f curl
+
 OS_CODENAME="bookworm"
 suggest_wxpython_wheel_index
 assert_contains "unmapped codename falls back to the newest LTS wheel index" "${captured_message}" "ubuntu-24.04"
@@ -572,6 +581,8 @@ OS_VERSION="linuxmint-22" OS_ID="linuxmint" OS_UBUNTU_BASE="24.04"
 assert_eq "Mint 22 tries its own wheel, then the ubuntu-24 wheel" "linuxmint-22 ubuntu-24" "$(github_wheel_os_tags | xargs)"
 OS_VERSION="pop-22" OS_ID="pop" OS_UBUNTU_BASE="22.04"
 assert_eq "Pop!_OS 22 falls back to the ubuntu-22 wheel" "pop-22 ubuntu-22" "$(github_wheel_os_tags | xargs)"
+OS_VERSION="linuxmint-23" OS_ID="linuxmint" OS_UBUNTU_BASE="$(ubuntu_release_from_codename resolute)"
+assert_eq "a resolute-based derivative falls back to the ubuntu-26 wheel" "linuxmint-23 ubuntu-26" "$(github_wheel_os_tags | xargs)"
 OS_VERSION="ubuntu-24" OS_ID="ubuntu" OS_UBUNTU_BASE="24.04"
 assert_eq "Ubuntu itself has no fallback" "ubuntu-24" "$(github_wheel_os_tags | xargs)"
 OS_VERSION="debian-12" OS_ID="debian" OS_UBUNTU_BASE=""

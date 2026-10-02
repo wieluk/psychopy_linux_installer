@@ -4,20 +4,20 @@ set -e
 # Configuration
 declare -A DISTROS=(
     ["1"]="ubuntu:24.04"
-    ["2"]="fedora:41"
+    ["2"]="fedora:latest"
     ["3"]="archlinux:latest"
-    ["4"]="opensuse/leap:15"
-    ["5"]="debian:bookworm"
-    ["6"]="rockylinux:9"
+    ["4"]="opensuse/leap:latest"
+    ["5"]="debian:stable"
+    ["6"]="rockylinux/rockylinux:10"
 )
 
 declare -A DISTRO_ARGS=(
     ["ubuntu:24.04"]="-f --non-interactive"
-    ["fedora:41"]="-f --non-interactive"
+    ["fedora:latest"]="-f --non-interactive"
     ["archlinux:latest"]="-f --non-interactive --wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
-    ["opensuse/leap:15"]="-f --non-interactive"
-    ["debian:bookworm"]="-f --non-interactive"
-    ["rockylinux:9"]="-f --non-interactive"
+    ["opensuse/leap:latest"]="-f --non-interactive"
+    ["debian:stable"]="-f --non-interactive"
+    ["rockylinux/rockylinux:10"]="-f --non-interactive"
 )
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")

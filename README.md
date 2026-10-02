@@ -27,15 +27,15 @@ This script automates the installation of [PsychoPy](https://www.psychopy.org/) 
 
 The installer has been tested and confirmed to work on the following Linux distributions:
 
-- **Ubuntu:** 24.04, 22.04, 20.04
+- **Ubuntu:** 26.04, 24.04, 22.04
 - **Pop!_OS:** 22.04
-- **Debian:** 13, 12, 11
-- **Fedora:** 41, 40, 39
-- **Rocky Linux:** 9
-- **CentOS:** 9
+- **Debian:** 13, 12
+- **Fedora:** 44
+- **Rocky Linux:** 10, 9
+- **CentOS Stream:** 10
 - **Linux Mint:** 22
-- **openSUSE:** 15
-- **Manjaro:** 25
+- **openSUSE Leap:** 16
+- **Manjaro:** 26
 
 While these distributions are tested, the script is designed to be compatible with other Linux distributions as well.
 
