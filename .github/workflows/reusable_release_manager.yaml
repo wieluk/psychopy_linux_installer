@@ -19,7 +19,7 @@ jobs:
       installer-version: ${{ steps.extract.outputs.installer_version }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Extract Installer Version
@@ -40,7 +40,7 @@ jobs:
       result: ${{ steps.release-checker.outputs.result }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Check if release exists and detect version bump type
@@ -98,7 +98,7 @@ jobs:
     needs: extract-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Create release if not exists
@@ -142,18 +142,31 @@ jobs:
             fi
           fi
 
+          RELEASE_ID=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API_URL" | jq -r '.id')
+
+          # Uploading an existing asset name fails and would leave a stale script on the release.
+          upload_asset() {
+            local file="$1" content_type="$2" asset_id
+            asset_id=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100" |
+              jq -r --arg name "$file" '.[] | select(.name == $name) | .id')
+            if [ -n "$asset_id" ]; then
+              echo "Replacing existing release asset '$file' (id $asset_id)."
+              curl -sS --fail -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+            fi
+            curl -sS --fail -o /dev/null -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: ${content_type}" \
+              --data-binary @"$file" \
+              "${UPLOAD_URL}?name=${file}"
+          }
+
           if [ -f "README.md" ]; then
-            curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: text/markdown" \
-              --data-binary @README.md \
-              "${UPLOAD_URL}?name=README.md"
+            upload_asset README.md text/markdown
           fi
 
           if [ -f "psychopy_linux_installer" ]; then
-            curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Content-Type: application/x-shellscript" \
-              --data-binary @psychopy_linux_installer \
-              "${UPLOAD_URL}?name=psychopy_linux_installer"
+            upload_asset psychopy_linux_installer application/x-shellscript
           fi
 
   create-release:
@@ -161,7 +174,7 @@ jobs:
     needs: extract-version
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
       - name: Update release from pre-release to full release

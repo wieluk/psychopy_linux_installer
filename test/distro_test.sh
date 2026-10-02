@@ -4,20 +4,18 @@ set -e
 # Configuration
 declare -A DISTROS=(
     ["1"]="ubuntu:24.04"
-    ["2"]="fedora:41"
+    ["2"]="fedora:latest"
     ["3"]="archlinux:latest"
-    ["4"]="opensuse/leap:15"
-    ["5"]="debian:bookworm"
-    ["6"]="rockylinux:9"
+    ["4"]="opensuse/leap:latest"
+    ["5"]="debian:stable"
 )
 
 declare -A DISTRO_ARGS=(
     ["ubuntu:24.04"]="-f --non-interactive"
-    ["fedora:41"]="-f --non-interactive"
+    ["fedora:latest"]="-f --non-interactive"
     ["archlinux:latest"]="-f --non-interactive --wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
-    ["opensuse/leap:15"]="-f --non-interactive"
-    ["debian:bookworm"]="-f --non-interactive"
-    ["rockylinux:9"]="-f --non-interactive"
+    ["opensuse/leap:latest"]="-f --non-interactive"
+    ["debian:stable"]="-f --non-interactive"
 )
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -80,11 +78,7 @@ run_single_distro() {
     sudo docker cp "$INSTALLER_PATH" "$container_name:/psychopy_linux_installer"
     sudo docker exec "$container_name" chmod +x /psychopy_linux_installer
     
-    # Handle Rocky Linux curl conflict
-    if [[ "$distro" == *"rockylinux"* ]]; then
-        echo -e "${YELLOW}Pre-fixing Rocky Linux curl conflict...${NC}"
-        sudo docker exec "$container_name" bash -c "dnf install -y curl sudo --allowerasing"
-    elif [[ "$distro" == *"opensuse"* ]]; then
+    if [[ "$distro" == *"opensuse"* ]]; then
         echo -e "${YELLOW}Pre-fixing OpenSUSE sudo missing ...${NC}"
         sudo docker exec "$container_name" bash -c "zypper install -y sudo"
     elif [[ "$distro" == *"debian"* ]]; then

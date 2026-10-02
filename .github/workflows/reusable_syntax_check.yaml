@@ -8,7 +8,7 @@ jobs:
   syntax-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install ShellCheck and other tools
         run: |
@@ -20,3 +20,8 @@ jobs:
         run: |
           sudo chmod +x $GITHUB_WORKSPACE/test/syntax_checks.sh
           $GITHUB_WORKSPACE/test/syntax_checks.sh
+
+      - name: Run Unit Tests
+        run: |
+          chmod +x $GITHUB_WORKSPACE/test/unit_tests.sh
+          $GITHUB_WORKSPACE/test/unit_tests.sh
