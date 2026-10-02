@@ -10,6 +10,14 @@
 
 This script automates the installation of [PsychoPy](https://www.psychopy.org/) on a wide range of Linux distributions, handling all dependencies and environment setup for you.
 
+**Recommended: [PsychoPy Studio](https://psychopy.org/about/psychopystudio.html), PsychoPy's new app.** It sets up Python and PsychoPy on its own and drops wxPython entirely, so there are no long wxPython builds or dependency issues:
+
+```bash
+bash <(curl -LsSf https://github.com/wieluk/psychopy_linux_installer/releases/latest/download/psychopy_linux_installer) --studio
+```
+
+Compared to downloading the AppImage yourself, this also installs the system libraries it needs (e.g. `libfuse2`), adds a desktop shortcut and a terminal command, falls back to running without FUSE if mounting fails, and includes an uninstaller.
+
 ## Table of Contents
 
 1. [Supported and Tested Distributions](#supported-and-tested-distributions)
