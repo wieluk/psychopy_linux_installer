@@ -8,7 +8,6 @@ declare -A DISTROS=(
     ["3"]="archlinux:latest"
     ["4"]="opensuse/leap:latest"
     ["5"]="debian:stable"
-    ["6"]="rockylinux/rockylinux:10"
 )
 
 declare -A DISTRO_ARGS=(
@@ -17,7 +16,6 @@ declare -A DISTRO_ARGS=(
     ["archlinux:latest"]="-f --non-interactive --wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
     ["opensuse/leap:latest"]="-f --non-interactive"
     ["debian:stable"]="-f --non-interactive"
-    ["rockylinux/rockylinux:10"]="-f --non-interactive"
 )
 
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
@@ -80,11 +78,7 @@ run_single_distro() {
     sudo docker cp "$INSTALLER_PATH" "$container_name:/psychopy_linux_installer"
     sudo docker exec "$container_name" chmod +x /psychopy_linux_installer
     
-    # Handle Rocky Linux curl conflict
-    if [[ "$distro" == *"rockylinux"* ]]; then
-        echo -e "${YELLOW}Pre-fixing Rocky Linux curl conflict...${NC}"
-        sudo docker exec "$container_name" bash -c "dnf install -y curl sudo --allowerasing"
-    elif [[ "$distro" == *"opensuse"* ]]; then
+    if [[ "$distro" == *"opensuse"* ]]; then
         echo -e "${YELLOW}Pre-fixing OpenSUSE sudo missing ...${NC}"
         sudo docker exec "$container_name" bash -c "zypper install -y sudo"
     elif [[ "$distro" == *"debian"* ]]; then

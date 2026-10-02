@@ -452,8 +452,6 @@ jobs:
           - debian-stable
           - debian-oldstable
           - fedora-latest
-          - rocky-10
-          - rocky-9
           - centos-stream10
           - manjarolinux
           - opensuse-leap-latest
@@ -468,11 +466,6 @@ jobs:
           # Fedora has no rolling "previous" tag; once a release drops off "latest", its wheels carry over via reusable_copy_release_assets.
           - os: fedora-latest
             image: fedora:latest
-          # Docker Hub's library/rockylinux stopped at 9.3; Rocky publishes current images under rockylinux/rockylinux.
-          - os: rocky-10
-            image: rockylinux/rockylinux:10
-          - os: rocky-9
-            image: rockylinux/rockylinux:9
           # Plain "centos" no longer exists on Docker Hub; only CentOS Stream is published now.
           - os: centos-stream10
             image: quay.io/centos/centos:stream10
