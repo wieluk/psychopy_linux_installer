@@ -205,13 +205,13 @@ jobs:
     strategy:
       matrix:
         # "quick": breadth (many distros, shallow). "normal"/"build": full depth. Pop!_OS/Mint omitted (same package base as ubuntu-22/24, no separate image).
-        os: ${{ inputs.test-mode == 'quick' && fromJson('["debian-stable", "fedora-latest", "manjarolinux", "opensuse-leap-latest"]') || fromJson('["debian-stable", "debian-oldstable", "fedora-latest", "manjarolinux", "opensuse-leap-latest"]') }}
+        os: ${{ inputs.test-mode == 'quick' && fromJson('["debian-stable", "fedora-latest", "arch", "opensuse-leap-latest"]') || fromJson('["debian-stable", "debian-oldstable", "fedora-latest", "arch", "opensuse-leap-latest"]') }}
         python_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["3.10"]') || fromJson('["3.8", "3.9", "3.10"]') }}
         # Studio is only offered interactively, so latest installs the classic app.
         psychopy_version: ${{ (inputs.test-mode == 'quick' || inputs.test-mode == 'build') && fromJson('["latest"]') || fromJson('["latest", "2024.1.4", "2023.2.3"]') }}
         # "include" must mirror the active "os" list exactly, or unmatched entries become orphaned combos missing python_version/psychopy_version.
         # Mint gets no wheels of its own, so these cover the Ubuntu base wheel fallback.
-        include: ${{ inputs.test-mode == 'quick' && fromJson('[{"os":"debian-stable","image":"debian:stable"},{"os":"fedora-latest","image":"fedora:latest"},{"os":"manjarolinux","image":"archlinux:latest"},{"os":"opensuse-leap-latest","image":"opensuse/leap:latest"}]') || inputs.test-mode == 'normal' && fromJson('[{"os":"debian-stable","image":"debian:stable"},{"os":"debian-oldstable","image":"debian:oldstable"},{"os":"fedora-latest","image":"fedora:latest"},{"os":"manjarolinux","image":"archlinux:latest"},{"os":"opensuse-leap-latest","image":"opensuse/leap:latest"},{"os":"linuxmint-22","image":"ubuntu:24.04","python_version":"3.10","psychopy_version":"latest"},{"os":"linuxmint-22","image":"ubuntu:24.04","python_version":"3.9","psychopy_version":"2024.1.4"}]') || fromJson('[{"os":"debian-stable","image":"debian:stable"},{"os":"debian-oldstable","image":"debian:oldstable"},{"os":"fedora-latest","image":"fedora:latest"},{"os":"manjarolinux","image":"archlinux:latest"},{"os":"opensuse-leap-latest","image":"opensuse/leap:latest"}]') }}
+        include: ${{ inputs.test-mode == 'quick' && fromJson('[{"os":"debian-stable","image":"debian:stable"},{"os":"fedora-latest","image":"fedora:latest"},{"os":"arch","image":"archlinux:latest"},{"os":"opensuse-leap-latest","image":"opensuse/leap:latest"}]') || inputs.test-mode == 'normal' && fromJson('[{"os":"debian-stable","image":"debian:stable"},{"os":"debian-oldstable","image":"debian:oldstable"},{"os":"fedora-latest","image":"fedora:latest"},{"os":"arch","image":"archlinux:latest"},{"os":"opensuse-leap-latest","image":"opensuse/leap:latest"},{"os":"linuxmint-22","image":"ubuntu:24.04","python_version":"3.10","psychopy_version":"latest"},{"os":"linuxmint-22","image":"ubuntu:24.04","python_version":"3.9","psychopy_version":"2024.1.4"}]') || fromJson('[{"os":"debian-stable","image":"debian:stable"},{"os":"debian-oldstable","image":"debian:oldstable"},{"os":"fedora-latest","image":"fedora:latest"},{"os":"arch","image":"archlinux:latest"},{"os":"opensuse-leap-latest","image":"opensuse/leap:latest"}]') }}
         exclude:
           # "latest" (2026.2.x) requires Python >=3.10; older Python is an error by design (see check_pypi_python_compatibility in the installer).
           - python_version: "3.8"
@@ -313,14 +313,8 @@ jobs:
           chmod -R a+rX /tmp_dir
           chown -R testpsychopyuser:testpsychopyuser /tmp_dir
 
-          # Manjaro (archlinux:latest) lacks an exact-match wheel for "latest"; skip in build mode, where --wxpython-wheel-index conflicts with --build-wxpython.
-          EXTRA_ARGS=""
-          if [ "${{ inputs.test-mode }}" != "build" ] && [ "${{ matrix.os }}" = "manjarolinux" ]; then
-            EXTRA_ARGS="--wxpython-wheel-index=https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-24.04/"
-          fi
-
           BUILD_FLAG="${{ inputs.test-mode == 'build' && '--build-wxpython' || '' }}"
-          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG $EXTRA_ARGS"
+          ARGS="--python-version=$PYTHON_VERSION --psychopy-version=$PSYCHOPY_VERSION --install-dir=/tmp_dir --venv-name=psychopy -f --non-interactive --additional-packages=pytest $BUILD_FLAG"
           su - testpsychopyuser -c "cd ~/work && ./psychopy_linux_installer $ARGS"
 
       - name: Show installation logs

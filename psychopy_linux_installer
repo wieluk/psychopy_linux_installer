@@ -5,11 +5,11 @@
 #                 Python, wxPython, and optional packages.
 #  Author:        Lukas Wiertz
 #  Date:          2024-10-06
-#  Last Updated:  2026-04-09
+#  Last Updated:  2026-10-02
 #  License:       GNU General Public License v3.0
 # ===============================================================================
 
-SCRIPT_VERSION="3.0.0"
+SCRIPT_VERSION="3.0.1"
 
 # Define default values
 CURRENT_USER="$(id -un)"
@@ -1198,12 +1198,13 @@ detect_os_version() {
     local major_version version ID VERSION_ID ID_LIKE UBUNTU_CODENAME VERSION_CODENAME ubuntu_base
     if [ -f /etc/os-release ]; then
         . /etc/os-release
+        # Set even without VERSION_ID rolling distros
+        OS_ID_LIKE=$(echo "${ID_LIKE:-}" | tr '[:upper:]' '[:lower:]')
+        OS_ID=$(echo "${ID:-}" | tr '[:upper:]' '[:lower:]')
         if [ -n "${ID}" ] && [ -n "${VERSION_ID}" ]; then
             ID=$(echo "${ID}" | tr '[:upper:]' '[:lower:]')
             VERSION_ID=$(echo "${VERSION_ID}" | tr '[:upper:]' '[:lower:]')
             major_version=$(echo "${VERSION_ID}" | cut -d. -f1)
-            OS_ID_LIKE=$(echo "${ID_LIKE:-}" | tr '[:upper:]' '[:lower:]')
-            OS_ID="${ID}"
             OS_CODENAME=$(echo "${UBUNTU_CODENAME:-${VERSION_CODENAME:-}}" | tr '[:upper:]' '[:lower:]')
             ubuntu_base=$(ubuntu_release_from_codename "${OS_CODENAME}")
             OS_UBUNTU_BASE="${ubuntu_base}"
@@ -1319,7 +1320,6 @@ filter_installable_packages() {
         fedora-*) [[ "${package}" == "pulseaudio" ]] && continue ;;
         rocky-* | centos-*) [[ "${package}" == "pulseaudio" || "${package}" == "portaudio-devel" ]] && continue ;;
         linuxmint-22) [[ "${package}" == "libwebkit2gtk-4.0-dev" ]] && continue ;;
-        manjarolinux-*) [[ "${package}" == "pulseaudio-utils" || "${package}" == "pulseaudio" ]] && continue ;;
         esac
         candidates+=("${package}")
     done
@@ -1539,7 +1539,7 @@ install_dependencies() {
         ;;
     pacman)
         script_deps=(curl git jq)
-        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio pulseaudio pulseaudio-utils sdl2 sdl2-compat webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu libxcrypt-compat)
+        psychopy_deps=(alsa-lib gtk3 libnotify libusb mesa portaudio sdl2 sdl2-compat webkit2gtk-4.1 webkit2gtk xcb-util-cursor libxcb glu libxcrypt-compat)
         build_deps=(gcc make base-devel python pkgconf tar file which)
         fonts=(ttf-dejavu ttf-liberation noto-fonts gnu-free-fonts)
         wxpython_deps=(freeglut glib2 gstreamer gtk2 libjpeg libpng libsm libtiff glu mesa)
@@ -2022,6 +2022,24 @@ setup_uv() {
     fi
 }
 
+# True when the installed wxPython imports; pip installs a wheel just as happily when its system libraries are missing or incompatible.
+# Imports every extension module, not just wx: html2, media and glcanvas link WebKitGTK, GStreamer and OpenGL that the core doesn't.
+wxpython_loads() {
+    local import_error
+    if import_error=$("${PSYCHOPY_DIR}/.venv/bin/python" -c '
+import importlib, importlib.machinery, os, wx
+for name in sorted(os.listdir(os.path.dirname(wx.__file__))):
+    suffix = next((s for s in importlib.machinery.EXTENSION_SUFFIXES if name.endswith(s)), None)
+    if name.startswith("_") and suffix:
+        importlib.import_module("wx." + name[: -len(suffix)])
+' 2>&1); then
+        return 0
+    fi
+    log_message "WARNING: wxPython '${WXPYTHON_VERSION}' was installed but cannot be imported: $(echo "${import_error}" | tail -n1)"
+    log "${UV_INSTALL_DIR}/uv" pip uninstall wxpython
+    return 1
+}
+
 # Installs wxPython using the specified method and version.
 install_wxpython() {
     log_message "INFO: Installing wxpython '${WXPYTHON_VERSION}' ..."
@@ -2042,13 +2060,13 @@ install_wxpython() {
         build_wxpython
     else
         # Try all automatic wheel sources, logging a warning for each failed tier.
-        if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && { log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from custom wheel index '${WXPYTHON_WHEEL_INDEX}' failed."; false; }; }; then
+        if [ -n "${WXPYTHON_WHEEL_INDEX}" ] && { log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "${WXPYTHON_WHEEL_INDEX}" "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from custom wheel index '${WXPYTHON_WHEEL_INDEX}' failed."; false; }; } && wxpython_loads; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from custom wheel index."
-        elif install_wxpython_from_local_cache; then
+        elif install_wxpython_from_local_cache && wxpython_loads; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from the wheel built on an earlier run."
-        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from PyPI failed."; false; }; then
+        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: "wxpython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from PyPI failed."; false; } && wxpython_loads; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from PyPI."
-        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org (${OS_VERSION_LINK}) failed."; false; }; then
+        elif log "${UV_INSTALL_DIR}/uv" pip install --only-binary=:all: --find-links "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/${OS_VERSION_LINK}/" "wxPython==${WXPYTHON_VERSION}" || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org (${OS_VERSION_LINK}) failed."; false; } && wxpython_loads; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from extras.wxpython.org."
         elif install_wxpython_from_github || { log_message "WARNING: Installing wxPython '${WXPYTHON_VERSION}' from GitHub release failed."; false; }; then
             log_message "INFO: Successfully installed wxPython '${WXPYTHON_VERSION}' from GitHub release."
@@ -2084,7 +2102,9 @@ install_wxpython() {
     fi
 
     if ! "${UV_INSTALL_DIR}/uv" pip show wxPython &>/dev/null; then
-        log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try '--build=wxpython'."
+        log_message "ERROR: wxPython is not installed. Something went wrong during the installation. You can try '--build-wxpython'."
+    elif ! wxpython_loads; then
+        log_message "ERROR: wxPython '${WXPYTHON_VERSION}' is installed but cannot be imported. Re-run with '--build-wxpython' to build it from source against this system's libraries."
     fi
 }
 
@@ -2112,11 +2132,16 @@ install_wxpython_from_local_cache() {
 
 # Ubuntu derivatives get no wheels of their own but share their base's ABI.
 github_wheel_os_tags() {
-    [[ "${OS_VERSION}" == "unknown" ]] && return
-    echo "${OS_VERSION}"
+    if [[ "${OS_VERSION}" != "unknown" ]]; then
+        echo "${OS_VERSION}"
+    fi
     if [ "${OS_ID}" != "ubuntu" ] && [ -n "${OS_UBUNTU_BASE}" ]; then
         echo "ubuntu-${OS_UBUNTU_BASE%%.*}"
     fi
+    # Arch and its derivatives are rolling, so their release wheel is tagged plainly 'arch'.
+    case " ${OS_ID} ${OS_ID_LIKE} " in
+    *" arch "*) echo "arch" ;;
+    esac
 }
 
 # Attempts to install wxPython from a GitHub released wheel.
@@ -2135,7 +2160,7 @@ install_wxpython_from_github() {
         fi
 
         log_message "INFO: Downloading '${wheel_name}' from GitHub releases ..."
-        [ "${os_tag}" != "${OS_VERSION}" ] && log_message "NOTE: Using the wheel built for '${os_tag}', the Ubuntu release this system is based on."
+        [ "${os_tag}" != "${OS_VERSION}" ] && log_message "NOTE: Using the wheel built for '${os_tag}', the distribution this system is based on."
         # Only the Ubuntu wheels are built on real VMs.
         if [[ "${os_tag}" != "ubuntu-22" && "${os_tag}" != "ubuntu-24" && "${os_tag}" != "ubuntu-26" ]]; then
             log_message "WARNING: '${wheel_name}' was built in a Docker container, not on real hardware for this distro; if you run into problems with wxPython/PsychoPy, retry with --build-wxpython."
@@ -2153,7 +2178,7 @@ install_wxpython_from_github() {
         renamed_wheel="/tmp/${wheel_name%-"${os_tag}".whl}.whl"
         mv "${download_path}" "${renamed_wheel}"
         register_cleanup "${renamed_wheel}"
-        if log "${UV_INSTALL_DIR}/uv" pip install "${renamed_wheel}"; then
+        if log "${UV_INSTALL_DIR}/uv" pip install "${renamed_wheel}" && wxpython_loads; then
             return 0
         fi
         log_message "WARNING: Installing wxPython from '${renamed_wheel}' failed."
@@ -3296,21 +3321,15 @@ main() {
             log_message "ERROR: PsychoPy Studio installation verification failed!"
         fi
     else
-        # Verify via the same '-m psychopy_app.psychopyApp' invocation the wrapper uses (see launch_line).
-        local binary_check_cmd
-        if uses_psychopy_app_module; then
-            binary_check_cmd=("${PSYCHOPY_DIR}/.venv/bin/python" -m psychopy_app.psychopyApp -v)
+        # Import the module the wrapper launches (see launch_line): '-v' exits before the GUI code loads, so it can't catch a missing dependency. wxPython itself is checked in install_wxpython.
+        local gui_module="psychopy.app.psychopyApp" import_error
+        uses_psychopy_app_module && gui_module="psychopy_app.psychopyApp"
+        if ! import_error=$("${PSYCHOPY_DIR}/.venv/bin/python" -c "import ${gui_module}" 2>&1); then
+            log_message "ERROR: PsychoPy is installed but its GUI cannot be loaded: $(echo "${import_error}" | tail -n1)"
+        elif "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
+            log_message "PsychoPy installation completed successfully!"
         else
-            binary_check_cmd=("${PSYCHOPY_DIR}/.venv/bin/psychopy" -v)
-        fi
-        if "${binary_check_cmd[@]}" &>/dev/null; then
-            if "${PSYCHOPY_DIR}/start_psychopy" -v &>/dev/null; then
-                log_message "PsychoPy installation completed successfully!"
-            else
-                log_message "ERROR: PsychoPy wrapper script verification failed!"
-            fi
-        else
-            log_message "ERROR: PsychoPy binary verification failed!"
+            log_message "ERROR: PsychoPy wrapper script verification failed!"
         fi
     fi
 }

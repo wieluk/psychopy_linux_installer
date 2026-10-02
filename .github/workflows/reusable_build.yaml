@@ -454,7 +454,7 @@ jobs:
           - debian-stable
           - debian-oldstable
           - fedora-latest
-          - manjarolinux
+          - arch
           - opensuse-leap-latest
         python_version: ["3.8", "3.9", "3.10"]
         # Only the script defaults get prebuilt wheels; other versions fall back to the official index or a source build.
@@ -467,11 +467,10 @@ jobs:
           # Fedora has no rolling "previous" tag; once a release drops off "latest", its wheels carry over via reusable_copy_release_assets.
           - os: fedora-latest
             image: fedora:latest
-          # No official Manjaro image; archlinux:latest is the closest well-maintained substitute.
-          # Arch's os-release has no VERSION_ID, so the label must name the current Manjaro release by hand.
-          - os: manjarolinux
+          # Arch is rolling, so its wheel gets one fixed tag; the installer tries it on Arch and every Arch-based distro.
+          - os: arch
             image: archlinux:latest
-            label: manjarolinux-26
+            label: arch
           - os: opensuse-leap-latest
             image: opensuse/leap:latest
         exclude:
@@ -621,7 +620,7 @@ jobs:
           fi
 
           # Tag the wheel the way detect_os_version names this system ("<ID>-<major VERSION_ID>"), so rolling image tags still yield the installer's lookup name.
-          # Substitute images (archlinux:latest for Manjaro) set matrix.label instead.
+          # Rolling distros (Arch) set matrix.label instead, as their VERSION_ID is a build date.
           OS_VERSION="${{ matrix.label }}"
           if [ -z "${OS_VERSION}" ]; then
             OS_VERSION=$(. /etc/os-release && echo "${ID}-${VERSION_ID%%.*}" | tr '[:upper:]' '[:lower:]')

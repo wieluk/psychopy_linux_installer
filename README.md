@@ -40,7 +40,7 @@ The installer has been tested and confirmed to work on the following Linux distr
 - **Fedora:** 44
 - **Linux Mint:** 22
 - **openSUSE Leap:** 16
-- **Manjaro:** 26
+- **Arch Linux:** rolling (Arch-based distributions such as Manjaro use its wheels)
 
 While these distributions are tested, the script is designed to be compatible with other Linux distributions as well.
 

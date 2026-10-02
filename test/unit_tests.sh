@@ -590,6 +590,19 @@ assert_eq "non-Ubuntu distros have no fallback" "debian-12" "$(github_wheel_os_t
 # shellcheck disable=SC2034  # read by github_wheel_os_tags, sourced from the installer
 OS_VERSION="unknown" OS_ID="" OS_UBUNTU_BASE=""
 assert_eq "unknown OS yields no tags" "" "$(github_wheel_os_tags | xargs)"
+OS_ID_LIKE=""
+OS_VERSION="arch-20260927" OS_ID="arch" OS_UBUNTU_BASE=""
+assert_eq "Arch docker image falls back to the rolling arch wheel" "arch-20260927 arch" "$(github_wheel_os_tags | xargs)"
+OS_VERSION="unknown" OS_ID="arch" OS_UBUNTU_BASE=""
+assert_eq "Arch without lsb_release still tries the arch wheel" "arch" "$(github_wheel_os_tags | xargs)"
+OS_ID_LIKE="arch"
+OS_VERSION="manjarolinux-26" OS_ID="manjaro" OS_UBUNTU_BASE=""
+assert_eq "Manjaro falls back to the arch wheel" "manjarolinux-26 arch" "$(github_wheel_os_tags | xargs)"
+# shellcheck disable=SC2034  # read by github_wheel_os_tags, sourced from the installer
+OS_VERSION="cachyos-rolling" OS_ID="cachyos" OS_UBUNTU_BASE=""
+assert_eq "CachyOS falls back to the arch wheel" "cachyos-rolling arch" "$(github_wheel_os_tags | xargs)"
+# shellcheck disable=SC2034  # reset so later sections see no ID_LIKE
+OS_ID_LIKE=""
 
 # ===============================================================================
 # Local cache of wxPython wheels built from source
