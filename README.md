@@ -30,7 +30,6 @@ The installer has been tested and confirmed to work on the following Linux distr
 - **Pop!_OS:** 22.04
 - **Debian:** 13, 12
 - **Fedora:** 44
-- **CentOS Stream:** 10
 - **Linux Mint:** 22
 - **openSUSE Leap:** 16
 - **Manjaro:** 26

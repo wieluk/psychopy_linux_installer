@@ -452,7 +452,6 @@ jobs:
           - debian-stable
           - debian-oldstable
           - fedora-latest
-          - centos-stream10
           - manjarolinux
           - opensuse-leap-latest
         python_version: ["3.8", "3.9", "3.10"]
@@ -466,9 +465,6 @@ jobs:
           # Fedora has no rolling "previous" tag; once a release drops off "latest", its wheels carry over via reusable_copy_release_assets.
           - os: fedora-latest
             image: fedora:latest
-          # Plain "centos" no longer exists on Docker Hub; only CentOS Stream is published now.
-          - os: centos-stream10
-            image: quay.io/centos/centos:stream10
           # No official Manjaro image; archlinux:latest is the closest well-maintained substitute.
           # Arch's os-release has no VERSION_ID, so the label must name the current Manjaro release by hand.
           - os: manjarolinux
