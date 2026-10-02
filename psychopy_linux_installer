@@ -2026,13 +2026,8 @@ setup_uv() {
 # Imports every extension module, not just wx: html2, media and glcanvas link WebKitGTK, GStreamer and OpenGL that the core doesn't.
 wxpython_loads() {
     local import_error
-    if import_error=$("${PSYCHOPY_DIR}/.venv/bin/python" -c '
-import importlib, importlib.machinery, os, wx
-for name in sorted(os.listdir(os.path.dirname(wx.__file__))):
-    suffix = next((s for s in importlib.machinery.EXTENSION_SUFFIXES if name.endswith(s)), None)
-    if name.startswith("_") and suffix:
-        importlib.import_module("wx." + name[: -len(suffix)])
-' 2>&1); then
+    local check='import importlib, importlib.machinery as m, os, wx; [importlib.import_module("wx." + n[: -len(s)]) for n in sorted(os.listdir(os.path.dirname(wx.__file__))) for s in [next((x for x in m.EXTENSION_SUFFIXES if n.endswith(x)), "")] if n.startswith("_") and s]'
+    if import_error=$("${PSYCHOPY_DIR}/.venv/bin/python" -c "${check}" 2>&1); then
         return 0
     fi
     log_message "WARNING: wxPython '${WXPYTHON_VERSION}' was installed but cannot be imported: $(echo "${import_error}" | tail -n1)"
