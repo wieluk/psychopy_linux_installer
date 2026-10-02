@@ -672,6 +672,24 @@ assert_eq "latest Studio skips pre-releases and releases without an AppImage" "2
 # ===============================================================================
 # main() ignores exported option variables
 # ===============================================================================
+print_header "write_desktop"
+
+# StartupWMClass must match the app_id GTK derives from argv[0], or taskbars show a generic icon.
+desktop_wm_class() {
+    (
+        local tmp_dir
+        tmp_dir=$(mktemp -d)
+        sudo_wrapper() { "$@"; }
+        STUDIO="$1" PSYCHOPY_VERSION="$2" PSYCHOPY_GIT_TAG=false PSYCHOPY_DIR=/opt/psychopy/test resources_dir="${tmp_dir}"
+        write_desktop "${tmp_dir}" "" "test" "psychopy.png"
+        grep '^StartupWMClass=' "${tmp_dir}/test.desktop"
+        rm -rf "${tmp_dir}"
+    )
+}
+assert_eq "pre-2026.2 classic launches the psychopy script" "StartupWMClass=psychopy" "$(desktop_wm_class false 2024.1.4)"
+assert_eq "2026.2+ classic launches -m psychopy_app.psychopyApp" "StartupWMClass=psychopyApp.py" "$(desktop_wm_class false 2026.2.4)"
+assert_eq "Studio keeps its own class" "StartupWMClass=psychopy" "$(desktop_wm_class true 2026.2.4)"
+
 print_header "main environment isolation"
 
 # OS detection is the first step after argument handling.

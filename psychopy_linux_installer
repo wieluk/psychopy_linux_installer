@@ -2398,7 +2398,10 @@ setup_psychopy_group_and_limits() {
 # Writes a single .desktop launcher file.
 write_desktop() {
     local dest_dir="$1" args="$2" label="$3" icon_file="$4"
-    local desktop_path icon_line desktop_content comment
+    local desktop_path icon_line desktop_content comment wm_class
+
+    wm_class="psychopy"
+    [ "${STUDIO}" != true ] && uses_psychopy_app_module && wm_class="psychopyApp.py"
 
     desktop_path="${dest_dir}/${label}.desktop"
     icon_line=""
@@ -2425,7 +2428,7 @@ write_desktop() {
         "Keywords=psychopy;experiment;builder;psyexp;design;" \
         "TryExec=${PSYCHOPY_DIR}/start_psychopy" \
         "StartupNotify=true" \
-        "StartupWMClass=psychopy")"
+        "StartupWMClass=${wm_class}")"
 
     sudo_wrapper sh -c "printf '%s\n' \"\$1\" > \"${desktop_path}\"" _ "${desktop_content}"
     sudo_wrapper chmod +x "${desktop_path}"
