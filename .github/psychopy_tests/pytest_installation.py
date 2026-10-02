@@ -96,3 +96,12 @@ def test_visual_circle():
     win.flip()
     core.wait(1)
     win.close()
+
+# -------------------- Builder Code Component Tests --------------------
+
+def test_code_translator():
+    # Without metapensiero.pj, Builder prompts to install it the first time a Code component is opened.
+    from psychopy.experiment import py2js_transpiler
+    assert py2js_transpiler.translates is not None, "metapensiero.pj is missing"
+    js_code, _ = py2js_transpiler.translates("x = 1", enable_es6=True)
+    assert "x = 1" in js_code

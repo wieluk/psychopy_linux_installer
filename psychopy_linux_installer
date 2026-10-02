@@ -2162,6 +2162,16 @@ install_wxpython_from_github() {
     return 1
 }
 
+# Installs the Python-to-JS translator for Builder's Code components; newer PsychoPy no longer depends on it and prompts on first use instead.
+install_code_translator() {
+    "${PSYCHOPY_DIR}/.venv/bin/python" -c "import metapensiero.pj.api" &>/dev/null && return 0
+    log_message "INFO: Installing the Code component translator (metapensiero.pj) ..."
+    # Same fork PsychoPy's own install prompt uses.
+    if ! log "${UV_INSTALL_DIR}/uv" pip install "git+https://gitlab.com/peircej/metapensiero.pj.git"; then
+        log_message "WARNING: Installing the Code component translator failed; PsychoPy will offer to install it when a Code component is first opened."
+    fi
+}
+
 # Downloads and installs the PsychoPy Studio AppImage
 install_psychopy_studio() {
     local appimage_name download_url download_path
@@ -3226,6 +3236,8 @@ main() {
                 log_message "ERROR: Installing psychopy-app ${PSYCHOPY_APP_VERSION} changed psychopy from ${PSYCHOPY_VERSION} to '${installed_psychopy}'. Pass a matching --psychopy-app-version."
             fi
         fi
+
+        install_code_translator
 
         # Compare installed package versions with requested versions
         if [ -n "${pip_extra_packages}" ]; then
